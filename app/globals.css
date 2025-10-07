@@ -1,0 +1,249 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* app/globals.css */
+
+/* Inter Black */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Black.ttf') format('truetype');
+    font-weight: 900; /* Black is typically 900 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-BlackItalic.tif') format('truetype');
+    font-weight: 900;
+    font-style: italic;
+}
+
+/* Inter Bold */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Bold.ttf') format('truetype');
+    font-weight: 700; /* Bold is typically 700 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-BoldItalic.tif') format('truetype');
+    font-weight: 700;
+    font-style: italic;
+}
+
+/* Inter ExtraBold */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-ExtraBold.ttf') format('truetype');
+    font-weight: 800; /* ExtraBold is typically 800 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-ExtraBoldItalic.tif') format('truetype');
+    font-weight: 800;
+    font-style: italic;
+}
+
+/* Inter ExtraLight */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-ExtraLight.ttf') format('truetype');
+    font-weight: 200; /* ExtraLight is typically 200 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-ExtraLightItalic.tif') format('truetype');
+    font-weight: 200;
+    font-style: italic;
+}
+
+/* Inter Italic */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Italic.ttf') format('truetype');
+    font-weight: 400; /* Regular weight */
+    font-style: italic;
+}
+
+/* Inter Light */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Light.ttf') format('truetype');
+    font-weight: 300; /* Light is typically 300 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-LightItalic.ttf') format('truetype');
+    font-weight: 300;
+    font-style: italic;
+}
+
+/* Inter Medium */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Medium.ttf') format('truetype');
+    font-weight: 500; /* Medium is typically 500 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-MediumItalic.ttf') format('truetype');
+    font-weight: 500;
+    font-style: italic;
+}
+
+/* Inter Regular */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Regular.ttf') format('truetype');
+    font-weight: 400; /* Regular is typically 400 */
+    font-style: normal;
+}
+
+/* Inter SemiBold */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-SemiBold.ttf') format('truetype');
+    font-weight: 600; /* SemiBold is typically 600 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-SemiBoldItalic.ttf') format('truetype');
+    font-weight: 600;
+    font-style: italic;
+}
+
+/* Inter Thin */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-Thin.ttf') format('truetype');
+    font-weight: 100; /* Thin is typically 100 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter_18pt-ThinItalic.ttf') format('truetype');
+    font-weight: 100;
+    font-style: italic;
+}
+
+/* Apply Inter as the default font */
+html {
+    @apply text-[14px] md:text-[16px]
+}
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/*body {*/
+/*  font-family: Arial, Helvetica, sans-serif;*/
+/*}*/
+.text-misty-gray {color:#000; font-style: normal !important;}
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.bg-dashed-box {
+    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%23CED4DAFF' stroke-width='1' stroke-dasharray='6' stroke-dashoffset='12' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}
