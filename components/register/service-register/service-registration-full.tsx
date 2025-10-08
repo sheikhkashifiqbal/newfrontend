@@ -93,6 +93,7 @@ useEffect(() => {
 	managerName: z.string({required_error: 'manager name is required'}).min(3, "manager name must be at least 3 characters"),
 	managerSurname: z.string({required_error: 'manager surname is required'}).min(3, "manager surname must be at least 3 characters"),
 	address: z.string({required_error: 'address is required'}).min(3, "address must be at least 3 characters"),
+	city: z.string({ required_error: 'city is required'}).min(1, "city is required"),
 	location: z.string({required_error: 'location is required'}).min(3, "location must be at least 3 characters"),
 	workDays: z.array(z.string({required_error: "Select work days"}), {required_error: "Select work days"}).min(1, {message: "Select at least 1 work day"}).max(7),
 	workHours: z.array(z.string({required_error: "Select work hours"}), {required_error: "Select work hours"}).length(2, {message: "Select work hours"}),
@@ -218,7 +219,7 @@ function extractBranchId(payload: any): number {
 	  password: values.password,
 	  tinPhoto: tinFilename
 	};
-	
+	console.log("company:::", API_COMPANIES);
 	const companyRes = await fetch(API_COMPANIES, {
 	  method: "POST",
 	  headers: { "Content-Type": "application/json" },
@@ -247,7 +248,8 @@ function extractBranchId(payload: any): number {
         branchCode: b.code,                      // string
         branchManagerName: b.managerName,        // string
         branchManagerSurname: b.managerSurname,  // string
-        branchAddress: b.address,                // string
+        branchAddress: b.address, 
+		city: b.city, 			                 // string
         location: b.location,                    // string (maps link)
         workDays: (b.workDays || []) as string[],// <-- array of days from WorkDaysSelector
         from: (b.workHours?.[0] ?? "") as string,// <-- HH:mm from WorkHoursSelector
@@ -258,7 +260,7 @@ function extractBranchId(payload: any): number {
         branchCoverImg: coverFilename,
         status: "approved"
       };
-
+	  console.log("Branches::", branchPayload);
 	  const branchRes = await fetch(API_BRANCHES, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
