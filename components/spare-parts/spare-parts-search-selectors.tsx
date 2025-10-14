@@ -3,7 +3,9 @@
 import React, { useState } from 'react'
 import Container from '@/components/Container'
 import CustomInput from '@/components/app-custom/custom-input'
-import { ServiceSelector } from '@/components/services/selectors/service-selector'
+//import { ServiceSelector } from '@/components/services/selectors/service-selector'
+import  ServiceSelector  from '@/components/services/selectors/spare-parts-selector';
+import StateMultiSelector from "@/components/register/selectors/state-multi-selector";
 import { CitySelector } from '@/components/services/selectors/city-selector'
 import { Button } from '@/components/ui/button'
 import PlusIcon from '@/assets/icons/spare-parts/PlusIcon.svg'
@@ -69,7 +71,7 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
                 value={''}
               />
               <ServiceSelector />
-              <ServiceSelector />
+              <StateMultiSelector />
               <CitySelector />
             </div>
 

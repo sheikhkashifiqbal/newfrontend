@@ -15,7 +15,7 @@ interface Service {
   sparepartsType: string;
 }
 
-export function ServiceSelector({
+export default function ServiceSelector({
   placeholder = 'Select service',
   triggerClassname,
   onChange,

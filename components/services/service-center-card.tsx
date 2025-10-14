@@ -10,18 +10,25 @@ interface ICardHeader {
   containerClassname?: string
   branchName: string
   logoImg: string
+  stars: number // ✅ added
 }
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-export function CardHeader({ containerClassname, branchName, logoImg }: any) {
+
+export function CardHeader({ containerClassname, branchName, logoImg, stars }: ICardHeader) {
   return (
     <div className={cn('p-4 pb-0 flex items-center gap-x-4', containerClassname)}>
-      {/* Dynamic logo from API */}
-      <img src={`${BASE_URL}/images/${logoImg}`} alt={`${branchName} logo`} className={'!size-14 rounded-full object-cover'} />
+      <img
+        src={`${BASE_URL}/images/${logoImg}`}
+        alt={`${branchName} logo`}
+        className={'!size-14 rounded-full object-cover'}
+      />
       <div className={'flex flex-col gap-y-0.5'}>
         <h5 className={'text-charcoal text-base font-semibold'}>{branchName}</h5>
         <div className={'flex items-center gap-x-1'}>
           <StarIcon className={'!size-5'} />
-          <h6 className={'text-charcoal text-sm font-semibold'}>4.5</h6>
+          {/* ✅ Dynamic stars */}
+          <h6 className={'text-charcoal text-sm font-semibold'}>{stars?.toFixed(1) ?? '0.0'}</h6>
         </div>
       </div>
     </div>
@@ -47,12 +54,13 @@ function CardBookedServices({ services }: { services: string[] }) {
   )
 }
 
-function CardFooter() {
+function CardFooter({ percentage_booking }: { percentage_booking: number }) {
   return (
     <div className={'flex gap-x-3 bg-white border-t-[1px] border-t-cool-gray p-4 rounded-b-3xl'}>
-      <CircularProgress percentage={34} />
+      {/* ✅ Dynamic progress */}
+      <CircularProgress percentage={percentage_booking ?? 0} />
       <h5 className={'text-xs text-charcoal font-semibold'}>
-        34% already <br /> booked
+        {percentage_booking ?? 0}% already <br /> booked
       </h5>
     </div>
   )
@@ -62,11 +70,12 @@ interface IServiceCenterCard {
   id: number
   isLastRow: boolean
   onClick: (id: number) => void
-  // New props coming from parent/API
   branchName: string
   serviceNames: string[]
   branchCoverImg: string
   logoImg: string
+  stars: number
+  percentage_booking: number
 }
 
 export default function ServiceCenterCard({
@@ -77,7 +86,13 @@ export default function ServiceCenterCard({
   serviceNames,
   branchCoverImg,
   logoImg,
+  stars,
+  percentage_booking
 }: IServiceCenterCard) {
+  const hasBookedServices =
+    Array.isArray(serviceNames) && serviceNames.some((s) => Boolean(s) && String(s).trim() !== '')
+  if (!hasBookedServices) return null
+
   const [isHovered, setIsHovered] = useState(false)
   function handleUnHover() {
     setIsHovered(false)
@@ -92,12 +107,15 @@ export default function ServiceCenterCard({
           isHovered && 'max-h-[520px] shadow-[0px_24px_32px_0px_#DBE2EF]'
         )}
       >
-        {/* Dynamic branch cover image */}
-        <img className={'rounded-t-3xl max-h-[160px] object-cover w-full'} src={`${BASE_URL}/images/${branchCoverImg}`} alt={`${branchName} cover`} />
+        <img
+          className={'rounded-t-3xl max-h-[160px] object-cover w-full'}
+          src={`${BASE_URL}/images/${branchCoverImg}`}
+          alt={`${branchName} cover`}
+        />
         <div className={'flex flex-col bg-white gap-y-4'}>
-          <CardHeader branchName={branchName} logoImg={logoImg} />
+          <CardHeader branchName={branchName} logoImg={logoImg} stars={stars} />
           <CardBookedServices services={serviceNames} />
-          <CardFooter />
+          <CardFooter percentage_booking={percentage_booking} />
         </div>
         <button
           onClick={() => onClick(id)}
