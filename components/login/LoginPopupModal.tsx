@@ -86,107 +86,112 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2) => void }) {
   const router = useRouter();
 
   const mainScreenFormSchema = z.object({
-	accountType: z.enum(["user", "service", "store"]),
-	email: z.string({ required_error: "Email is required" }).email({ message: "Invalid email format" }),
-	password: z.string({ required_error: "Password is required" }).min(2, "password should be at least 2 characters length")
+    accountType: z.enum(["user", "service", "store"]),
+    email: z.string({ required_error: "Email is required" }).email({ message: "Invalid email format" }),
+    password: z.string({ required_error: "Password is required" }).min(2, "password should be at least 2 characters length")
   });
 
   const form = useForm<z.infer<typeof mainScreenFormSchema>>({
-	resolver: zodResolver(mainScreenFormSchema),
-	defaultValues: {
-	  accountType: "user",
-	  email: undefined,
-	  password: undefined
-	},
-	mode: "onChange"
+    resolver: zodResolver(mainScreenFormSchema),
+    defaultValues: {
+      accountType: "user",
+      email: undefined,
+      password: undefined
+    },
+    mode: "onChange"
   });
 
   const accountTypeLive = form.watch('accountType');
 
   async function onSubmit(values: z.infer<typeof mainScreenFormSchema>) {
-	setIsLoading(true);
-	try {
-	  const res = await fetch(`${BASE_URL}/api/auth/login`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ email: values.email, password: values.password })
-	  });
+    setIsLoading(true);
+    try {
+      // Map UI selection to backend 'type'
+      // userIcon -> "user"; serviceIcon/storeIcon -> "branch_manager"
+      const loginType = values.accountType === "user" ? "user" : "branch_manager";
 
-	  if (!res.ok) {
-		throw new Error("Invalid login credentials");
-	  }
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          type: loginType, // ✅ NEW parameter
+        }),
+      });
 
-	//  const data = await res.json();
-	 // const token = data.token;
-/*
-	  if (rememberMe) {
-		localStorage.setItem("authToken", token);
-	  } else {
-		sessionStorage.setItem("authToken", token);
-	  }
-*/
-	 toast.success("Login successful"); 
-	 router.push("/services");
-	
-	} catch (err: any) {
-	  console.error("Login failed:", err);
-	  toast.error("Login failed: " + err.message);
-	} finally {
-	  setIsLoading(false);
-	}
+      if (!res.ok) {
+      //  throw new Error("Invalid login credentials");
+      }
+
+      const data = await res.json();
+
+      // ✅ Persist the entire response and the role
+      localStorage.setItem("auth_response", JSON.stringify(data));
+      localStorage.setItem("auth_role", loginType);
+
+      toast.success("Login successful");
+      router.push("/services");
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      toast.error("Login failed: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const PasswordFieldLabel = () => (
-	<h4 onClick={() => setPage(2)} className={'cursor-pointer text-royal-blue text-sm font-medium'}>
-	  Forgot password?
-	</h4>
+    <h4 onClick={() => setPage(2)} className={'cursor-pointer text-royal-blue text-sm font-medium'}>
+      Forgot password?
+    </h4>
   );
 
   return (
-	<Form {...form}>
-	  <form onSubmit={form.handleSubmit(onSubmit)} className={'flex flex-col gap-y-8 px-8'}>
-		<AccountTypesContainer form={form} accountTypeLive={accountTypeLive} />
-		<CustomFormField
-		  control={form.control}
-		  name={"email"}
-		  placeholder={"E-mail address"}
-		  label={'Your e-mail'}
-		  inputType={"email"}
-		/>
-		<CustomFormField
-		  control={form.control}
-		  name={"password"}
-		  placeholder={"Your password"}
-		  label={"Password *"}
-		  rightMostLabel={<PasswordFieldLabel />}
-		  inputType={'password'}
-		/>
-		<CustomBlueBtn text={"Log in"}/>
-			<div className={'px-6 flex items-center justify-center gap-2'}>
-				<h4 className={'text-base font-medium text-charcoal'}>Don't have an account?</h4>
-				<Link className={'text-base font-semibold text-royal-blue'} href={'/register'}>Sign up</Link>
-			</div>
-		{/* Remember Me */}
-		<div className='flex items-center gap-2'>
-		  <input
-			id="rememberMe"
-			type="checkbox"
-			checked={rememberMe}
-			onChange={() => setRememberMe(!rememberMe)}
-			className='w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'
-		  />
-		  <label htmlFor="rememberMe" className='text-sm text-gray-700'>Remember me</label>
-		</div>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className={'flex flex-col gap-y-8 px-8'}>
+        <AccountTypesContainer form={form} accountTypeLive={accountTypeLive} />
+        <CustomFormField
+          control={form.control}
+          name={"email"}
+          placeholder={"E-mail address"}
+          label={'Your e-mail'}
+          inputType={"email"}
+        />
+        <CustomFormField
+          control={form.control}
+          name={"password"}
+          placeholder={"Your password"}
+          label={"Password *"}
+          rightMostLabel={<PasswordFieldLabel />}
+          inputType={'password'}
+        />
+        <CustomBlueBtn text={"Log in"} />
+        <div className={'px-6 flex items-center justify-center gap-2'}>
+          <h4 className={'text-base font-medium text-charcoal'}>Don't have an account?</h4>
+          <Link className={'text-base font-semibold text-royal-blue'} href={'/register'}>Sign up</Link>
+        </div>
 
-		
-		<div className={'px-6 flex items-center justify-center gap-2'}>
-		  <h4 className={'text-base font-medium text-charcoal'}>Don't have an account?</h4>
-		  <Link className={'text-base font-semibold text-royal-blue'} href={'/register'}>Sign up</Link>
-		</div>
-	  </form>
-	</Form>
+        {/* Remember Me */}
+        <div className='flex items-center gap-2'>
+          <input
+            id="rememberMe"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={() => setRememberMe(!rememberMe)}
+            className='w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'
+          />
+          <label htmlFor="rememberMe" className='text-sm text-gray-700'>Remember me</label>
+        </div>
+
+        <div className={'px-6 flex items-center justify-center gap-2'}>
+          <h4 className={'text-base font-medium text-charcoal'}>Don't have an account?</h4>
+          <Link className={'text-base font-semibold text-royal-blue'} href={'/register'}>Sign up</Link>
+        </div>
+      </form>
+    </Form>
   );
 }
+
 
 function ForgotPasswordScreen({setPage}: {setPage: (page: 1 | 2 | 3) => void}) {
 	const forgotPasswordFormSchema = z.object({
