@@ -14,7 +14,7 @@ import ServiceIcon from "@/assets/icons/login/service-icon.svg";
 import StoreIcon from "@/assets/icons/login/store-icon.svg";
 import { cn } from "@/lib/utils";
 import CustomFormField from "@/components/app-custom/CustomFormField";
-import CustomBlueBtnCopy  from "@/components/app-custom/CustomBlueBtnCopy";
+import CustomBlueBtnCopy from "@/components/app-custom/CustomBlueBtnCopy";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import CustomOtp from "@/components/app-custom/custom-otp";
@@ -33,8 +33,6 @@ const LS_KEYS = {
   rememberEmail: "remember_email",
 } as const;
 
-// ──────────────────────────────────────────────
-// JWT VALIDATION UTILITIES
 // ──────────────────────────────────────────────
 function getJwtExpiryEpoch(token?: string): number | null {
   if (!token) return null;
@@ -98,10 +96,15 @@ function AccountTypesContainer({
   );
 }
 
+// Map UI accountType to verification/reset API "type"
+function mapToVerifyType(accountType: "user" | "service" | "store"): "user" | "manager" {
+  return accountType === "user" ? "user" : "manager";
+}
+
 // ──────────────────────────────────────────────
-// MAIN LOGIN SCREEN
+// MAIN LOGIN SCREEN (unchanged login flow)
 // ──────────────────────────────────────────────
-function MainScreen({ setPage }: { setPage: (page: 1 | 2) => void }) {
+function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
@@ -117,9 +120,6 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2) => void }) {
     defaultValues: { accountType: "user", email: "", password: "" },
   });
 
-  // ──────────────────────────────────────────────
-  // AUTO-FILL FROM LOCALSTORAGE ("Remember me")
-  // ──────────────────────────────────────────────
   useEffect(() => {
     const remembered = localStorage.getItem(LS_KEYS.rememberMe) === "true";
     const rememberedEmail = localStorage.getItem(LS_KEYS.rememberEmail) || "";
@@ -128,7 +128,6 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2) => void }) {
       form.setValue("email", rememberedEmail);
     }
 
-    // Auto-skip login if already logged in with valid JWT
     const raw = localStorage.getItem(LS_KEYS.authResponse);
     if (raw) {
       try {
@@ -140,58 +139,49 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2) => void }) {
     }
   }, [form, router]);
 
-  // ──────────────────────────────────────────────
-  // LOGIN SUBMIT HANDLER
-  // ──────────────────────────────────────────────
-async function onSubmit(values: z.infer<typeof mainScreenFormSchema>) {
-  setIsLoading(true);
-  try {
-    const loginType = values.accountType === "user" ? "user" : "branch_manager";
+  async function onSubmit(values: z.infer<typeof mainScreenFormSchema>) {
+    setIsLoading(true);
+    try {
+      // NOTE: login "type" remains 'branch_manager' for service/store (existing behavior)
+      const loginType = values.accountType === "user" ? "user" : "branch_manager";
 
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: values.email,
-        password: values.password,
-        type: loginType,
-      }),
-    });
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          type: loginType,
+        }),
+      });
 
-    if (!res.ok) throw new Error("Invalid login credentials");
+      if (!res.ok) throw new Error("Invalid login credentials");
 
-    const data = await res.json();
+      const data = await res.json();
 
-    // ✅ Save auth info
-    localStorage.setItem(LS_KEYS.authResponse, JSON.stringify(data));
-    localStorage.setItem(LS_KEYS.authRole, loginType);
+      localStorage.setItem(LS_KEYS.authResponse, JSON.stringify(data));
+      localStorage.setItem(LS_KEYS.authRole, loginType);
 
-    // ✅ Handle "Remember Me"
-    if (rememberMe) {
-      localStorage.setItem(LS_KEYS.rememberMe, "true");
-      localStorage.setItem(LS_KEYS.rememberEmail, values.email);
-    } else {
-      localStorage.removeItem(LS_KEYS.rememberMe);
-      localStorage.removeItem(LS_KEYS.rememberEmail);
+      if (rememberMe) {
+        localStorage.setItem(LS_KEYS.rememberMe, "true");
+        localStorage.setItem(LS_KEYS.rememberEmail, values.email);
+      } else {
+        localStorage.removeItem(LS_KEYS.rememberMe);
+        localStorage.removeItem(LS_KEYS.rememberEmail);
+      }
+
+      toast.success("Login successful!");
+      setTimeout(() => {
+        const event = new CustomEvent("close-login-modal");
+        window.dispatchEvent(event);
+        router.push("/services");
+      }, 300);
+    } catch (err: any) {
+      toast.error("Login failed: " + err.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    // ✅ Show only one success message
-    toast.success("Login successful!");
-
-    // ✅ Close modal after success
-    setTimeout(() => {
-      // Close the modal immediately after showing success
-      const event = new CustomEvent("close-login-modal");
-      window.dispatchEvent(event);
-      router.push("/services");
-    }, 500);
-  } catch (err: any) {
-    toast.error("Login failed: " + err.message);
-  } finally {
-    setIsLoading(false);
   }
-}
-
 
   const PasswordFieldLabel = () => (
     <h4 onClick={() => setPage(2)} className="cursor-pointer text-royal-blue text-sm font-medium">
@@ -214,7 +204,7 @@ async function onSubmit(values: z.infer<typeof mainScreenFormSchema>) {
           inputType="password"
         />
 
-        {/* Remember Me checkbox */}
+        {/* Remember Me */}
         <div className="flex items-center gap-2">
           <input
             id="rememberMe"
@@ -242,28 +232,163 @@ async function onSubmit(values: z.infer<typeof mainScreenFormSchema>) {
 }
 
 // ──────────────────────────────────────────────
-// REMAINING SCREENS (Forgot, OTP, Reset Password)
+// TYPES for verification + reset flow
 // ──────────────────────────────────────────────
-function ForgotPasswordScreen({ setPage }: { setPage: (page: 1 | 2 | 3) => void }) {
-  const forgotPasswordFormSchema = z.object({
+type VerifyState = {
+  type: "user" | "manager";
+  matchedType: "email" | "mobile";
+  matchedValue: string;
+  code: string;
+} | null;
+
+// ──────────────────────────────────────────────
+// FORGOT PASSWORD SCREEN (toggling Email/Mobile + verify API)
+// ──────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// FORGOT PASSWORD SCREEN (toggling Email/Mobile + verify API)
+// ──────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// FORGOT PASSWORD SCREEN (email/mobile optional: only one required)
+// ──────────────────────────────────────────────
+function ForgotPasswordScreen({
+  setPage,
+  setVerifyState,
+}: {
+  setPage: (page: 1 | 2 | 3 | 4) => void;
+  setVerifyState: (s: VerifyState) => void;
+}) {
+  const [verifyBy, setVerifyBy] = useState<"email" | "mobile">("mobile");
+
+  // Keep both fields optional in base schema; we'll enforce "at least one" manually
+  const schema = z.object({
     accountType: z.enum(["user", "service", "store"]),
-    phoneNumber: z.string({ required_error: "Mobile number is required" }).min(7, "Must be at least 7 digits"),
+    email: z.string().email("Invalid email").optional(),
+    mobile: z.string().min(5, "Enter valid mobile").optional(),
   });
 
-  const form = useForm<z.infer<typeof forgotPasswordFormSchema>>({
-    resolver: zodResolver(forgotPasswordFormSchema),
-    defaultValues: { accountType: "user", phoneNumber: "" },
+  const form = useForm<z.infer<typeof schema>>({
+    resolver: zodResolver(schema),
+    defaultValues: { accountType: "user", email: "", mobile: "" },
+    mode: "onChange",
   });
 
   const accountTypeLive = form.watch("accountType");
 
+  function handleToggle(next: "email" | "mobile") {
+    setVerifyBy(next);
+    // Clear previous field errors when switching tabs
+    form.clearErrors(["email", "mobile"]);
+  }
+
+  async function handleVerify(values: z.infer<typeof schema>) {
+    console.log("values:::", values);
+    const emailTrim = (values.email ?? "").trim();
+    const mobileTrim = (values.mobile ?? "").trim();
+
+    // ✅ New rule:
+    // - if email present -> no mobile validation
+    // - if mobile present -> no email validation
+    // - if both empty -> show required error on the currently selected input
+    if (!emailTrim && !mobileTrim) {
+      if (verifyBy === "email") {
+        //form.setError("email", { type: "required", message: "Email is required" });
+      } else {
+       // form.setError("mobile", { type: "required", message: "Mobile number is required" });
+      }
+     // return;
+    }
+    console.log("email",emailTrim);
+    // Build request body per rule: prefer email if provided; otherwise send mobile
+    const typeForAPI = mapToVerifyType(values.accountType); // "user" | "manager"
+    const body = {
+      email: emailTrim ? emailTrim : "",
+      mobile: emailTrim ? "" : mobileTrim,
+      type: typeForAPI,
+    };
+    console.log("Body:::", body);
+    try {
+      const res = await fetch(`${BASE_URL}/api/verify/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      // Expected:
+      // { result: true, matchedType: "email"|"mobile", matchedValue: "...", code: "1429" }
+      if (data?.result === true && data?.code && data?.matchedType && data?.matchedValue) {
+        setVerifyState({
+          type: typeForAPI,
+          matchedType: data.matchedType,      // "email" or "mobile"
+          matchedValue: data.matchedValue,    // address or phone number returned by server
+          code: String(data.code),
+        });
+        toast.success("Verification code sent.");
+        setPage(3); // open OTPScreen
+      } else {
+        toast.error("No match found with provided details.");
+      }
+    } catch (e: any) {
+      toast.error("Verification failed: " + (e?.message ?? "Unknown error"));
+    }
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(console.log)} className="flex flex-col gap-y-8 px-8">
+      <form onSubmit={form.handleSubmit(handleVerify)} className="flex flex-col gap-y-6 px-8">
         <AccountTypesContainer form={form} accountTypeLive={accountTypeLive} />
-        <CustomFormField control={form.control} name="phoneNumber" label="Your mobile number" placeholder="+994" inputType="tel" />
-        <CustomBlueBtnCopy onClick={() => setPage(3)} text="Reset password" />
-        <Button onClick={() => setPage(1)} className="py-3 px-6 bg-inherit border-0 flex items-center justify-center text-charcoal text-base font-medium">
+
+        {/* Toggle buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => handleToggle("email")}
+            className={cn(
+              "px-3 py-2 text-sm",
+              verifyBy === "email" ? "bg-steel-blue text-white" : "bg-white text-charcoal border border-soft-gray"
+            )}
+          >
+            Verify by email
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleToggle("mobile")}
+            className={cn(
+              "px-3 py-2 text-sm",
+              verifyBy === "mobile" ? "bg-steel-blue text-white" : "bg-white text-charcoal border border-soft-gray"
+            )}
+          >
+            Verify by mobile
+          </Button>
+        </div>
+
+        {/* Conditionally render only the selected input.
+            (User can switch tabs — rule still holds: only the filled one is required) */}
+        {verifyBy === "email" ? (
+          <CustomFormField
+            control={form.control}
+            name="email"
+            label="Your email"
+            placeholder="you@example.com"
+            inputType="email"
+          />
+        ) : (
+          <CustomFormField
+            control={form.control}
+            name="mobile"
+            label="Your mobile number"
+            placeholder="+92..."
+            inputType="tel"
+          />
+        )}
+
+        <CustomBlueBtnCopy type="submit" text="Send code" />
+        <Button
+          type="button"
+          onClick={() => setPage(1)}
+          className="py-3 px-6 bg-inherit border-0 flex items-center justify-center text-charcoal text-base font-medium"
+        >
           Back to log in
         </Button>
       </form>
@@ -271,35 +396,85 @@ function ForgotPasswordScreen({ setPage }: { setPage: (page: 1 | 2 | 3) => void 
   );
 }
 
-function OTPScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
-  const [sec, setSec] = useState(5);
+
+// ──────────────────────────────────────────────
+function OTPScreen({
+  setPage,
+  verifyState,
+}: {
+  setPage: (page: 1 | 2 | 3 | 4) => void;
+  verifyState: VerifyState;
+}) {
+  const [sec, setSec] = useState(60);
+  const [otp, setOtp] = useState("");
+
   useEffect(() => {
     const timer = setInterval(() => {
       setSec((prev) => {
-        if (prev === 1) clearInterval(timer);
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  function submitOtp() {
+    if (!verifyState) {
+      toast.error("Verification session expired. Please try again.");
+      return;
+    }
+    if (otp.trim() === verifyState.code) {
+      toast.success("Code verified");
+      setPage(4);
+    } else {
+      toast.error("Invalid code");
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-y-8 px-8">
+    <div className="flex flex-col gap-y-6 px-8">
       <div className="flex items-center justify-center">
+        {/* Keep your existing OTP UI */}
         <CustomOtp />
       </div>
-      <CustomBlueBtnCopy onClick={() => setPage(4)} text="Submit" />
+
+      {/* Plain input to capture OTP code */}
+      <div>
+        <label className="block text-sm text-charcoal mb-1">Enter the 4-digit code</label>
+        <input
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="1429"
+        />
+      </div>
+
+      <CustomBlueBtnCopy onClick={submitOtp} text="Submit" />
+
       {sec === 0 ? (
-        <Button onClick={() => setSec(5)} className="bg-inherit text-center text-sm text-charcoal/40">
+        <Button onClick={() => setSec(60)} className="bg-inherit text-center text-sm text-charcoal/60">
           Send again
         </Button>
       ) : (
-        <h4 className="text-center text-sm text-charcoal/40">Resend the code in 00:{sec.toString().padStart(2, "0")}</h4>
+        <h4 className="text-center text-sm text-charcoal/60">Resend the code in 00:{sec.toString().padStart(2, "0")}</h4>
       )}
     </div>
   );
 }
 
-function ResetPasswordScreen({ closeModal }: { closeModal: () => void }) {
+// ──────────────────────────────────────────────
+function ResetPasswordScreen({
+  closeModal,
+  verifyState,
+}: {
+  closeModal: () => void;
+  verifyState: VerifyState;
+}) {
+  const router = useRouter();
+
   const resetPasswordFormSchema = z
     .object({
       password: z.string({ required_error: "Password required" }).min(8, "Min 8 characters"),
@@ -312,12 +487,51 @@ function ResetPasswordScreen({ closeModal }: { closeModal: () => void }) {
     defaultValues: { password: "", passwordRepeat: "" },
   });
 
+  async function onSubmit(values: z.infer<typeof resetPasswordFormSchema>) {
+    if (!verifyState) {
+      toast.error("Verification session expired.");
+      return;
+    }
+
+    // Build request per matchedType
+    const payload: Record<string, any> = {
+      password: values.password,
+      type: verifyState.type, // "user" | "manager"
+    };
+    if (verifyState.matchedType === "email") {
+      payload.email = verifyState.matchedValue;
+    } else {
+      payload.mobile = verifyState.matchedValue;
+    }
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Expecting: { success: true, message: "...", matchedBy, matchedValue }
+      if (data?.success) {
+        toast.success(data?.message || "Password reset successfully");
+        closeModal();
+        // optional: router.push('/services')
+      } else {
+        toast.error(data?.message || "Password reset failed");
+      }
+    } catch (e: any) {
+      toast.error("Reset failed: " + (e?.message ?? "Unknown error"));
+    }
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(console.log)} className="flex flex-col gap-y-8 px-8">
-        <CustomFormField control={form.control} name="password" label="Password *" placeholder="Your password" inputType="password" />
-        <CustomFormField control={form.control} name="passwordRepeat" label="Confirm password *" placeholder="Your password" inputType="password" />
-        <CustomBlueBtnCopy onClick={closeModal} text="Confirm" />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-y-8 px-8">
+        <CustomFormField control={form.control} name="password" label="Password *" placeholder="New password" inputType="password" />
+        <CustomFormField control={form.control} name="passwordRepeat" label="Confirm password *" placeholder="Retype password" inputType="password" />
+        <CustomBlueBtnCopy type="submit" text="Confirm" />
       </form>
     </Form>
   );
@@ -327,21 +541,33 @@ function ResetPasswordScreen({ closeModal }: { closeModal: () => void }) {
 // MAIN MODAL WRAPPER
 // ──────────────────────────────────────────────
 function LoginPopupModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (open: boolean) => void }) {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState<1 | 2 | 3 | 4>(1);
+
+  // Shared verify state across Forgot → OTP → Reset
+  const [verifyState, setVerifyState] = useState<VerifyState>(null);
+
   function closeModal() {
     setIsOpen(false);
-    setTimeout(() => setPage(1), 300);
+    setTimeout(() => {
+      setPage(1);
+      setVerifyState(null);
+    }, 300);
   }
 
   useEffect(() => {
-  const closeHandler = () => setIsOpen(false);
-  window.addEventListener("close-login-modal", closeHandler);
-  return () => window.removeEventListener("close-login-modal", closeHandler);
-}, [setIsOpen]);
+    const closeHandler = () => setIsOpen(false);
+    window.addEventListener("close-login-modal", closeHandler);
+    return () => window.removeEventListener("close-login-modal", closeHandler);
+  }, [setIsOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
-      <DialogContent className={cn("flex flex-col gap-y-8 py-8 max-w-[600px] bg-light-gray rounded-3xl", page === 3 && "max-w-[350px]")}>
+      <DialogContent
+        className={cn(
+          "flex flex-col gap-y-8 py-8 max-w-[600px] bg-light-gray rounded-3xl",
+          page === 3 && "max-w-[350px]"
+        )}
+      >
         <DialogHeader className="p-8 pt-0 border-b border-b-blue-gray flex justify-between">
           <DialogTitle className="flex flex-col gap-2 text-charcoal text-2xl font-medium">
             {page === 1
@@ -358,9 +584,9 @@ function LoginPopupModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (o
         </DialogHeader>
 
         {page === 1 && <MainScreen setPage={setPage} />}
-        {page === 2 && <ForgotPasswordScreen setPage={setPage} />}
-        {page === 3 && <OTPScreen setPage={setPage} />}
-        {page === 4 && <ResetPasswordScreen closeModal={closeModal} />}
+        {page === 2 && <ForgotPasswordScreen setPage={setPage} setVerifyState={setVerifyState} />}
+        {page === 3 && <OTPScreen setPage={setPage} verifyState={verifyState} />}
+        {page === 4 && <ResetPasswordScreen closeModal={closeModal} verifyState={verifyState} />}
       </DialogContent>
     </Dialog>
   );
