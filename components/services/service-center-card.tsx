@@ -60,7 +60,7 @@ function CardFooter({ percentage_booking }: { percentage_booking: number }) {
       {/* ✅ Dynamic progress */}
       <CircularProgress percentage={percentage_booking ?? 0} />
       <h5 className={'text-xs text-charcoal font-semibold'}>
-        {percentage_booking ?? 0}% already <br /> booked
+        {percentage_booking ?? 0}% already <br /> booked 
       </h5>
     </div>
   )
@@ -124,7 +124,7 @@ export default function ServiceCenterCard({
             isHovered ? 'max-h-[60px]' : 'max-h-[0px] p-0'
           )}
         >
-          Make a reservation
+          Make a reservation1
         </button>
       </div>
     </div>

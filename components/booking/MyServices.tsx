@@ -1,21 +1,22 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import ModalBox from '../model-box';
 
 /* ---------- Types ---------- */
 type BrandItem = {
+  brand_id: number;
   id: number | string;
   name: string;
   enabled: boolean;
-  services: { id: number; service_name: string }[];
+  services: { id: number; service_name: string; status: string }[];
 };
 
 type ApiBrandServices = {
+  brand_id: number;
   brand_name: string;
   status: string;
-  available_services: { id: number; service_name: string }[];
+  available_services: { id: number; service_name: string; status: string }[];
 };
 type ApiBrand = { brandId: number; brandName: string };
 type ApiService = { serviceId: number; serviceName: string };
@@ -29,15 +30,16 @@ function cx(...xs: Array<string | false | null | undefined>) {
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
 
 const Toggle: React.FC<{
+  brandId: number;
   checked: boolean;
-  onChange: (next: boolean) => void;
+  onChange: (brandId: number, next: boolean) => void;
   disabled?: boolean;
-}> = ({ checked, onChange, disabled }) => (
+}> = ({ brandId, checked, onChange, disabled }) => (
   <button
     type="button"
     aria-pressed={checked}
     aria-disabled={disabled}
-    onClick={() => !disabled && onChange(!checked)}
+    onClick={() => !disabled && onChange(brandId, !checked)}
     className={cx(
       'relative inline-flex h-6 w-[43px] items-center rounded-full transition-colors',
       checked ? 'bg-[#6EDE8A]' : 'bg-gray-300',
@@ -53,7 +55,7 @@ const Toggle: React.FC<{
   </button>
 );
 
-/* ---------- Service Pill with delete ---------- */
+/* ---------- Service Pill (with delete) ---------- */
 const ServicePill: React.FC<{
   label: string;
   serviceId: number;
@@ -65,6 +67,7 @@ const ServicePill: React.FC<{
       onClick={() => onDelete(serviceId)}
       className="ml-1 text-gray-400 hover:text-red-500"
       title="Delete service"
+      type="button"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -84,20 +87,17 @@ const ServicePill: React.FC<{
   </span>
 );
 
-/* ---------- Modal: Add/Edit (unchanged) ---------- */
+/* ---------- Modal: Add Service (selectors visible) ---------- */
 type AddServiceSelectorProps = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onSaved?: () => void;
-  presetBrandName?: string | null;
+  onSaved?: (success: boolean) => void;
 };
-
 
 const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
   open,
   onOpenChange,
   onSaved,
-  presetBrandName = null,
 }) => {
   const [services, setServices] = useState<ApiService[]>([]);
   const [brands, setBrands] = useState<ApiBrand[]>([]);
@@ -107,49 +107,47 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
 
+  // Ensure a branch_id exists
   useEffect(() => {
     if (!localStorage.getItem('branch_id')) localStorage.setItem('branch_id', '1');
   }, []);
 
+  // Toast helper
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 2500);
   };
 
+  // Load services & brands each time the modal opens
   useEffect(() => {
     if (!open) return;
     const load = async () => {
       try {
         const [srv, br] = await Promise.all([
-          fetch(`${BASE_URL}/api/services`),
-          fetch(`${BASE_URL}/api/brands`),
+          fetch(`${BASE}/api/services`),
+          fetch(`${BASE}/api/brands`),
         ]);
         const srvJson: ApiService[] = await srv.json();
         const brJson: ApiBrand[] = await br.json();
         setServices(srvJson || []);
         setBrands(brJson || []);
-        if (presetBrandName) {
-          const match = brJson.find(
-            (b) => b.brandName.trim().toLowerCase() === presetBrandName.trim().toLowerCase()
-          );
-          setSelectedBrandIds(match ? [match.brandId] : []);
-        } else {
-          setSelectedBrandIds([]);
-        }
         setSelectedServiceId('');
+        setSelectedBrandIds([]);
         setQty(1);
       } catch (e: any) {
         showToast('error', e?.message || 'Unable to load options.');
       }
     };
     load();
-  }, [open, presetBrandName]);
+  }, [open]);
 
   const toggleBrand = (id: number) => {
-    setSelectedBrandIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedBrandIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const validate = () => {
@@ -175,8 +173,10 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
     try {
       setSaving(true);
       const branchId = Number(localStorage.getItem('branch_id') || '1');
+      let allSuccess = true;
+
       for (const brandId of selectedBrandIds) {
-        const resp = await fetch(`${BASE_URL}/api/branch-brand-services`, {
+        const resp = await fetch(`${BASE}/api/branch-brand-services`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -186,14 +186,20 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
             qty,
           }),
         });
-        if (!resp.ok) throw new Error(`Save failed (HTTP ${resp.status})`);
+        if (!resp.ok) allSuccess = false;
       }
 
-      showToast('success', 'Saved successfully.');
-      onSaved?.();
+      if (allSuccess) {
+        showToast('success', 'Record is added successfully');
+        onSaved?.(true);
+      } else {
+        showToast('error', 'Fail to add the record');
+        onSaved?.(false);
+      }
       onOpenChange(false);
-    } catch (e: any) {
-      showToast('error', e?.message || 'Unexpected error while saving.');
+    } catch {
+      showToast('error', 'Fail to add the record');
+      onSaved?.(false);
     } finally {
       setSaving(false);
     }
@@ -209,19 +215,23 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
   }, [selectedBrandIds, brands]);
 
   return (
-    <div className="bg-white my-6 rounded-lg space-y-6">
+    <div className="bg-white my-2 rounded-lg space-y-6">
+      {/* Toast */}
       {toast && (
         <div
           className={cx(
-            'fixed top-6 right-6 z-50 px-4 py-3 rounded-xl shadow',
+            'fixed top-6 right-6 z-[2000] px-4 py-3 rounded-xl shadow',
             toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
           )}
+          role="status"
+          aria-live="polite"
         >
           {toast.message}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Service select */}
         <div>
           <label className="block mb-2 text-sm font-medium text-blue-500">Select the services *</label>
           <div className="relative">
@@ -240,6 +250,7 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
           </div>
         </div>
 
+        {/* Brands dropdown (checkbox list) */}
         <div className="md:col-span-2">
           <label className="block mb-2 text-sm font-medium text-gray-600">Select the car brands *</label>
           <div className="relative">
@@ -250,39 +261,47 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
             >
               {brandButtonLabel}
             </button>
+
             {brandDropdownOpen && (
-              <div className="absolute z-20 mt-2 w-full rounded-[12px] border bg-white shadow-lg max-h-56 overflow-auto p-2">
-                {brands.map((b) => (
-                  <label key={b.brandId} className="flex items-center gap-3 px-2 py-1 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={selectedBrandIds.includes(b.brandId)}
-                      onChange={() => toggleBrand(b.brandId)}
-                    />
-                    <span>{b.brandName}</span>
-                  </label>
-                ))}
+              <div className="absolute z-[2001] mt-2 w-full rounded-[12px] border bg-white shadow-lg max-h-56 overflow-auto p-2">
+                {brands.length === 0 ? (
+                  <p className="text-sm text-gray-400 px-2 py-1">No brands found.</p>
+                ) : (
+                  brands.map((b) => (
+                    <label key={b.brandId} className="flex items-center gap-3 px-2 py-1 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={selectedBrandIds.includes(b.brandId)}
+                        onChange={() => toggleBrand(b.brandId)}
+                      />
+                      <span>{b.brandName}</span>
+                    </label>
+                  ))
+                )}
               </div>
             )}
           </div>
         </div>
 
+        {/* Quantity */}
         <div>
           <label className="block mb-2 text-sm font-medium text-gray-600">Select Box quantity *</label>
           <div className="flex items-center border rounded-[12px] px-4 py-2.5 w-full justify-between">
             <button
               type="button"
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
               className="text-lg text-gray-400 hover:text-gray-600"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              aria-label="Decrease"
             >
               −
             </button>
             <span className="text-gray-700 font-medium">{qty}</span>
             <button
               type="button"
-              onClick={() => setQty((q) => q + 1)}
               className="text-lg text-gray-400 hover:text-gray-600"
+              onClick={() => setQty((q) => q + 1)}
+              aria-label="Increase"
             >
               +
             </button>
@@ -290,6 +309,7 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
         </div>
       </div>
 
+      {/* Save */}
       <div>
         <button
           type="button"
@@ -307,16 +327,13 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
   );
 };
 
-
-/* ---------- Grid + modal ---------- */
+/* ---------- Grid + modal wrapper ---------- */
 const BrandServicesGrid: React.FC<{
   items: BrandItem[];
-  onToggle?: (id: BrandItem['id'], next: boolean) => void;
   onRefresh: () => void;
   className?: string;
-}> = ({ items, onToggle, onRefresh, className }) => {
+}> = ({ items, onRefresh, className }) => {
   const [openModal, setOpenModal] = useState(false);
-  const [editBrandName, setEditBrandName] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -324,41 +341,62 @@ const BrandServicesGrid: React.FC<{
     setTimeout(() => setToast(null), 2500);
   };
 
+  // Toggle status per brand
+  const handleToggle = async (brandId: number, next: boolean) => {
+    const branch_id = Number(localStorage.getItem('branch_id') || '1');
+    const status = next ? 'active' : 'inactive';
+
+    try {
+      const resp = await fetch(`${BASE_URL}/api/branch-brand-services/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch_id, brand_id: brandId, status }),
+      });
+
+      if (!resp.ok) throw new Error('Failed to update status');
+      showToast('success', `Status updated to ${status}`);
+      onRefresh();
+    } catch (err: any) {
+      showToast('error', err.message || 'Error updating status');
+    }
+  };
+
   const handleDeleteService = async (serviceId: number) => {
     try {
       const resp = await fetch(`${BASE_URL}/api/branch-brand-services/${serviceId}`, {
         method: 'DELETE',
       });
-      if (!resp.ok) throw new Error(`Failed to delete (HTTP ${resp.status})`);
+    if (!resp.ok) throw new Error('Failed to delete service');
       showToast('success', 'Service deleted successfully.');
       onRefresh();
     } catch (err: any) {
-      showToast('error', err.message || 'Error deleting service.');
+      showToast('error', err.message);
     }
   };
 
   return (
     <>
+      {/* Toast */}
       {toast && (
         <div
           className={cx(
-            'fixed top-6 right-6 z-50 px-4 py-3 rounded-xl shadow',
+            'fixed top-6 right-6 z-[2000] px-4 py-3 rounded-xl shadow',
             toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
           )}
+          role="status"
+          aria-live="polite"
         >
           {toast.message}
         </div>
       )}
 
       <div className={cx('w-full', className)}>
+        {/* Header */}
         <div className="mb-4 flex items-center gap-9">
           <div className="text-sm font-medium text-[#495057]">Services</div>
           <button
             type="button"
-            onClick={() => {
-              setEditBrandName(null);
-              setOpenModal(true);
-            }}
+            onClick={() => setOpenModal(true)}
             className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-800"
           >
             <span className="text-lg leading-none">＋</span>
@@ -366,53 +404,16 @@ const BrandServicesGrid: React.FC<{
           </button>
         </div>
 
+        {/* Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((b) => (
-            <div key={b.id} className="rounded-2xl bg-white p-6 relative">
+            <div key={b.brand_id} className="rounded-2xl bg-white p-6 relative">
+              {/* Top row */}
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Toggle checked={b.enabled} onChange={(v) => onToggle?.(b.id, v)} />
+                  <Toggle brandId={b.brand_id} checked={b.enabled} onChange={handleToggle} />
                   <span className="text-sm font-medium text-[#495057]">{b.name}</span>
                 </div>
-              {/*
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger asChild>
-                    <button
-                      type="button"
-                      className="rounded p-1 hover:bg-gray-50"
-                      aria-label={`Actions for ${b.name}`}
-                      title="Actions"
-                    >
-                      <img src="/icons/edit-02.svg" alt="pencil" width={16} />
-                    </button>
-                
-                  </DropdownMenu.Trigger>
-
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content
-                      sideOffset={6}
-                      align="end"
-                      className="z-50 min-w-[160px] rounded-md bg-white p-1 shadow-lg ring-1 ring-black/5 border border-gray-200"
-                    >
-                      
-                                                <DropdownMenu.Item
-                        className="px-3 py-2 text-sm text-gray-700 rounded outline-none cursor-pointer data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900"
-                        onClick={() => {
-                          setEditBrandName(b.name);
-                          setOpenModal(true);
-                        }}
-                      >
-                        Edit
-                      </DropdownMenu.Item>
-                       
-
-                      <DropdownMenu.Arrow className="fill-white" />
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                   
-                </DropdownMenu.Root>
-                */
-                  }
               </div>
 
               {/* Pills with delete */}
@@ -431,39 +432,53 @@ const BrandServicesGrid: React.FC<{
         </div>
       </div>
 
+      {/* Controlled Modal */}
       <ModalBox
         open={openModal}
-        onOpenChange={(open: boolean) => setOpenModal(open)}
-        title={editBrandName ? 'Edit Service' : 'Add Service'}
+        onOpenChange={setOpenModal}
+        title="Add Service"
         maxWidth="808px"
       >
         <AddServiceSelector
           open={openModal}
           onOpenChange={setOpenModal}
-          onSaved={() => showToast('success', 'Record(s) saved.')}
-          presetBrandName={editBrandName}
+          onSaved={(success) => {
+            if (success) {
+              showToast('success', 'Record is added successfully');
+              onRefresh(); // re-fetch to re-render ServicePill
+            } else {
+              showToast('error', 'Fail to add the record');
+            }
+          }}
         />
       </ModalBox>
     </>
   );
 };
 
-/* ---------- Page wrapper ---------- */
+/* ---------- Main component ---------- */
 export default function MyServices() {
   const [items, setItems] = useState<BrandItem[]>([]);
 
   const mapServerToItems = (rows: ApiBrandServices[]): BrandItem[] =>
-    (rows || []).map((r, idx) => ({
-      id: r.brand_name || idx + 1,
-      name: r.brand_name,
-      enabled: r.status?.toLowerCase() === 'active',
-      services: Array.isArray(r.available_services)
-        ? r.available_services.map((s) => ({
-            id: s.id,
-            service_name: s.service_name,
-          }))
-        : [],
-    }));
+    (rows || []).map((r, idx) => {
+      const allActive =
+        Array.isArray(r.available_services) &&
+        r.available_services.every((s) => s.status?.toLowerCase() === 'active');
+      return {
+        id: r.brand_name || idx + 1,
+        brand_id: r.brand_id,
+        name: r.brand_name,
+        enabled: allActive,
+        services: Array.isArray(r.available_services)
+          ? r.available_services.map((s) => ({
+              id: s.id,
+              service_name: s.service_name,
+              status: s.status,
+            }))
+          : [],
+      };
+    });
 
   const fetchGrid = async () => {
     const branch_id = Number(localStorage.getItem('branch_id') || '1');
@@ -481,13 +496,9 @@ export default function MyServices() {
     fetchGrid().catch(() => setItems([]));
   }, []);
 
-  const onToggle = (id: BrandItem['id'], next: boolean) => {
-    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, enabled: next } : x)));
-  };
-
   return (
     <div>
-      <BrandServicesGrid items={items} onToggle={onToggle} onRefresh={fetchGrid} />
+      <BrandServicesGrid items={items} onRefresh={fetchGrid} />
     </div>
   );
 }
