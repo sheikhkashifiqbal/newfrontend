@@ -22,20 +22,41 @@ const MyBooking: React.FC = () => {
   const [spModalOpen, setSpModalOpen] = useState(false);
   const [spEditingRows, setSpEditingRows] = useState<ReservationSparePart[]>([]);
   const [currentReservation, setCurrentReservation] = useState<ReservationRow | null>(null);
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  // ✅ NEW: User ID access control
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const authRaw = localStorage.getItem("auth_response");
+      if (!authRaw) {
+        window.location.href = "/"; // redirect if no auth
+        return;
+      }
+      const parsed = JSON.parse(authRaw);
+      const id = parsed?.id;
+      if (id) {
+        localStorage.setItem("userId", String(id));
+        setUserId(String(id));
+      } else {
+        window.location.href = "/"; // redirect if no id
+      }
+    } catch {
+      window.location.href = "/"; // redirect if error
+    }
+  }, []);
 
   /** Fetch reservations by user (POST) */
   useEffect(() => {
+    if (!userId) return; // wait for userId
     const fetchData = async () => {
       setLoading(true);
       setErr(null);
       try {
-        const stored = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
-        const userId = stored ?? "1";
         const res = await fetch(`${BASE_URL}/api/reservations/by-user`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId }),
+          credentials: "include",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: ReservationRow[] = await res.json();
@@ -56,7 +77,7 @@ const MyBooking: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [userId]);
 
   /** Counts for tabs */
   const tabCounts = useMemo(() => {
@@ -73,7 +94,9 @@ const MyBooking: React.FC = () => {
   /** Filter for active tab */
   const filtered = useMemo(() => {
     const key = activeTab.toLowerCase();
-    return data.filter((d) => d.reservation_status === (key as ReservationRow["reservation_status"]));
+    return data.filter(
+      (d) => d.reservation_status === (key as ReservationRow["reservation_status"])
+    );
   }, [data, activeTab]);
 
   /** -------- Spare Parts Modal Handlers -------- */
@@ -112,23 +135,21 @@ const MyBooking: React.FC = () => {
       return;
     }
     try {
-        
       const res = await fetch(
         `${BASE_URL}/api/reservation-service-spareparts/${row.reservation_service_sparepart_id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-           // reservation_service_sparepart_id: row.reservation_service_sparepart_id,
             partName: row.part_name,
             qty: row.qty,
             reservationId: row.spareparts_id,
             sparepartsId: row.reservation_id,
           }),
+          credentials: "include",
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Optimistic is fine; server is source of truth
       alert("Updated.");
     } catch (e: any) {
       alert(e?.message ?? "Update failed.");
@@ -140,13 +161,17 @@ const MyBooking: React.FC = () => {
     try {
       const res = await fetch(
         `${BASE_URL}/api/reservation-service-spareparts/${row.reservation_service_sparepart_id}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Remove from modal list
-      setSpEditingRows((prev) => prev.filter(
-        (x) => x.reservation_service_sparepart_id !== row.reservation_service_sparepart_id
-      ));
+      setSpEditingRows((prev) =>
+        prev.filter(
+          (x) => x.reservation_service_sparepart_id !== row.reservation_service_sparepart_id
+        )
+      );
       alert("Deleted.");
     } catch (e: any) {
       alert(e?.message ?? "Delete failed.");
@@ -163,17 +188,15 @@ const MyBooking: React.FC = () => {
       return;
     }
 
-    // Build update body from prior response (include optional fields if present)
     const reqBody: any = {
-      userId: reservation.user_id ?? 1,
+      userId: reservation.user_id ?? userId,
       carId: reservation.car_id,
       serviceId: reservation.service_id,
       reservationDate: reservation.reservation_date,
       reservationTime: reservation.reservation_time?.slice(0, 5) ?? "",
-      reservationStatus: "canceled", // NOTE: backend expects American spelling in update body
+      reservationStatus: "canceled",
     };
 
-    // Remove undefined keys
     Object.keys(reqBody).forEach((k) => reqBody[k] === undefined && delete reqBody[k]);
 
     try {
@@ -183,11 +206,11 @@ const MyBooking: React.FC = () => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(reqBody),
+          credentials: "include",
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      // Update local state to reflect cancellation
       setData((prev) =>
         prev.map((r) =>
           r.reservation_id === reservation.reservation_id
@@ -201,14 +224,15 @@ const MyBooking: React.FC = () => {
     }
   };
 
+  // 🚫 Prevent rendering until userId verified
+  if (!userId) return null;
+
   return (
     <div className="bg-gray-50 pb-20">
-      {/* Top Nav (left as-is, can wire onChange if you want to switch modules) */}
       <section className="max-w-[1120px] mx-auto px-4 py-8">
         <NavTabs tabItems={tabItems} />
       </section>
 
-      {/* Title */}
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
         <h2 className="text-[#3F72AF] text-2xl md:text-[32px] font-semibold">My Bookings</h2>
         <p className="text-[#ADB5BD] text-xl md:text-[20px] mt-2">
@@ -253,20 +277,18 @@ const MyBooking: React.FC = () => {
         </div>
       </section>
 
-      {/* Table (API bound) */}
-      {loading && (
-        <div className="max-w-[1120px] mx-auto px-4">Loading bookings…</div>
-      )}
-      {err && (
-        <div className="max-w-[1120px] mx-auto px-4 text-red-600">{err}</div>
-      )}
+      {/* Table */}
+      {loading && <div className="max-w-[1120px] mx-auto px-4">Loading bookings…</div>}
+      {err && <div className="max-w-[1120px] mx-auto px-4 text-red-600">{err}</div>}
       {!loading && !err && (
         <BookingTable
           bookings={filtered}
           activeTab={activeTab}
           onOpenSpareParts={openSpareParts}
           onCancel={handleCancel}
-          onReschedule={(r) => alert(`Reschedule flow for #${r.reservation_id} (to be implemented).`)}
+          onReschedule={(r) =>
+            alert(`Reschedule flow for #${r.reservation_id} (to be implemented).`)
+          }
         />
       )}
 
@@ -342,7 +364,10 @@ const MyBooking: React.FC = () => {
                   ))}
                   {spEditingRows.length === 0 && (
                     <tr>
-                      <td className="px-3 py-4 text-center text-gray-500" colSpan={4}>
+                      <td
+                        className="px-3 py-4 text-center text-gray-500"
+                        colSpan={4}
+                      >
                         No spare parts for this reservation.
                       </td>
                     </tr>
@@ -358,10 +383,7 @@ const MyBooking: React.FC = () => {
               >
                 Search Spare parts
               </a>
-              <button
-                className="py-2 px-4 rounded-lg border"
-                onClick={closeSpareParts}
-              >
+              <button className="py-2 px-4 rounded-lg border" onClick={closeSpareParts}>
                 Close
               </button>
             </div>
@@ -374,7 +396,7 @@ const MyBooking: React.FC = () => {
 
 export default MyBooking;
 
-/** --------- Icons Nav (kept from your file) --------- */
+/** --------- Icons Nav --------- */
 const tabItems = [
   {
     label: "My bookings",

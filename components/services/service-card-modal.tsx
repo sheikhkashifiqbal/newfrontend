@@ -56,7 +56,7 @@ function ServiceCardModalCarSelectors() {
             setSelectedModel(value);
             setSelections(prev => ({ ...prev, selectedModel: value }));
           }}
-          placeholder="Select model333"
+          placeholder="Select model"
           triggerClassname={triggerClassname}
         />
       </div>
@@ -105,9 +105,6 @@ export function ServiceCardModalDateSelector() {
 	)
 }
 
-
-
-
 function ServiceCardModalTimeSelector() {
 	const {selections, setSelections} = useSelection();
 	const times = ["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
@@ -140,7 +137,6 @@ interface IServiceCardModal {
 	selectedCardId: number | null
 	closeModal: () => void
 }
-
 
 export function ServiceCardModalStepOne() {
 	return (

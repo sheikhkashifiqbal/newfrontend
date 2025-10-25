@@ -71,21 +71,30 @@ const ProfileInfo: React.FC = () => {
   const [retypeNewPassword, setRetypeNewPassword] = useState("");
   const [secError, setSecError] = useState<string | null>(null);
 
-  const userId = useMemo(() => {
+  // ✅ NEW: Get userId strictly from auth_response.id; block access if missing
+  const [userId, setUserId] = useState<number | null>(null);
+  useEffect(() => {
     try {
-      const stored = window?.localStorage?.getItem("userId");
-      if (!stored) {
-        window?.localStorage?.setItem("userId", "1");
-        return 1;
+      const raw = window.localStorage.getItem("auth_response");
+      if (!raw) {
+        window.location.href = "/"; // block access
+        return;
       }
-      const parsed = Number(stored);
-      return Number.isFinite(parsed) ? parsed : 1;
+      const parsed = JSON.parse(raw);
+      const id = Number(parsed?.id);
+      if (Number.isFinite(id) && id > 0) {
+        window.localStorage.setItem("userId", String(id));
+        setUserId(id);
+      } else {
+        window.location.href = "/"; // block access
+      }
     } catch {
-      return 1;
+      window.location.href = "/"; // block access on parse error
     }
   }, []);
 
   const loadCars = async () => {
+    if (userId == null) return; // guard
     setLoading(true);
     try {
       const res = await fetch(`${BASE_URL}/api/cars/user/${userId}`);
@@ -114,10 +123,12 @@ const ProfileInfo: React.FC = () => {
     }
   };
 
+  // Load cars once userId is known
   useEffect(() => {
+    if (userId == null) return;
     loadCars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId]);
 
   const handleOpenModal = (type: "add" | "edit", carId?: number) => {
     setSelectedCarId(carId ?? null);
@@ -161,6 +172,7 @@ const ProfileInfo: React.FC = () => {
 
   /* ----------------------------- Users (Account/Security) ----------------------------- */
   const fetchUser = async () => {
+    if (userId == null) return; // guard
     setUserLoading(true);
     try {
       const res = await fetch(`${API_BASE}/users/${userId}`);
@@ -178,12 +190,12 @@ const ProfileInfo: React.FC = () => {
   };
 
   useEffect(() => {
+    if (userId == null) return;
     fetchUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId]);
 
   const postUser = async (payload: User) => {
-    console.log("User::", payload);
     const res = await fetch(`${API_BASE}/users/${payload.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -229,6 +241,11 @@ const ProfileInfo: React.FC = () => {
       setToast("Failed to save user");
     }
   };
+
+  // 🔒 Avoid rendering before auth check is complete
+  if (userId == null) {
+    return null;
+  }
 
   return (
     <>
@@ -539,6 +556,7 @@ export default ProfileInfo;
    - model dropdown depends on brand: /api/brand-models/{brandId}
    - inline validation (no alerts)
    - PUT /api/cars/{carId} on Save, then notifies parent
+   - POST /api/cars on Save when adding
 ============================================================ */
 const AddCarDetails: React.FC<{
   mode: "add" | "edit";
@@ -676,52 +694,51 @@ const AddCarDetails: React.FC<{
     })();
   }, [mode, carId, userId]);
 
-const handleSave = async () => {
-  if (!validate()) return;
+  const handleSave = async () => {
+    if (!validate()) return;
 
-  try {
-    if (mode === "edit" && form.carId) {
-      // UPDATE existing car
-      const payload = {
-        carId: form.carId,
-        userId: form.userId,
-        brandId: form.brandId!, // guaranteed by validate()
-        carModel: form.carModel,
-        vinNumber: form.vinNumber,
-        plateNumber: form.plateNumber,
-      };
+    try {
+      if (mode === "edit" && form.carId) {
+        // UPDATE existing car
+        const payload = {
+          carId: form.carId,
+          userId: form.userId,
+          brandId: form.brandId!, // guaranteed by validate()
+          carModel: form.carModel,
+          vinNumber: form.vinNumber,
+          plateNumber: form.plateNumber,
+        };
 
-      const res = await fetch(`${BASE_URL}/api/cars/${form.carId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      onSaved(); // parent shows toast + closes modal + refreshes list
+        const res = await fetch(`${BASE_URL}/api/cars/${form.carId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to save");
+        onSaved(); // parent shows toast + closes modal + refreshes list
 
-    } else if (mode === "add") {
-      // CREATE new car  ✅ (this was missing)
-      const payload = {
-        userId: form.userId,
-        brandId: form.brandId!, // guaranteed by validate()
-        carModel: form.carModel,
-        vinNumber: form.vinNumber,
-        plateNumber: form.plateNumber,
-      };
+      } else if (mode === "add") {
+        // CREATE new car
+        const payload = {
+          userId: form.userId,
+          brandId: form.brandId!, // guaranteed by validate()
+          carModel: form.carModel,
+          vinNumber: form.vinNumber,
+          plateNumber: form.plateNumber,
+        };
 
-      const res = await fetch(`${BASE_URL}/api/cars`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to create");
-      onSaved(); // same UX as edit: toast “The record is saved”, modal closes, list reloads
+        const res = await fetch(`${BASE_URL}/api/cars`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to create");
+        onSaved(); // same UX as edit: toast + close + reload
+      }
+    } catch (e) {
+      console.error(e);
     }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
+  };
 
   return (
     <div className="my-6 rounded-lg">

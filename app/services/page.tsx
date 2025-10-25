@@ -36,6 +36,7 @@ export default function Services() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        
       });
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
@@ -119,7 +120,7 @@ export default function Services() {
           </Container>
         </section>
       </div>
-      <Toaster />
+     <Toaster position="top-right" richColors closeButton duration={4000} style={{ zIndex: 100000 }} />
     </>
   );
 }

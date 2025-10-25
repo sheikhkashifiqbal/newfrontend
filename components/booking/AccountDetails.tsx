@@ -64,7 +64,16 @@ const AccountDetails: React.FC = () => {
     const load = async () => {
       try {
         // GET without custom headers to avoid preflight
-        const resp = await fetch(`${BASE_URL}/api/companies/${companyId}`);
+       // const resp = await fetch(`${BASE_URL}/api/companies/${companyId}`);
+
+        const resp = await fetch(`${BASE_URL}/api/companies/${companyId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+      });
+
+
+
         if (!resp.ok) {
           showToast("error", `Failed to load company (HTTP ${resp.status}).`);
           return;
@@ -144,6 +153,7 @@ const AccountDetails: React.FC = () => {
     const up = await fetch(`${BASE_URL}/api/upload`, {
       method: "POST",
       body: fd,
+      credentials: "include"
       // no Content-Type header on purpose (browser sets it)
     });
 
@@ -186,6 +196,7 @@ const AccountDetails: React.FC = () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        credentials: "include"
       });
 
       if (!put.ok) {

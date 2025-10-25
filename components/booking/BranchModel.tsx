@@ -110,7 +110,7 @@ export default function BranchModel({ branchId, mode = "edit", onSaved, onClose,
     const fd = new FormData();
     fd.append("file", file);
     fd.append("filename", filename);
-    const resp = await fetch(`${BASE_URL}/api/upload`, { method: "POST", body: fd });
+    const resp = await fetch(`${BASE_URL}/api/upload`, { method: "POST", body: fd, credentials: "include" });
     if (!resp.ok) throw new Error("Upload failed");
     return filename;
   };
@@ -163,6 +163,7 @@ export default function BranchModel({ branchId, mode = "edit", onSaved, onClose,
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        credentials: "include"
       });
       if (!resp.ok) throw new Error("Failed to update");
 

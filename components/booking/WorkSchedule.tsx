@@ -15,9 +15,9 @@ type DayKey =
 type ApiDay = {
   workId: number;
   branchId: number;
-  workingDay: DayKey; // "monday" | ... | "sunday"
-  from: string;       // "HH:mm"
-  to: string;         // "HH:mm"
+  workingDay: DayKey;
+  from: string;
+  to: string;
   status: 'active' | 'inactive';
 };
 
@@ -34,7 +34,6 @@ const DAYS: DayConfig[] = [
 ];
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-/* ---------- NEW: Fixed time options for both selectors ---------- */
 const TIME_OPTIONS = [
   '09:00','09:30','10:00','10:30','11:00','11:30',
   '12:00','12:30','13:00','13:30','14:00','14:30',
@@ -107,9 +106,8 @@ const TimeSelect: React.FC<{
   </div>
 );
 
-/* ---------- Helpers (kept; not changing logic elsewhere) ---------- */
 type DayUi = ApiDay & {
-  options: string[]; // kept for compatibility with previous code
+  options: string[];
 };
 
 const WorkSchedule: React.FC = () => {
@@ -118,30 +116,59 @@ const WorkSchedule: React.FC = () => {
   const [err, setErr] = useState<string | null>(null);
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  /* -------- Fetch 7 records (POST /api/work-days/search) -------- */
+  /* ✅ Step 1: Determine branch_id properly */
+  const getValidBranchId = (): number | null => {
+    try {
+      const selectedBranch = localStorage.getItem('selected_branch');
+      if (selectedBranch) {
+        localStorage.setItem('branch_id', selectedBranch);
+        return Number(selectedBranch);
+      }
+
+      const authRaw = localStorage.getItem('auth_response');
+      if (!authRaw) {
+        window.location.href = '/';
+        return null;
+      }
+
+      const parsed = JSON.parse(authRaw);
+      const authBranchId = parsed?.branch_id;
+
+      // Every time check auth_response for validity
+      if (authBranchId) {
+        localStorage.setItem('branch_id', String(authBranchId));
+        return Number(authBranchId);
+      } else {
+        window.location.href = '/';
+        return null;
+      }
+    } catch {
+      window.location.href = '/';
+      return null;
+    }
+  };
+
+  /* -------- Fetch work days -------- */
   useEffect(() => {
     const fetchDays = async () => {
+      const branchId = getValidBranchId();
+      if (!branchId) return;
+
       setLoading(true);
       setErr(null);
       try {
-        const storedBranch = typeof window !== 'undefined' ? localStorage.getItem('branchId') : null;
-        const branchId = storedBranch ?? '1';
-        
         const res = await fetch(`${BASE_URL}/api/work-days/search`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ branchId: Number(branchId) }),
+          body: JSON.stringify({ branchId }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: ApiDay[] = await res.json();
 
-        // Order strictly Monday..Sunday and attach fixed options
         const mapByKey = new Map<DayKey, ApiDay>();
         json.forEach((d) => mapByKey.set(d.workingDay, d));
 
-        const ordered: DayUi[] = [
-          'monday','tuesday','wednesday','thursday','friday','saturday','sunday'
-        ].map((key) => {
+        const ordered: DayUi[] = DAYS.map(({ key }) => {
           const d = mapByKey.get(key as DayKey)!;
           return { ...d, options: TIME_OPTIONS };
         });
@@ -153,6 +180,7 @@ const WorkSchedule: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchDays();
   }, []);
 
@@ -166,14 +194,12 @@ const WorkSchedule: React.FC = () => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   };
 
-  // Keep patch logic identical; only ensure options stay fixed to TIME_OPTIONS
   const patchLocal = (workId: number, patch: Partial<ApiDay>) => {
     setDays((prev) =>
       prev.map((d) => (d.workId === workId ? { ...d, ...patch, options: TIME_OPTIONS } : d))
     );
   };
 
-  /* -------- Handlers: From / To change -------- */
   const onChangeFrom = async (workId: number, next: string) => {
     try {
       patchLocal(workId, { from: next });
@@ -192,7 +218,6 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
-  /* -------- Handler: Toggle (status active/inactive) -------- */
   const onToggle = async (workId: number, on: boolean) => {
     const nextStatus: ApiDay['status'] = on ? 'active' : 'inactive';
     try {
@@ -215,10 +240,7 @@ const WorkSchedule: React.FC = () => {
           const d = days.find((x) => x.workingDay === key)!;
           const enabled = d.status === 'active';
           return (
-            <div
-              key={key}
-              className={cx('rounded-2xl bg-white p-6', !enabled && 'opacity-70')}
-            >
+            <div key={key} className={cx('rounded-2xl bg-white p-6', !enabled && 'opacity-70')}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Toggle checked={enabled} onChange={(v) => onToggle(d.workId, v)} />
@@ -230,16 +252,16 @@ const WorkSchedule: React.FC = () => {
                 <TimeSelect
                   label="From"
                   disabled={!enabled}
-                  value={d.from /* selected from API value */}
+                  value={d.from}
                   onChange={(v) => onChangeFrom(d.workId, v)}
-                  options={TIME_OPTIONS /* fixed list */}
+                  options={TIME_OPTIONS}
                 />
                 <TimeSelect
                   label="To"
                   disabled={!enabled}
-                  value={d.to /* selected from API value */}
+                  value={d.to}
                   onChange={(v) => onChangeTo(d.workId, v)}
-                  options={TIME_OPTIONS /* fixed list */}
+                  options={TIME_OPTIONS}
                 />
               </div>
             </div>
