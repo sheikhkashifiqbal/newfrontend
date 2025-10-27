@@ -1,19 +1,19 @@
-'use client'
+'use client';
 import { memo, useEffect, useRef, useState } from 'react'
-import  ServiceCenterCard  from '@/components/services/service-center-card'
+import ServiceCenterCard from '@/components/services/service-center-card'
 import * as React from 'react'
 
 interface IServicesCardsContainer {
-  cardReserveBtnClickHandler: (id: number) => void
+  cardReserveBtnClickHandler: (branchId: number) => void
 }
 
 export type BranchServiceItem = {
+  branchId: number
   branchName: string
   serviceNames: string[]
   branchCoverImg: string
   logoImg: string
   stars: number
-  percentage_booking: number
 }
 
 const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsContainer) => {
@@ -21,10 +21,10 @@ const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsCo
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [lastRowIndex, setLastRowIndex] = useState(0);
-  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [lastRowIndex, setLastRowIndex] = useState(0)
+  const gridRef = useRef<HTMLDivElement | null>(null)
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
   useEffect(() => {
     let isMounted = true
@@ -32,27 +32,20 @@ const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsCo
       setLoading(true)
       setError(null)
       try {
-        const [servicesRes, statsRes] = await Promise.all([
-          fetch(`${BASE_URL}/api/branches/services`),
-          fetch(`${BASE_URL}/api/stats/branches/booking`)
-        ])
-
-        if (!servicesRes.ok || !statsRes.ok) throw new Error('API fetch failed')
+        const servicesRes = await fetch(`${BASE_URL}/api/branches/services`)
+        if (!servicesRes.ok) throw new Error('Failed to load branch services')
 
         const branches = await servicesRes.json()
-        const stats = await statsRes.json()
-
-        // ✅ Merge stats (percentage_booking) with branches by index
-        const merged = branches.map((b: any, index: number) => ({
+        const mapped: BranchServiceItem[] = (branches || []).map((b: any) => ({
+          branchId: b.branchId,
           branchName: b.branchName,
           serviceNames: b.serviceNames,
           branchCoverImg: b.branchCoverImg,
           logoImg: b.logoImg,
-          stars: b.stars ?? 0,
-          percentage_booking: stats[index]?.percentage_booking ?? 0
+          stars: b.stars ?? 0
         }))
 
-        if (isMounted) setData(merged)
+        if (isMounted) setData(mapped)
       } catch (e: any) {
         if (isMounted) setError(e?.message ?? 'Failed to load')
       } finally {
@@ -66,17 +59,12 @@ const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsCo
   }, [])
 
   const calculateGridColumns = () => {
-    if (gridRef.current) {
-      const width = window.innerWidth
-      let numColumns = 1
-      if (width >= 2060) numColumns = 6
-      else if (width >= 1650) numColumns = 5
-      else if (width >= 1280) numColumns = 4
-      else if (width >= 1000) numColumns = 3
-      else if (width >= 570) numColumns = 2
-      else numColumns = 1
-      return numColumns
-    }
+    const width = window.innerWidth
+    if (width >= 2060) return 6
+    if (width >= 1650) return 5
+    if (width >= 1280) return 4
+    if (width >= 1000) return 3
+    if (width >= 570) return 2
     return 1
   }
 
@@ -100,9 +88,7 @@ const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsCo
   return (
     <div
       ref={gridRef}
-      className={
-        'py-5 grid grid-cols-1 570:grid-cols-2 gap-x-5 mx-auto 1000:mx-0 1000:grid-cols-3 xl:grid-cols-4 1650:grid-cols-5 2060:grid-cols-6 1000:gap-x-3 gap-y-6'
-      }
+      className="py-5 grid grid-cols-1 570:grid-cols-2 gap-x-5 mx-auto 1000:mx-0 1000:grid-cols-3 xl:grid-cols-4 1650:grid-cols-5 2060:grid-cols-6 1000:gap-x-3 gap-y-6"
     >
       {data.map((item, index) => {
         const isLastRow = index >= lastRowIndex
@@ -110,6 +96,7 @@ const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsCo
           <ServiceCenterCard
             key={`${item.branchName}-${index}`}
             id={index}
+            branchId={item.branchId}
             isLastRow={isLastRow}
             onClick={cardReserveBtnClickHandler}
             branchName={item.branchName}
@@ -117,7 +104,6 @@ const ServicesCardsContainer = ({ cardReserveBtnClickHandler }: IServicesCardsCo
             branchCoverImg={item.branchCoverImg}
             logoImg={item.logoImg}
             stars={item.stars}
-            percentage_booking={item.percentage_booking}
           />
         )
       })}

@@ -1,78 +1,68 @@
+'use client';
 import Container from "@/components/Container";
 import { DatePicker } from "@/components/app-custom/date-pick";
-
 import { CarSelector } from "@/components/services/selectors/car-selector";
 import { CarModelSelector } from "@/components/services/selectors/car-model-selector";
 import { ServiceSelector } from "@/components/services/selectors/service-selector";
 import { CitySelector } from "@/components/services/selectors/city-selector";
 import CustomBlueBtn from "@/components/app-custom/CustomBlueBtn";
-import { useCallback, useEffect, useState } from "react";
-import { format, parseISO } from "date-fns"; 
+import { useCallback, useEffect, useRef, useState } from "react";
+import { format, parseISO } from "date-fns";
 
 interface IServicesSelectors {
   onSearchClicked?: () => void;
   onSubmitSearch?: (payload: Record<string, unknown>) => void;
-  selectedDateISO?: string; // ← sync from page (chip clicks)
+  selectedDateISO?: string;
 }
 
 type Option = { id: number; label: string };
 
-export default function ServicesSelectors({ onSearchClicked, onSubmitSearch, selectedDateISO }: IServicesSelectors) {
+export default function ServicesSelectors({
+  onSearchClicked,
+  onSubmitSearch,
+  selectedDateISO,
+}: IServicesSelectors) {
   const [selectedBrand, setSelectedBrand] = useState<Option | null>(null);
   const [selectedModel, setSelectedModel] = useState<Option | null>(null);
   const [selectedService, setSelectedService] = useState<Option | null>(null);
   const [selectedCity, setSelectedCity] = useState<Option | null>(null);
-
-  // Date state: Date for UI, ISO string for payload
-  const [pickerDate, setPickerDate] = useState<Date | undefined>(undefined);
+  const [pickerDate, setPickerDate] = useState<Date | undefined>();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // 🔄 When a chip is clicked (parent updates selectedDateISO), show it in the DatePicker
+  const errorRefs = {
+    brand: useRef<HTMLDivElement | null>(null),
+    model: useRef<HTMLDivElement | null>(null),
+    service: useRef<HTMLDivElement | null>(null),
+    city: useRef<HTMLDivElement | null>(null),
+  };
+
   useEffect(() => {
     if (!selectedDateISO) return;
     setSelectedDate(selectedDateISO);
     try {
       setPickerDate(parseISO(selectedDateISO));
-    } catch { /* ignore */ }
+    } catch {}
   }, [selectedDateISO]);
 
   const [coords] = useState<{ lat?: number; lon?: number }>({});
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const handleBrandChange = (value: string) => {
-    if (!value) return setSelectedBrand(null);
-    const id = Number(value);
-    fetch(`${BASE_URL}/api/brands/${id}`)
-      .then((r) => r.json())
-      .then((b) => setSelectedBrand({ id, label: b.brandName }))
-      .catch(() => setSelectedBrand({ id, label: String(id) }));
+    setSelectedBrand(value ? { id: Number(value), label: value } : null);
+    setErrors((p) => ({ ...p, brand: "" }));
   };
-
   const handleModelChange = (value: string) => {
-    if (!value) return setSelectedModel(null);
-    const id = Number(value);
-    fetch(`${BASE_URL}/api/brand-models/${id}`)
-      .then((r) => r.json())
-      .then((m) => setSelectedModel({ id, label: m.modelName }))
-      .catch(() => setSelectedModel({ id, label: String(id) }));
+    setSelectedModel(value ? { id: Number(value), label: value } : null);
+    setErrors((p) => ({ ...p, model: "" }));
   };
-
   const handleServiceChange = (value: string) => {
-    if (!value) return setSelectedService(null);
-    const id = Number(value);
-    fetch(`${BASE_URL}/api/services/${id}`)
-      .then((r) => r.json())
-      .then((s) => setSelectedService({ id, label: s.serviceName }))
-      .catch(() => setSelectedService({ id, label: String(id) }));
+    setSelectedService(value ? { id: Number(value), label: value } : null);
+    setErrors((p) => ({ ...p, service: "" }));
   };
-
   const handleCityChange = (value: string) => {
-    if (!value) return setSelectedCity(null);
-    const id = Number(value);
-    fetch(`${BASE_URL}/api/cities/${id}`)
-      .then((r) => r.json())
-      .then((c) => setSelectedCity({ id, label: c.city }))
-      .catch(() => setSelectedCity({ id, label: String(id) }));
+    setSelectedCity(value ? { id: Number(value), label: value } : null);
+    setErrors((p) => ({ ...p, city: "" }));
   };
 
   const handleDatePicked = useCallback((d?: Date) => {
@@ -94,78 +84,119 @@ export default function ServicesSelectors({ onSearchClicked, onSubmitSearch, sel
       );
     });
 
+  const validateRequired = () => {
+    const e: any = {};
+    if (!selectedBrand?.id) e.brand = "Please select a car brand";
+    if (!selectedModel?.id) e.model = "Please select a car model";
+    if (!selectedService?.id) e.service = "Please select a service";
+    if (!selectedCity?.id) e.city = "Please select a city";
+    setErrors(e);
+    const firstKey = Object.keys(e)[0];
+    if (firstKey && errorRefs[firstKey as keyof typeof errorRefs].current)
+      errorRefs[firstKey as keyof typeof errorRefs].current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    return Object.keys(e).length === 0;
+  };
+
   const buildPayload = async () => {
     const fresh = await getLocation();
     const currentLat = fresh.lat ?? coords.lat;
     const currentLon = fresh.lon ?? coords.lon;
-
     const raw: Record<string, unknown> = {
-      carBrand: selectedBrand?.label || undefined,
-      carModel: selectedModel?.label || undefined,
-      serviceEntity: selectedService?.label || undefined,
-      date: selectedDate || undefined, // ← reflects chip click OR popup pick
-      location: selectedCity?.label || undefined,
-      currentLon: typeof currentLon === "number" ? currentLon : undefined,
-      currentLat: typeof currentLat === "number" ? currentLat : undefined,
+      carBrand: selectedBrand?.label,
+      carModel: selectedModel?.label,
+      serviceEntity: selectedService?.label,
+      date: selectedDate || undefined,
+      location: selectedCity?.label,
+      currentLon,
+      currentLat,
     };
-
     const clean: Record<string, unknown> = {};
     Object.entries(raw).forEach(([k, v]) => {
       if (v !== null && v !== undefined && !(typeof v === "string" && v.trim() === "")) clean[k] = v;
     });
-
-    console.log("Submitting payload:", clean);
     return clean;
   };
 
   const handleSearch = async () => {
-    onSearchClicked && onSearchClicked();
+    if (!validateRequired()) return;
+    onSearchClicked?.();
     const payload = await buildPayload();
-    onSubmitSearch && onSubmitSearch(payload);
+    onSubmitSearch?.(payload);
   };
 
   return (
-    <div className={"w-full bg-soft-blue py-14"}>
+    <div className="w-full bg-soft-blue py-14">
       <Container>
-        <div className={"flex flex-col gap-y-10"}>
-          <h1 className={"text-charcoal text-[2rem] leading-[3rem] font-semibold"}>
-            Need Car Service? <br />
-            Find Expert Workshops Near You Now!
+        <div className="flex flex-col gap-y-10">
+          <h1 className="text-charcoal text-[2rem] leading-[3rem] font-semibold">
+            Need Car Service? <br /> Find Expert Workshops Near You Now!
           </h1>
 
-          <div className={"w-full flex flex-col 450:flex-row gap-3"}>
-            <div className={"grid gap-3 w-full grid-cols-1 450:grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"}>
-              <CarSelector
-                onChange={handleBrandChange}
-                placeholder="Select brand"
-                triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
-              />
-              <CarModelSelector
-                brandId={selectedBrand?.id ?? null}
-                onChange={handleModelChange}
-                placeholder="Select model"
-                triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
-              />
-              <ServiceSelector
-                onChange={handleServiceChange}
-                placeholder="Select service"
-                triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
-              />
+          <div className="w-full flex flex-col 450:flex-row gap-3">
+            <div className="grid gap-3 w-full grid-cols-1 450:grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+              <div ref={errorRefs.brand}>
+                {/* 🔹 Now CarSelector includes plates automatically */}
+                <CarSelector
+                  onChange={handleBrandChange}
+                  placeholder="Select brand or plate"
+                  triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
+                />
+                {errors.brand && (
+                  <p className="text-red-500 text-xs mt-1 opacity-100 transition-opacity duration-300 ease-in-out">
+                    {errors.brand}
+                  </p>
+                )}
+              </div>
 
-              {/* DatePicker: past dates disabled, shows clicked chip date */}
+              <div ref={errorRefs.model}>
+                <CarModelSelector
+                  brandId={selectedBrand?.id ?? null}
+                  onChange={handleModelChange}
+                  placeholder="Select model"
+                  triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
+                />
+                {errors.model && (
+                  <p className="text-red-500 text-xs mt-1 opacity-100 transition-opacity duration-300 ease-in-out">
+                    {errors.model}
+                  </p>
+                )}
+              </div>
+
+              <div ref={errorRefs.service}>
+                <ServiceSelector
+                  onChange={handleServiceChange}
+                  placeholder="Select service"
+                  triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
+                />
+                {errors.service && (
+                  <p className="text-red-500 text-xs mt-1 opacity-100 transition-opacity duration-300 ease-in-out">
+                    {errors.service}
+                  </p>
+                )}
+              </div>
+
               <DatePicker
                 date={pickerDate}
                 setDate={handleDatePicked}
                 buttonClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
               />
 
-              <CitySelector
-                onChange={handleCityChange}
-                placeholder="Select city"
-                triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
-              />
+              <div ref={errorRefs.city}>
+                <CitySelector
+                  onChange={handleCityChange}
+                  placeholder="Select city"
+                  triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
+                />
+                {errors.city && (
+                  <p className="text-red-500 text-xs mt-1 opacity-100 transition-opacity duration-300 ease-in-out">
+                    {errors.city}
+                  </p>
+                )}
+              </div>
             </div>
-
             <CustomBlueBtn onClick={handleSearch} />
           </div>
         </div>
