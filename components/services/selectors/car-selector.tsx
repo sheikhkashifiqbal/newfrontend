@@ -10,6 +10,8 @@ interface ICarSelector {
   onChange?: (value: string) => void;
   value?: string;
   showMyCars?: boolean;
+  /** Notify parent when a plate resolves to brand/model */
+  onBrandModelFetched?: (brandId: number, modelId: number | null) => void;
 }
 
 interface CarBrand {
@@ -23,6 +25,7 @@ export function CarSelector({
   onChange,
   value,
   showMyCars = true,
+  onBrandModelFetched,
 }: ICarSelector) {
   const [carBrands, setCarBrands] = useState<CarBrand[]>([]);
   const [plateNumbers, setPlateNumbers] = useState<string[]>([]);
@@ -36,7 +39,7 @@ export function CarSelector({
       .catch((err) => console.error("Failed to fetch brands", err));
   }, [BASE_URL]);
 
-  // Fetch plate numbers on load
+  // Fetch user's plate numbers on load
   useEffect(() => {
     try {
       const authResponse = localStorage.getItem("auth_response");
@@ -53,7 +56,7 @@ export function CarSelector({
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data.plate_number)) {
-            // Keep values exactly as returned (may already include "p-")
+            // Keep the raw values (may already include "p-"); we show label without "p-"
             setPlateNumbers(data.plate_number);
           }
         })
@@ -63,10 +66,33 @@ export function CarSelector({
     }
   }, [BASE_URL]);
 
+  const handleSelect = async (v: string) => {
+    onChange?.(v);
+
+    // If a plate was chosen (value begins with "p-"), resolve brand/model by plate
+    if (v.startsWith("p-")) {
+      const plate = v.slice(2);
+      try {
+        const res = await fetch(`${BASE_URL}/api/cars/brand-model-by-plate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plate_number: plate }),
+        });
+        if (!res.ok) throw new Error("Failed to fetch brand/model by plate");
+        const data = await res.json();
+        const brandId: number | undefined = data?.brand?.brand_id;
+        const modelId: number | null = (data?.model?.model_id as number | undefined) ?? null;
+        if (brandId) onBrandModelFetched?.(brandId, modelId);
+      } catch (err) {
+        console.error("Error fetching brand/model by plate:", err);
+      }
+    }
+  };
+
   return (
     <CustomSelect
       value={value}
-      onChange={(v) => onChange && onChange(v)}
+      onChange={handleSelect}
       triggerClassname={cn(triggerClassname)}
       placeholder={placeholder}
     >
@@ -74,10 +100,10 @@ export function CarSelector({
         <SelectGroup>
           {showMyCars && <CustomSelectLabel>My Cars</CustomSelectLabel>}
 
-          {/* Plate Numbers at Top */}
+          {/* Plates first (label shown without "p-", value stays as-is) */}
           {plateNumbers.length > 0 &&
             plateNumbers.map((plate, idx) => {
-              const displayText = plate.startsWith("p-") ? plate.slice(2) : plate; // <-- show without "p-"
+              const displayText = plate.startsWith("p-") ? plate.slice(2) : plate;
               return (
                 <CustomSelectItem key={`plate-${idx}`} value={plate}>
                   {displayText}
@@ -85,16 +111,11 @@ export function CarSelector({
               );
             })}
 
-          {/* Separator if plates exist */}
+          {/* Separator (simple non-interactive line) */}
           {plateNumbers.length > 0 && (
-            <CustomSelectItem
-              key="separator"
-              value="separator"
-              
-              className="opacity-60 text-center text-sm"
-            >
+            <div className="opacity-60 text-center text-sm select-none cursor-default pointer-events-none">
               -------
-            </CustomSelectItem>
+            </div>
           )}
 
           {/* Car Brands */}

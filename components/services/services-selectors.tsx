@@ -26,9 +26,17 @@ export default function ServicesSelectors({
   const [selectedModel, setSelectedModel] = useState<Option | null>(null);
   const [selectedService, setSelectedService] = useState<Option | null>(null);
   const [selectedCity, setSelectedCity] = useState<Option | null>(null);
+
   const [pickerDate, setPickerDate] = useState<Date | undefined>();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Controls the value displayed in CarSelector; lets us switch from plate -> brand option
+  const [carSelectorValue, setCarSelectorValue] = useState<string | undefined>(undefined);
+
+  // When brand is detected from a plate, we also want to auto-select model after models load
+  const [autoModelId, setAutoModelId] = useState<number | null>(null);
 
   const errorRefs = {
     brand: useRef<HTMLDivElement | null>(null),
@@ -49,9 +57,29 @@ export default function ServicesSelectors({
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const handleBrandChange = (value: string) => {
-    setSelectedBrand(value ? { id: Number(value), label: value } : null);
+    // If user manually selected a brand (not a plate), commit it
+    if (!value.startsWith("p-")) {
+      setSelectedBrand(value ? { id: Number(value), label: value } : null);
+      setAutoModelId(null);
+      setCarSelectorValue(value || undefined);
+    } else {
+      // If they chose a plate, keep value for a moment; CarSelector will callback with brand/model
+      setCarSelectorValue(value);
+    }
     setErrors((p) => ({ ...p, brand: "" }));
   };
+
+  const handleBrandModelFetched = (brandId: number, modelId: number | null) => {
+    // Show the brand option as selected inside CarSelector
+    setCarSelectorValue(String(brandId));
+    // Keep internal brand state in sync
+    setSelectedBrand({ id: brandId, label: String(brandId) });
+    // Ask CarModelSelector to auto-pick this model after it fetches
+    setAutoModelId(modelId ?? null);
+    // Clear brand error
+    setErrors((p) => ({ ...p, brand: "" }));
+  };
+
   const handleModelChange = (value: string) => {
     setSelectedModel(value ? { id: Number(value), label: value } : null);
     setErrors((p) => ({ ...p, model: "" }));
@@ -137,10 +165,12 @@ export default function ServicesSelectors({
 
           <div className="w-full flex flex-col 450:flex-row gap-3">
             <div className="grid gap-3 w-full grid-cols-1 450:grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+              {/* Brand / Plate */}
               <div ref={errorRefs.brand}>
-                {/* 🔹 Now CarSelector includes plates automatically */}
                 <CarSelector
+                  value={carSelectorValue}
                   onChange={handleBrandChange}
+                  onBrandModelFetched={handleBrandModelFetched}
                   placeholder="Select brand or plate"
                   triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
                 />
@@ -151,9 +181,11 @@ export default function ServicesSelectors({
                 )}
               </div>
 
+              {/* Model (auto-select via autoModelId after brand models load) */}
               <div ref={errorRefs.model}>
                 <CarModelSelector
                   brandId={selectedBrand?.id ?? null}
+                  autoSelectModelId={autoModelId ?? undefined}
                   onChange={handleModelChange}
                   placeholder="Select model"
                   triggerClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
@@ -165,6 +197,7 @@ export default function ServicesSelectors({
                 )}
               </div>
 
+              {/* Service */}
               <div ref={errorRefs.service}>
                 <ServiceSelector
                   onChange={handleServiceChange}
@@ -178,12 +211,14 @@ export default function ServicesSelectors({
                 )}
               </div>
 
+              {/* Date (already defaults to today) */}
               <DatePicker
                 date={pickerDate}
                 setDate={handleDatePicked}
                 buttonClassname="border-soft-gray text-misty-gray text-sm italic font-medium"
               />
 
+              {/* City */}
               <div ref={errorRefs.city}>
                 <CitySelector
                   onChange={handleCityChange}
@@ -197,6 +232,7 @@ export default function ServicesSelectors({
                 )}
               </div>
             </div>
+
             <CustomBlueBtn onClick={handleSearch} />
           </div>
         </div>
