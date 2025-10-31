@@ -1,7 +1,13 @@
+// =============================================
+// File: components/services/selectors/car-model-selector-res.tsx
+// =============================================
+'use client'
 import CustomSelect, { CustomSelectItem } from "@/components/app-custom/custom-select";
 import { SelectGroup } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
 interface ICarModelSelector {
   placeholder?: string;
@@ -9,11 +15,12 @@ interface ICarModelSelector {
   onChange?: (value: string) => void;
   value?: string;
   brandId: number | null;
+  options?: { model_id: number; model_name: string }[];
 }
 
 interface CarBrandModel {
   id: number;
-  brandId: number;
+  brandId?: number;
   modelName: string;
 }
 
@@ -22,49 +29,35 @@ export function CarModelSelector({
   triggerClassname,
   onChange,
   value,
-  brandId
+  brandId,
+  options
 }: ICarModelSelector) {
   const [models, setModels] = useState<CarBrandModel[]>([]);
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
-    if (brandId === null) {
+    if (Array.isArray(options) && options.length > 0) {
+      setModels(options.map(m => ({ id: m.model_id, modelName: m.model_name })));
+      return;
+    }
+
+    if (!brandId) {
       setModels([]);
       return;
     }
-	console.log("brandId::", brandId);
-	if(brandId)
-	{
+
     fetch(`${BASE_URL}/api/brand-models/by-brand/${brandId}`)
       .then(response => {
         if (!response.ok) throw new Error("Failed to fetch brand models");
         return response.json();
       })
       .then((data: CarBrandModel[]) => setModels(data))
-      .catch(error => {
-        console.error("Error fetching car models:", error);
-        setModels([]);
-      });
-	} else {
-		fetch(`${BASE_URL}/api/brand-models`)
-      .then(response => {
-        if (!response.ok) throw new Error("Failed to fetch brand models");
-        return response.json();
-      })
-      .then((data: CarBrandModel[]) => setModels(data))
-      .catch(error => {
-        console.error("Error fetching car models:", error);
-        setModels([]);
-      });
-
-	}
-
-  }, [brandId]);
+      .catch(() => setModels([]));
+  }, [brandId, options]);
 
   return (
     <CustomSelect
       value={value}
-      onChange={(value) => onChange && onChange(value)}
+      onChange={(v) => onChange && onChange(v)}
       triggerClassname={cn(triggerClassname)}
       placeholder={placeholder}
     >

@@ -2,25 +2,25 @@
 
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
 
+/** Shape stored in selection context */
 export type Selections = {
-  /** id values stored as strings for Selects */
-  selectedCar?: string;        // brand_id
-  selectedModel?: string;      // model_id
-  selectedService?: string;    // service_id
-  /** date & time */
+  selectedCar?: string;        // brand id (stringified)
+  selectedModel?: string;      // model id (stringified)
+  selectedService?: string;    // service id (stringified)
   selectedDay?: string;        // e.g. "30 Oct 2025"
   selectedDateISO?: string;    // e.g. "2025-10-30"
   selectedTime?: string;       // e.g. "10:30"
 };
 
-type SelectionCtx = {
+type Ctx = {
   selections: Selections;
   setSelections: React.Dispatch<React.SetStateAction<Selections>>;
   reset: () => void;
 };
 
-const SelectionContext = createContext<SelectionCtx | null>(null);
+const SelectionContext = createContext<Ctx | null>(null);
 
+/** Provider for reservation modal selections */
 export function SelectionProvider({ children }: { children: React.ReactNode }) {
   const initial = useMemo<Selections>(
     () => ({
@@ -33,10 +33,11 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
     }),
     []
   );
+
   const [selections, setSelections] = useState<Selections>(initial);
   const initialRef = useRef(initial);
 
-  const value = useMemo<SelectionCtx>(
+  const value = useMemo<Ctx>(
     () => ({
       selections,
       setSelections,
@@ -48,8 +49,11 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
   return <SelectionContext.Provider value={value}>{children}</SelectionContext.Provider>;
 }
 
-/** Safe hook: if used outside provider, it won't crash (no-ops + dev warn). */
-export function useSelection(): SelectionCtx {
+/**
+ * Safe hook: if used outside provider, it won't crash.
+ * It returns no-op setters and empty state, plus a dev warning.
+ */
+export function useSelection(): Ctx {
   const ctx = useContext(SelectionContext);
   if (!ctx) {
     if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {

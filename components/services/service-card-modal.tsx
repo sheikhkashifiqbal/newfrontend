@@ -1,3 +1,6 @@
+// =============================================
+// File: components/services/service-card-modal.tsx (Full Source)
+// =============================================
 "use client"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { CarSelector } from "@/components/services/selectors/car-selector-res"
 import { CarModelSelector } from "@/components/services/selectors/car-model-selector-res"
 import { ServiceSelector } from "@/components/services/selectors/service-selector-res"
-import { addDays, format, isToday, parse } from "date-fns"
+import { addDays, format, isToday } from "date-fns"
 import { memo, useEffect, useState } from "react"
 import { X } from "lucide-react"
 import * as React from "react"
@@ -22,22 +25,76 @@ import { SelectionProvider, useSelection } from "@/hooks/services/useSelection"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081"
 
-/* ----------------- Car & Service selectors (inside modal) ----------------- */
-function ServiceCardModalCarSelectors() {
+// ----------------------------- CAR & SERVICE SELECTORS -----------------------------
+function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
   const { setSelections } = useSelection()
+
+  const [brandOptions, setBrandOptions] = useState<{ brand_id: number; brand_name: string }[]>([])
+  const [serviceOptions, setServiceOptions] = useState<{ service_id: number; service_name: string }[]>([])
   const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null)
   const [selectedModel, setSelectedModel] = useState<string>("")
 
   const triggerClassname = 'border-soft-gray text-misty-gray text-sm italic font-medium'
+
+  // Fetch brands when modal opens
+  useEffect(() => {
+    if (!branchId) return
+    const controller = new AbortController()
+
+    ;(async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/branch-catalog/brands`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ branch_id: branchId }),
+          signal: controller.signal,
+        })
+        if (!res.ok) throw new Error('Failed to load brands')
+        const data = await res.json()
+        const brands: { brand_id: number; brand_name: string }[] = Array.isArray(data?.brands) ? data.brands : []
+        setBrandOptions(brands)
+      } catch {
+        setBrandOptions([])
+      }
+    })()
+
+    return () => controller.abort()
+  }, [branchId])
+
+  // Fetch services when a brand is selected
+  useEffect(() => {
+    if (!branchId || !selectedBrandId) return
+    const controller = new AbortController()
+
+    ;(async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/branch-catalog/services`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ branch_id: branchId, brand_id: selectedBrandId }),
+          signal: controller.signal,
+        })
+        if (!res.ok) throw new Error('Failed to load services')
+        const data = await res.json()
+        const services: { service_id: number; service_name: string }[] = Array.isArray(data?.services) ? data.services : []
+        setServiceOptions(services)
+      } catch {
+        setServiceOptions([])
+      }
+    })()
+
+    return () => controller.abort()
+  }, [branchId, selectedBrandId])
 
   return (
     <div className="w-full grid grid-cols-2 600:grid-cols-3 gap-6">
       <div className="flex flex-col gap-y-3">
         <label className="text-dark-gray text-sm font-medium">Car brand *</label>
         <CarSelector
+          options={brandOptions}
           onChange={(value) => {
-            const brandId = Number(value)
-            setSelectedBrandId(brandId)
+            const brandIdNum = Number(value)
+            setSelectedBrandId(brandIdNum)
             setSelections((prev: any) => ({ ...prev, selectedCar: value }))
           }}
           placeholder="Select the car brand"
@@ -62,6 +119,7 @@ function ServiceCardModalCarSelectors() {
       <div className="flex flex-col gap-y-3">
         <label className="text-dark-gray text-sm font-medium">Service *</label>
         <ServiceSelector
+          options={serviceOptions}
           onChange={(value) => setSelections((prev: any) => ({ ...prev, selectedService: value }))}
           placeholder="Select the service"
           triggerClassname={triggerClassname}
@@ -71,8 +129,8 @@ function ServiceCardModalCarSelectors() {
   )
 }
 
-/* ----------------- Date chips (store display + ISO in context) ----------------- */
-export function ServiceCardModalDateSelector() {
+// ----------------------------- DATE SELECTOR -----------------------------
+function ServiceCardModalDateSelector() {
   const { selections, setSelections } = useSelection()
   const today = new Date()
   const next7Days = Array.from({ length: 7 }, (_, i) => {
@@ -90,7 +148,7 @@ export function ServiceCardModalDateSelector() {
 
   useEffect(() => {
     setDay(next7Days[0].fullDate, next7Days[0].iso)
-  }, []) // init
+  }, [])
 
   return (
     <div className="flex flex-col gap-y-3">
@@ -113,7 +171,7 @@ export function ServiceCardModalDateSelector() {
   )
 }
 
-/* ----------------- Time selector: calls available-slots + filters past ----------------- */
+// ----------------------------- TIME SELECTOR (includes available-slots API) -----------------------------
 function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
   const { selections, setSelections } = useSelection()
   const [times, setTimes] = useState<string[]>([])
@@ -123,13 +181,12 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-	  credentials: "include"
+      credentials: "include"
     })
     if (!res.ok) throw new Error('Failed to load time slots')
     const data = await res.json()
     const slots: string[] = Array.isArray(data?.availableTimeSlots) ? data.availableTimeSlots : []
 
-    // Filter out past times if the selected date is today
     const selectedISO = (selections as any).selectedDateISO as string
     let visible = slots
     if (selectedISO) {
@@ -138,7 +195,6 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
         const now = new Date()
         const nowMinutes = now.getHours() * 60 + now.getMinutes()
         visible = slots.filter((t) => {
-          // t like "09:30" → minutes
           const [hh, mm] = t.split(':').map(Number)
           const mins = hh * 60 + (mm || 0)
           return mins > nowMinutes
@@ -154,16 +210,12 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
     }
   }
 
-  // Initial fetch when date changes (minimum request with branch + date)
   useEffect(() => {
     const selectedISO = (selections as any).selectedDateISO as string
     if (!branchId || !selectedISO) return
     fetchSlots({ branch_id: branchId, date: selectedISO }).catch(() => setTimes([]))
   }, [(selections as any).selectedDateISO, branchId])
 
-  const setTime = (time: string) => setSelections((prev: any) => ({ ...prev, selectedTime: time }))
-
-  // Small Search button (validates brand/model/service, then fetches with all fields)
   const handleSearchSlots = async () => {
     const brandId = Number((selections as any).selectedCar || '')
     const modelId = Number((selections as any).selectedModel || '')
@@ -209,7 +261,7 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
         {times.map((time) => (
           <div
             key={time}
-            onClick={() => setTime(time)}
+            onClick={() => setSelections((prev: any) => ({ ...prev, selectedTime: time }))}
             className={cn(
               'flex justify-center items-center cursor-pointer bg-white rounded-[8px] border-[1px] border-soft-gray p-2 text-sm font-medium text-slate-gray',
               time === (selections as any).selectedTime && 'text-steel-blue border-steel-blue bg-steel-blue/10 font-semibold'
@@ -226,11 +278,11 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
   )
 }
 
-/* ----------------- Steps (unchanged layout, wired new logic) ----------------- */
-export function ServiceCardModalStepOne({ branchId }: { branchId: number }) {
+// ----------------------------- MAIN STEPS -----------------------------
+function ServiceCardModalStepOne({ branchId }: { branchId: number }) {
   return (
     <div className="w-full px-8 flex flex-col gap-y-8">
-      <ServiceCardModalCarSelectors />
+      <ServiceCardModalCarSelectors branchId={branchId} />
       <ServiceCardModalDateSelector />
       <ServiceCardModalTimeSelector branchId={branchId} />
     </div>
@@ -251,10 +303,6 @@ function ServiceCardModalStepTwo({ reservationId }: { reservationId?: string }) 
         <img className="size-14" src={ServiceLogo.src} />
         <div className="flex flex-col gap-y-0.5">
           <h4 className="text-xl text-charcoal font-semibold">Performance Center</h4>
-          <div className="flex items-center gap-1">
-            <img src={YellowStar.src} />
-            <h6 className="text-charcoal text-sm font-semibold">4.5</h6>
-          </div>
         </div>
       </div>
 
@@ -268,29 +316,29 @@ function ServiceCardModalStepTwo({ reservationId }: { reservationId?: string }) 
         <div className="flex gap-1">
           <h5 className="text-base text-charcoal/50">Car and Model:</h5>
           <span className="font-medium text-base text-charcoal">
-            {(selections as any).selectedCar}, {(selections as any).selectedModel}
+            Car Brand, Car Model
           </span>
         </div>
         <div className="flex gap-1">
           <h5 className="text-base text-charcoal/50">Service type:</h5>
           <span className="font-medium text-base text-charcoal">
-            {(selections as any).selectedService}
+            Service Type
           </span>
         </div>
         <div className="flex gap-1">
           <h5 className="text-base text-charcoal/50">Service location:</h5>
-          <span className="font-medium text-base text-charcoal">{'Baku'}</span>
+          <span className="font-medium text-base text-charcoal">Baku</span>
         </div>
       </div>
     </div>
   )
 }
 
+
 interface IServiceCardModal {
   selectedBranchId: number | null
   closeModal: () => void
 }
-
 function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
   const [step, setStep] = useState(1)
 
