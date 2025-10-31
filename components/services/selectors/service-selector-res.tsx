@@ -5,14 +5,15 @@
 import CustomSelect, { CustomSelectItem } from "@/components/app-custom/custom-select";
 import { SelectGroup } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
 interface IServiceSelector {
   placeholder?: string;
   triggerClassname?: string;
-  onChange?: (value: string) => void;
+  // UPDATED: allow optional label as 2nd arg
+  onChange?: (value: string, label?: string) => void;
   value?: string;
   options?: { service_id: number; service_name: string }[];
 }
@@ -45,10 +46,20 @@ export function ServiceSelector({
       .catch(() => setServices([]));
   }, [options]);
 
+  // Map value -> label so we can pass label along
+  const labelMap = useMemo(() => {
+    const m = new Map<string, string>();
+    services.forEach(s => m.set(String(s.serviceId), s.serviceName));
+    return m;
+  }, [services]);
+
   return (
     <CustomSelect
       value={value}
-      onChange={(v) => onChange && onChange(v)}
+      onChange={(v) => {
+        const label = labelMap.get(String(v)) || "";
+        onChange && onChange(v, label);
+      }}
       triggerClassname={cn(triggerClassname)}
       placeholder={placeholder}
     >
