@@ -379,9 +379,7 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
       >
         <DialogHeader className="w-full flex justify-between items-center border-b-[1px] border-b-blue-gray p-8 pt-0">
           <DialogTitle className="p-0 m-0 text-2xl text-charcoal font-medium">
-            {step === 1
-              ? "Make the reservation"
-              : "Confirm your reservation"}
+            {step === 1 ? "Make the reservation" : step === 2 ? "Confirm your reservation" : step === 3 && "Your reservation been made"}
           </DialogTitle>
           <DialogPrimitive.Close
             onClick={() => {
