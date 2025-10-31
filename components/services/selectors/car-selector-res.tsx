@@ -9,7 +9,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 interface ICarSelector {
   placeholder?: string;
   triggerClassname?: string;
-  // UPDATED: allow optional label as 2nd arg for compatibility with modal
+  // allow optional label as 2nd arg for compatibility with modal
   onChange?: (value: string, label?: string) => void;
   value?: string;
   showMyCars?: boolean;

@@ -12,7 +12,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 interface IServiceSelector {
   placeholder?: string;
   triggerClassname?: string;
-  // UPDATED: allow optional label as 2nd arg
+  // allow optional label as 2nd arg
   onChange?: (value: string, label?: string) => void;
   value?: string;
   options?: { service_id: number; service_name: string }[];

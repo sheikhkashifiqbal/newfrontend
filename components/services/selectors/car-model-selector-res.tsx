@@ -12,7 +12,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 interface ICarModelSelector {
   placeholder?: string;
   triggerClassname?: string;
-  // UPDATED: allow optional label as 2nd arg
+  // allow optional label as 2nd arg
   onChange?: (value: string, label?: string) => void;
   value?: string;
   brandId: number | null;
