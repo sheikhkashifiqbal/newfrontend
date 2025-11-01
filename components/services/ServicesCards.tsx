@@ -1,13 +1,21 @@
 'use client'
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import * as React from "react"
 import ServiceCardModal from "@/components/services/service-card-modal"
 import ServicesCardsContainer from "@/components/services/services-cards-container"
+import LoginPopupModal from "@/components/login/LoginPopupModal"
 
 function ServicesCards() {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
+  const [openLoginModal, setOpenLoginModal] = useState(false)
 
   const cardReserveBtnClickHandler = useCallback((branchId: number) => {
+    // ✅ Check if user logged in
+    const auth = typeof window !== "undefined" ? localStorage.getItem("auth_response") : null
+    if (!auth) {
+      setOpenLoginModal(true)
+      return
+    }
     setSelectedBranchId(branchId)
   }, [])
 
@@ -25,8 +33,14 @@ function ServicesCards() {
       </p>
 
       <ServicesCardsContainer cardReserveBtnClickHandler={cardReserveBtnClickHandler} />
+
+      {/* Reservation Modal */}
       <ServiceCardModal selectedBranchId={selectedBranchId} closeModal={handleModalClose} />
+
+      {/* 🔹 Login Popup Modal */}
+      <LoginPopupModal isOpen={openLoginModal} setIsOpen={setOpenLoginModal} />
     </div>
   )
 }
+
 export default memo(ServicesCards)

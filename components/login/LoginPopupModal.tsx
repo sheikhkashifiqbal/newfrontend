@@ -239,11 +239,19 @@ function LoginPopupModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (o
     }, 300);
   }
 
-  useEffect(() => {
-    const closeHandler = () => setIsOpen(false);
-    window.addEventListener("close-login-modal", closeHandler);
-    return () => window.removeEventListener("close-login-modal", closeHandler);
-  }, [setIsOpen]);
+useEffect(() => {
+  const openHandler = () => setIsOpen(true);
+  const closeHandler = () => setIsOpen(false);
+
+  window.addEventListener("open-login-modal", openHandler);
+  window.addEventListener("close-login-modal", closeHandler);
+
+  return () => {
+    window.removeEventListener("open-login-modal", openHandler);
+    window.removeEventListener("close-login-modal", closeHandler);
+  };
+}, [setIsOpen]);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>

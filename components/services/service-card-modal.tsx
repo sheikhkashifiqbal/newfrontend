@@ -491,15 +491,25 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
   });
   const { toast } = useToastSafe();
   const { selections } = useSelection();
-  useEffect(() => {
-    console.log("out");
-    if (selectedBranchId !== null && typeof window !== "undefined") {
-      console.log("innn");
-      sessionStorage.setItem("brand_id", "");
-      sessionStorage.setItem("model_id", "");
-      sessionStorage.setItem("service_id", "");
+useEffect(() => {
+  if (selectedBranchId !== null && typeof window !== "undefined") {
+    // ✅ Reset session fields when modal opens
+    sessionStorage.setItem("brand_id", "");
+    sessionStorage.setItem("model_id", "");
+    sessionStorage.setItem("service_id", "");
+
+    // ✅ Check login state
+    const auth = window.localStorage.getItem("auth_response");
+    if (!auth) {
+      // Close reservation modal immediately
+      closeModal();
+      // Trigger login modal event
+      const evt = new CustomEvent("open-login-modal");
+      window.dispatchEvent(evt);
     }
-  }, [selectedBranchId]);
+  }
+}, [selectedBranchId]);
+
   // Fetch branch details for Step 2
   const fetchBranchInfo = async (branchId: number) => {
     try {
