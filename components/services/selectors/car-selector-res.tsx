@@ -2,9 +2,7 @@
 import CustomSelect, { CustomSelectItem, CustomSelectLabel } from "@/components/app-custom/custom-select";
 import { SelectGroup } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
+import { useMemo, useState, useEffect } from "react";
 
 interface ICarSelector {
   placeholder?: string;
@@ -12,8 +10,7 @@ interface ICarSelector {
   // allow optional label as 2nd arg for compatibility with modal
   onChange?: (value: string, label?: string) => void;
   value?: string;
-  showMyCars?: boolean;
-  /** branch-catalog options override */
+  /** branch-scoped list coming from POST /api/branch-catalog/brands */
   options?: { brand_id: number; brand_name: string }[];
 }
 
@@ -27,21 +24,18 @@ export function CarSelector({
   triggerClassname,
   onChange,
   value,
-  showMyCars = true,
-  options
+  options = []
 }: ICarSelector) {
   const [carBrands, setCarBrands] = useState<CarBrand[]>([]);
 
-  // If options are passed (branch-scoped), use them; else fetch global brands
+  // IMPORTANT: do NOT fetch /api/brands anymore.
+  // Only use the branch-scoped `options` provided by the modal.
   useEffect(() => {
     if (Array.isArray(options) && options.length > 0) {
       setCarBrands(options.map(o => ({ brandId: o.brand_id, brandName: o.brand_name })));
-      return;
+    } else {
+      setCarBrands([]);
     }
-    fetch(`${BASE_URL}/api/brands`)
-      .then((res) => res.json())
-      .then((data: CarBrand[]) => setCarBrands(data))
-      .catch(() => setCarBrands([]));
   }, [options]);
 
   // Map value -> label so we can pass label along
@@ -56,6 +50,8 @@ export function CarSelector({
       value={value}
       onChange={(v) => {
         const label = labelMap.get(String(v)) || "";
+        // Session requirement: store brand_id
+        try { sessionStorage.setItem('brand_id', String(v)); } catch {}
         onChange && onChange(v, label);
       }}
       triggerClassname={cn(triggerClassname)}
@@ -63,7 +59,7 @@ export function CarSelector({
     >
       <div className={'p-5 flex flex-col gap-y-3 car-sel-color'}>
         <SelectGroup>
-          {showMyCars && <CustomSelectLabel>Car brands</CustomSelectLabel>}
+          <CustomSelectLabel>Car brands</CustomSelectLabel>
           {carBrands.map((brand) => (
             <CustomSelectItem key={brand.brandId} value={brand.brandId.toString()}>
               {brand.brandName}

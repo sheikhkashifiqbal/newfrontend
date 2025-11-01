@@ -15,6 +15,7 @@ interface IServiceSelector {
   // allow optional label as 2nd arg
   onChange?: (value: string, label?: string) => void;
   value?: string;
+  // If provided, do NOT fetch global /api/services (we'll rely on branch+brand services)
   options?: { service_id: number; service_name: string }[];
 }
 
@@ -37,12 +38,22 @@ export function ServiceSelector({
       setServices(options.map(s => ({ serviceId: s.service_id, serviceName: s.service_name })));
       return;
     }
+    // Fallback only if options not provided. (Modal passes options so this won't run.)
     fetch(`${BASE_URL}/api/services`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch services");
         return res.json();
       })
-      .then((data: Service[]) => setServices(data))
+      .then((data: any[]) =>
+        setServices(
+          Array.isArray(data)
+            ? data.map((d: any) => ({
+                serviceId: d.service_id ?? d.serviceId,
+                serviceName: d.service_name ?? d.serviceName
+              }))
+            : []
+        )
+      )
       .catch(() => setServices([]));
   }, [options]);
 
@@ -58,6 +69,8 @@ export function ServiceSelector({
       value={value}
       onChange={(v) => {
         const label = labelMap.get(String(v)) || "";
+        // Session requirement: store service_id
+        try { sessionStorage.setItem('service_id', String(v)); } catch {}
         onChange && onChange(v, label);
       }}
       triggerClassname={cn(triggerClassname)}

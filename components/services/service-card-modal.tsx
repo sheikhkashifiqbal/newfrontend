@@ -43,9 +43,14 @@ function useToastSafe() {
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
 
 /* ----------------------------- Car & Service Selectors ----------------------------- */
-/* No HTML/CSS changes; only logic to wire API flows and store (value + label) */
-function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
-  const { setSelections } = useSelection();
+function ServiceCardModalCarSelectors({
+  branchId,
+  forceValidate,
+}: {
+  branchId: number;
+  forceValidate: boolean;
+}) {
+  const { setSelections, selections } = useSelection();
 
   const [brandOptions, setBrandOptions] = useState<
     { brand_id: number; brand_name: string }[]
@@ -55,6 +60,7 @@ function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
   >([]);
   const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selectedService, setSelectedService] = useState<string>("");
 
   const triggerClassname =
     "border-soft-gray text-misty-gray text-sm italic font-medium";
@@ -81,6 +87,13 @@ function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
     return () => controller.abort();
   }, [branchId]);
 
+  // (2) Persist session selections helpers
+  const setSession = (k: string, v: string) => {
+    try {
+      sessionStorage.setItem(k, v);
+    } catch {}
+  };
+
   // (3) When brand changes: load services for this branch+brand (POST /api/branch-catalog/services)
   useEffect(() => {
     if (!branchId || !selectedBrandId) return;
@@ -106,6 +119,11 @@ function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
     return () => controller.abort();
   }, [branchId, selectedBrandId]);
 
+  // Selections (with session storage)
+  const brandMissing = forceValidate && !selectedBrandId;
+  const modelMissing = forceValidate && !selectedModel;
+  const serviceMissing = forceValidate && !selectedService;
+
   return (
     <div className="w-full grid grid-cols-2 600:grid-cols-3 gap-6">
       {/* Car brand */}
@@ -121,10 +139,14 @@ function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
               selectedCar: value,
               selectedCarLabel: label,
             }));
+            setSession("brand_id", String(brandIdNum));
           }}
           placeholder="Select the car brand"
           triggerClassname={triggerClassname}
         />
+        {brandMissing && (
+          <span className="text-red-500 text-xs mt-1">Please select a car brand.</span>
+        )}
       </div>
 
       {/* Brand model */}
@@ -140,10 +162,16 @@ function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
               selectedModel: value,
               selectedModelLabel: label,
             }));
+            setSession("model_id", String(value));
+            // store the model label in "model_brand" per step #4
+            if (label) setSession("model_brand", label);
           }}
           placeholder="Select model"
           triggerClassname={triggerClassname}
         />
+        {modelMissing && (
+          <span className="text-red-500 text-xs mt-1">Please select a model.</span>
+        )}
       </div>
 
       {/* Service */}
@@ -151,23 +179,27 @@ function ServiceCardModalCarSelectors({ branchId }: { branchId: number }) {
         <label className="text-dark-gray text-sm font-medium">Service *</label>
         <ServiceSelector
           options={serviceOptions}
-          onChange={(value, label) =>
+          onChange={(value, label) => {
+            setSelectedService(value);
             setSelections((prev: any) => ({
               ...prev,
               selectedService: value,
               selectedServiceLabel: label,
-            }))
-          }
+            }));
+            setSession("service_id", String(value));
+          }}
           placeholder="Select the service"
           triggerClassname={triggerClassname}
         />
+        {serviceMissing && (
+          <span className="text-red-500 text-xs mt-1">Please select a service.</span>
+        )}
       </div>
     </div>
   );
 }
 
 /* ----------------------------- Date Selector ----------------------------- */
-/* Original behavior preserved — sets today on mount and updates selection on click */
 function ServiceCardModalDateSelector() {
   const { selections, setSelections } = useSelection();
   const today = new Date();
@@ -186,6 +218,9 @@ function ServiceCardModalDateSelector() {
       selectedDay: display,
       selectedDateISO: iso,
     }));
+    try {
+      sessionStorage.setItem("reservationDate", iso);
+    } catch {}
   }
 
   useEffect(() => {
@@ -199,10 +234,10 @@ function ServiceCardModalDateSelector() {
         {next7Days.map((day) => (
           <div
             key={day.iso}
-            onClick={() => setDay(day.fullDate, day.iso)} // triggers time refetch via dependency
+            onClick={() => setDay(day.fullDate, day.iso)}
             className={cn(
               "flex justify-center items-center cursor-pointer bg-white rounded-[8px] border-[1px] border-soft-gray p-2 text-sm font-medium text-slate-gray",
-              day.fullDate === selections.selectedDay &&
+              day.fullDate === (selections as any).selectedDay &&
                 "text-steel-blue border-steel-blue bg-steel-blue/10 font-semibold"
             )}
           >
@@ -215,7 +250,6 @@ function ServiceCardModalDateSelector() {
 }
 
 /* ----------------------------- Time Selector ----------------------------- */
-/* Calls available-slots on open & on date/selector change; filters past slots for TODAY */
 function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
   const { selections, setSelections } = useSelection();
   const [times, setTimes] = useState<string[]>([]);
@@ -226,19 +260,16 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
     const dateISO =
       (selections as any).selectedDateISO || format(new Date(), "yyyy-MM-dd");
 
-    // Build payload per requirement #4
     const brandId = Number((selections as any).selectedCar);
     const modelId = Number((selections as any).selectedModel);
     const serviceId = Number((selections as any).selectedService);
 
-    const allSelected =
-      !!brandId && !!modelId && !!serviceId && !!dateISO;
+    const allSelected = !!brandId && !!modelId && !!serviceId && !!dateISO;
 
     const payload: any = {
       branch_id: branchId,
       date: dateISO,
     };
-    // If all selectors selected, include them
     if (allSelected) {
       payload.brand_id = brandId;
       payload.model_id = modelId;
@@ -265,7 +296,7 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
         slots = slots.filter((t) => {
           const [h, m] = t.split(":").map(Number);
           const mins = h * 60 + (m || 0);
-          return mins > currentMinutes; // only future slots
+          return mins > currentMinutes;
         });
       }
 
@@ -274,16 +305,17 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
         ...prev,
         selectedTime: slots.length > 0 ? slots[0] : "",
       }));
+      if (slots.length > 0) {
+        try {
+          sessionStorage.setItem("reservationTime", slots[0]);
+        } catch {}
+      }
     } catch {
       setTimes([]);
       setSelections((prev: any) => ({ ...prev, selectedTime: "" }));
     }
   };
 
-  // Re-fetch when:
-  // - branch changes
-  // - date changes
-  // - any selector changes (brand/model/service)
   useEffect(() => {
     fetchSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -305,9 +337,12 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
         {times.map((time) => (
           <div
             key={time}
-            onClick={() =>
-              setSelections((prev: any) => ({ ...prev, selectedTime: time }))
-            }
+            onClick={() => {
+              setSelections((prev: any) => ({ ...prev, selectedTime: time }));
+              try {
+                sessionStorage.setItem("reservationTime", time);
+              } catch {}
+            }}
             className={cn(
               "flex justify-center items-center cursor-pointer bg-white rounded-[8px] border-[1px] border-soft-gray p-2 text-sm font-medium text-slate-gray",
               time === (selections as any).selectedTime &&
@@ -326,10 +361,16 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
 }
 
 /* ----------------------------- Step One ----------------------------- */
-function ServiceCardModalStepOne({ branchId }: { branchId: number }) {
+function ServiceCardModalStepOne({
+  branchId,
+  forceValidate,
+}: {
+  branchId: number;
+  forceValidate: boolean;
+}) {
   return (
     <div className="w-full px-8 flex flex-col gap-y-8">
-      <ServiceCardModalCarSelectors branchId={branchId} />
+      <ServiceCardModalCarSelectors branchId={branchId} forceValidate={forceValidate} />
       <ServiceCardModalDateSelector />
       <ServiceCardModalTimeSelector branchId={branchId} />
     </div>
@@ -337,8 +378,8 @@ function ServiceCardModalStepOne({ branchId }: { branchId: number }) {
 }
 
 /* ----------------------------- Step Two ----------------------------- */
-/* HTML/CSS kept identical. Only logic to fill values from API and selections. */
 function ServiceCardModalStepTwo({ branchInfo }: { branchInfo: any }) {
+  console.log("step::2");
   const { selections } = useSelection();
   const sel = selections as any;
 
@@ -396,13 +437,30 @@ function ServiceCardModalStepTwo({ branchInfo }: { branchInfo: any }) {
   );
 }
 
-/* ----------------------------- Step Three (Success) ----------------------------- */
-function ServiceCardModalStepThree({ onClose }: { onClose: () => void }) {
+/* ----------------------------- Step Three (Result) ----------------------------- */
+function ServiceCardModalStepThree({
+  onClose,
+  success,
+  message,
+}: {
+  onClose: () => void;
+  success: boolean;
+  message: string;
+}) {
+
   return (
     <div className="w-full px-8 flex flex-col gap-y-8">
       <div className="flex flex-col gap-y-2">
-        <h4 className="text-xl text-charcoal font-semibold">Your reservation has been created successfully.</h4>
-        <p className="text-charcoal/70">You will receive a confirmation shortly.</p>
+        <h4 className="text-xl text-charcoal font-semibold">
+          {success
+            ? "Your reservation has been created successfully."
+            : "Your reservation could not be created."}
+        </h4>
+        <p className="text-charcoal/70">
+          {message || (success
+            ? "You will receive a confirmation shortly."
+            : "Please review your details and try again.")}
+        </p>
       </div>
       <div className="w-full">
         <Button
@@ -426,26 +484,52 @@ interface IServiceCardModal {
 function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
   const [step, setStep] = useState(1);
   const [branchInfo, setBranchInfo] = useState<any>(null);
+  const [forceValidate, setForceValidate] = useState(false);
+  const [result, setResult] = useState<{ success: boolean; message: string }>({
+    success: true,
+    message: "",
+  });
   const { toast } = useToastSafe();
   const { selections } = useSelection();
-
+  useEffect(() => {
+    console.log("out");
+    if (selectedBranchId !== null && typeof window !== "undefined") {
+      console.log("innn");
+      sessionStorage.setItem("brand_id", "");
+      sessionStorage.setItem("model_id", "");
+      sessionStorage.setItem("service_id", "");
+    }
+  }, [selectedBranchId]);
   // Fetch branch details for Step 2
   const fetchBranchInfo = async (branchId: number) => {
     try {
       const res = await fetch(`${BASE_URL}/api/branches/${branchId}`);
       const data = await res.json();
-      setBranchInfo(data);
+      setBranchInfo(data); console.log("Data::", data);
     } catch {
       setBranchInfo(null);
     }
   };
 
-  // Step 1 → Step 2 ("Make reservation")
+  // Step 1 → Step 2 ("Make reservation") with validation
+  
   const handleNext = async () => {
-    if (step === 1 && selectedBranchId) {
-      await fetchBranchInfo(selectedBranchId);
-      setStep(2);
+    
+    if (step !== 1 || !selectedBranchId) return;
+
+    const brandId = Number(sessionStorage.getItem("brand_id"));
+    const modelId = Number(sessionStorage.getItem("model_id"));
+    const serviceId = Number(sessionStorage.getItem("service_id"));
+    
+    const ok = !!brandId && !!modelId && !!serviceId;
+    
+    if (!ok) {
+       setForceValidate(true);
+       return;
     }
+    
+    await fetchBranchInfo(selectedBranchId);
+    setStep(2);
   };
 
   // Step 2 → Step 3 ("Confirm")
@@ -459,15 +543,28 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
       const auth = authRaw ? JSON.parse(authRaw) : null;
       const userId = Number(auth?.id);
 
-      const brandId = Number((selections as any).selectedCar);
-      const modelId = Number((selections as any).selectedModel);
-      const serviceId = Number((selections as any).selectedService);
-      const modelLabel = (selections as any).selectedModelLabel || "";
+      // Pull ids & labels from selections (and session where needed)
+      const brandId = Number(sessionStorage.getItem("brand_id"));
+      const modelId = Number(sessionStorage.getItem("model_id"));
+      const serviceId = Number(sessionStorage.getItem("service_id"));
+      const modelLabel =
+        (selections as any).selectedModelLabel ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("model_brand") || ""
+          : "");
       const dateISO =
-        (selections as any).selectedDateISO || format(new Date(), "yyyy-MM-dd");
-      const time = (selections as any).selectedTime || "";
+        (selections as any).selectedDateISO ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("reservationDate") || format(new Date(), "yyyy-MM-dd")
+          : format(new Date(), "yyyy-MM-dd"));
+      const time =
+        (selections as any).selectedTime ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("reservationTime") || ""
+          : "");
 
       // 1) Resolve car id by (user, brand, model label)
+      /*
       const res1 = await fetch(`${BASE_URL}/api/cars/id-by-user-brand-model`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -479,15 +576,15 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
       });
       if (!res1.ok) throw new Error("Failed to resolve car id");
       const data1 = await res1.json();
-      const carId = Number(data1?.car_id ?? data1?.carId);
-
+      const carId = Number(data1?.car_id ?? "");
+*/
       // 2) Create reservation with "pending" status
       const res2 = await fetch(`${BASE_URL}/api/reservations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          carId,
+          //carId,
           serviceId,
           brandId,
           modelId,
@@ -496,26 +593,35 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
           reservationStatus: "pending",
         }),
       });
-      if (!res2.ok) throw new Error("Failed to create reservation");
-      await res2.json();
 
-      // Success toast + proceed to Step 3
+      if (!res2.ok) {
+        const errMsg = `Failed to create reservation (status ${res2.status}).`;
+        setResult({ success: false, message: errMsg });
+        setStep(3);
+        toast({ description: errMsg });
+        return;
+      }
+
+      await res2.json();
       toast({ description: "Reservation created successfully." });
+      setResult({ success: true, message: "" });
       setStep(3);
-    } catch (e) {
-      // If any step fails, show a generic error toast (UI unchanged)
-      toast({
-        description: "Failed to create reservation. Please try again.",
-      });
+    } catch (e: any) {
+      const msg = e?.message || "Failed to create reservation. Please try again.";
+      setResult({ success: false, message: msg });
+      toast({ description: msg });
+      setStep(3);
     }
   };
 
-  // Close modal (from Step 3 Close button or header X)
+  // Close modal
   const handleCloseAll = () => {
     closeModal();
     setTimeout(() => {
       setStep(1);
+      setForceValidate(false);
       setBranchInfo(null);
+      setResult({ success: true, message: "" });
     }, 300);
   };
 
@@ -532,7 +638,7 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
               ? "Make the reservation"
               : step === 2
               ? "Confirm your reservation"
-              : "Your reservation been made"}
+              : "Reservation"}
           </DialogTitle>
           <DialogPrimitive.Close onClick={handleCloseAll}>
             <X className="size-6 text-charcoal/50" />
@@ -542,10 +648,16 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
         {/* Keep provider + children structure identical */}
         <SelectionProvider>
           {step === 1 && selectedBranchId !== null && (
-            <ServiceCardModalStepOne branchId={selectedBranchId} />
+            <ServiceCardModalStepOne branchId={selectedBranchId} forceValidate={forceValidate} />
           )}
           {step === 2 && <ServiceCardModalStepTwo branchInfo={branchInfo} />}
-          {step === 3 && <ServiceCardModalStepThree onClose={handleCloseAll} />}
+          {step === 3 && (
+            <ServiceCardModalStepThree
+              onClose={handleCloseAll}
+              success={result.success}
+              message={result.message}
+            />
+          )}
         </SelectionProvider>
 
         {/* Footer buttons (kept same visual classes) */}
@@ -561,7 +673,7 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
           )}
           {step === 2 && (
             <Button
-              onClick={handleConfirm} // triggers cars + reservations, toast, Step 3
+              onClick={handleConfirm}
               className="bg-steel-blue rounded-[12px] py-3 px-6 text-white text-base font-medium w-full"
               type="button"
             >

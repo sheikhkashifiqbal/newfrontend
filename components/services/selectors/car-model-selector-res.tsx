@@ -76,6 +76,13 @@ export function CarModelSelector({
       value={value}
       onChange={(v) => {
         const label = labelMap.get(String(v)) || "";
+        // Session requirements:
+        // - store model_id
+        // - store model label in "model_brand"
+        try {
+          sessionStorage.setItem('model_id', String(v));
+          sessionStorage.setItem('model_brand', label);
+        } catch {}
         onChange && onChange(v, label);
       }}
       triggerClassname={cn(triggerClassname)}
