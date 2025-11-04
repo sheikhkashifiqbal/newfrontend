@@ -9,8 +9,14 @@ function ServicesCards() {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
   const [openLoginModal, setOpenLoginModal] = useState(false)
 
+  // ✅ Listen globally for re-login event (JWT expired)
+  useEffect(() => {
+    const openLoginHandler = () => setOpenLoginModal(true)
+    window.addEventListener("open-login-modal", openLoginHandler)
+    return () => window.removeEventListener("open-login-modal", openLoginHandler)
+  }, [])
+
   const cardReserveBtnClickHandler = useCallback((branchId: number) => {
-    // ✅ Check if user logged in
     const auth = typeof window !== "undefined" ? localStorage.getItem("auth_response") : null
     if (!auth) {
       setOpenLoginModal(true)
@@ -42,5 +48,4 @@ function ServicesCards() {
     </div>
   )
 }
-
 export default memo(ServicesCards)

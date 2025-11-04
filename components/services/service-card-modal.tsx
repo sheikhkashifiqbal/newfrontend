@@ -17,12 +17,14 @@ import { ServiceSelector } from "@/components/services/selectors/service-selecto
 import { addDays, format } from "date-fns";
 import { memo, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
-import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import ServiceLogo from "@/assets/icons/services/ServiceLogo.svg";
 import { SelectionProvider, useSelection } from "@/hooks/services/useSelection";
+import { toast } from "sonner";
 
-// Inline, safe toast/alert fallback (no external deps)
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
+
+/* ----------------------------- Safe Toast ----------------------------- */
 function useToastSafe() {
   return {
     toast: ({ description }: { description: string }) => {
@@ -33,24 +35,54 @@ function useToastSafe() {
         } else {
           alert(description);
         }
-      } catch {
-        // noop
-      }
+      } catch {}
     },
   };
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
+/* ----------------------------- ADDED: Central 401 handler ----------------------------- */
+/** When server returns 401 (expired/invalid JWT):
+ *  1) POST /api/auth/logout
+ *  2) Close the reservation modal
+ *  3) Open login popup via global event
+ */
+async function handle401Unauthorized(closeModal: () => void) {
+  console.log("logouttttt");
+
+    try {
+      const res = await fetch("http://localhost:8081/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      if (res.ok) {
+        localStorage.clear();
+        toast.success("Logged out successfully");
+        window.location.href = "/"; // redirect to home after logout
+      } else {
+        toast.error("Logout failed");
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
+      toast.error("Logout request failed");
+    }
+  closeModal();
+  // ADDED: trigger re-login popup
+  window.dispatchEvent(new CustomEvent("open-login-modal"));
+}
 
 /* ----------------------------- Car & Service Selectors ----------------------------- */
 function ServiceCardModalCarSelectors({
   branchId,
   forceValidate,
+  closeModal,
 }: {
   branchId: number;
   forceValidate: boolean;
+  closeModal: () => void;
 }) {
-  const { setSelections, selections } = useSelection();
+  const { setSelections } = useSelection();
 
   const [brandOptions, setBrandOptions] = useState<
     { brand_id: number; brand_name: string }[]
@@ -65,7 +97,7 @@ function ServiceCardModalCarSelectors({
   const triggerClassname =
     "border-soft-gray text-misty-gray text-sm italic font-medium";
 
-  // (1) On modal open: load brands for this branch (POST /api/branch-catalog/brands)
+  // On modal open → load branch-scoped brands
   useEffect(() => {
     if (!branchId) return;
     const controller = new AbortController();
@@ -77,6 +109,11 @@ function ServiceCardModalCarSelectors({
           body: JSON.stringify({ branch_id: branchId }),
           signal: controller.signal,
         });
+        // ADDED: 401 handling
+        if (res.status === 401) {
+          await handle401Unauthorized(closeModal);
+          return;
+        }
         const data = await res.json();
         const brands = Array.isArray(data?.brands) ? data.brands : [];
         setBrandOptions(brands);
@@ -85,16 +122,9 @@ function ServiceCardModalCarSelectors({
       }
     })();
     return () => controller.abort();
-  }, [branchId]);
+  }, [branchId, closeModal]);
 
-  // (2) Persist session selections helpers
-  const setSession = (k: string, v: string) => {
-    try {
-      sessionStorage.setItem(k, v);
-    } catch {}
-  };
-
-  // (3) When brand changes: load services for this branch+brand (POST /api/branch-catalog/services)
+  // When brand changes → load services for branch+brand
   useEffect(() => {
     if (!branchId || !selectedBrandId) return;
     const controller = new AbortController();
@@ -103,12 +133,14 @@ function ServiceCardModalCarSelectors({
         const res = await fetch(`${BASE_URL}/api/branch-catalog/services`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            branch_id: branchId,
-            brand_id: selectedBrandId,
-          }),
+          body: JSON.stringify({ branch_id: branchId, brand_id: selectedBrandId }),
           signal: controller.signal,
         });
+        // ADDED: 401 handling
+        if (res.status === 401) {
+          await handle401Unauthorized(closeModal);
+          return;
+        }
         const data = await res.json();
         const services = Array.isArray(data?.services) ? data.services : [];
         setServiceOptions(services);
@@ -117,9 +149,15 @@ function ServiceCardModalCarSelectors({
       }
     })();
     return () => controller.abort();
-  }, [branchId, selectedBrandId]);
+  }, [branchId, selectedBrandId, closeModal]);
 
-  // Selections (with session storage)
+  // Persist to session
+  const setSession = (k: string, v: string) => {
+    try {
+      sessionStorage.setItem(k, v);
+    } catch {}
+  };
+
   const brandMissing = forceValidate && !selectedBrandId;
   const modelMissing = forceValidate && !selectedModel;
   const serviceMissing = forceValidate && !selectedService;
@@ -163,15 +201,12 @@ function ServiceCardModalCarSelectors({
               selectedModelLabel: label,
             }));
             setSession("model_id", String(value));
-            // store the model label in "model_brand" per step #4
-            if (label) setSession("model_brand", label);
+            if (label) setSession("model_brand", label); // needed later to resolve car id
           }}
           placeholder="Select model"
           triggerClassname={triggerClassname}
         />
-        {modelMissing && (
-          <span className="text-red-500 text-xs mt-1">Please select a model.</span>
-        )}
+        {modelMissing && <span className="text-red-500 text-xs mt-1">Please select a model.</span>}
       </div>
 
       {/* Service */}
@@ -250,7 +285,13 @@ function ServiceCardModalDateSelector() {
 }
 
 /* ----------------------------- Time Selector ----------------------------- */
-function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
+function ServiceCardModalTimeSelector({
+  branchId,
+  closeModal,
+}: {
+  branchId: number;
+  closeModal: () => void;
+}) {
   const { selections, setSelections } = useSelection();
   const [times, setTimes] = useState<string[]>([]);
 
@@ -276,19 +317,37 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
       payload.service_id = serviceId;
     }
 
-    try {
-      const res = await fetch(`${BASE_URL}/api/reservations/available-slots`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+   try {
+  const authRaw = window.localStorage.getItem("auth_response");
+  const auth = authRaw ? JSON.parse(authRaw) : null;
+  const token = auth?.token ?? null; // use the token string stored in auth_response.token
+
+  if (!token) {
+    throw new Error("No auth token found in localStorage (auth_response.token)");
+  }
+  console.log("token:::", token);
+  const res = await fetch(`${BASE_URL}/api/reservations/available-slots`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}` // correct header key and value format
+    },
+    body: JSON.stringify(payload),
+  });
+
+      // ADDED: 401 handling
+      if (res.status === 401) {
+        await handle401Unauthorized(closeModal);
+        return;
+      }
       const data = await res.json();
 
       let slots: string[] = Array.isArray(data?.availableTimeSlots)
         ? data.availableTimeSlots
         : [];
 
-      // Filter passed times if selected date is today (system time)
+      // keep original UX: if date is today, hide past slots
       const todayISO = format(new Date(), "yyyy-MM-dd");
       if (dateISO === todayISO) {
         const now = new Date();
@@ -358,28 +417,34 @@ function ServiceCardModalTimeSelector({ branchId }: { branchId: number }) {
       </div>
     </div>
   );
+  
 }
 
 /* ----------------------------- Step One ----------------------------- */
 function ServiceCardModalStepOne({
   branchId,
   forceValidate,
+  closeModal,
 }: {
   branchId: number;
   forceValidate: boolean;
+  closeModal: () => void;
 }) {
   return (
     <div className="w-full px-8 flex flex-col gap-y-8">
-      <ServiceCardModalCarSelectors branchId={branchId} forceValidate={forceValidate} />
+      <ServiceCardModalCarSelectors
+        branchId={branchId}
+        forceValidate={forceValidate}
+        closeModal={closeModal}
+      />
       <ServiceCardModalDateSelector />
-      <ServiceCardModalTimeSelector branchId={branchId} />
+      <ServiceCardModalTimeSelector branchId={branchId} closeModal={closeModal} />
     </div>
   );
 }
 
-/* ----------------------------- Step Two ----------------------------- */
+/* ----------------------------- Step Two (Review) ----------------------------- */
 function ServiceCardModalStepTwo({ branchInfo }: { branchInfo: any }) {
-  console.log("step::2");
   const { selections } = useSelection();
   const sel = selections as any;
 
@@ -427,9 +492,7 @@ function ServiceCardModalStepTwo({ branchInfo }: { branchInfo: any }) {
         <div className="flex gap-1">
           <h5 className="text-base text-charcoal/50">Service location:</h5>
           <span className="font-medium text-base text-charcoal">
-            {`${branchInfo?.address || ""}${
-              branchInfo?.city ? ", " + branchInfo.city : ""
-            }`}
+            {`${branchInfo?.address || ""}${branchInfo?.city ? ", " + branchInfo.city : ""}`}
           </span>
         </div>
       </div>
@@ -437,16 +500,20 @@ function ServiceCardModalStepTwo({ branchInfo }: { branchInfo: any }) {
   );
 }
 
-/* ----------------------------- Step Three (Result) ----------------------------- */
+/* ----------------------------- Step Three (Result + Details) ----------------------------- */
 function ServiceCardModalStepThree({
   onClose,
   success,
   message,
+  branchInfo,
 }: {
   onClose: () => void;
   success: boolean;
   message: string;
+  branchInfo: any;
 }) {
+  const { selections } = useSelection();
+  const sel = selections as any;
 
   return (
     <div className="w-full px-8 flex flex-col gap-y-8">
@@ -457,11 +524,45 @@ function ServiceCardModalStepThree({
             : "Your reservation could not be created."}
         </h4>
         <p className="text-charcoal/70">
-          {message || (success
-            ? "You will receive a confirmation shortly."
-            : "Please review your details and try again.")}
+          {message ||
+            (success
+              ? "You will receive a confirmation shortly."
+              : "Please review your details and try again.")}
         </p>
       </div>
+
+      {/* Echo details like Step Two (as per previous requirement) */}
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-1">
+          <h5 className="text-base text-charcoal/50">Date & Time:</h5>
+          <span className="font-medium text-base text-charcoal">
+            {sel.selectedDay}, {sel.selectedTime}
+          </span>
+        </div>
+
+        <div className="flex gap-1">
+          <h5 className="text-base text-charcoal/50">Car and Model:</h5>
+          <span className="font-medium text-base text-charcoal">
+            {sel.selectedCarLabel || "Car Brand"},{" "}
+            {sel.selectedModelLabel || "Car Model"}
+          </span>
+        </div>
+
+        <div className="flex gap-1">
+          <h5 className="text-base text-charcoal/50">Service type:</h5>
+          <span className="font-medium text-base text-charcoal">
+            {sel.selectedServiceLabel || "Service Type"}
+          </span>
+        </div>
+
+        <div className="flex gap-1">
+          <h5 className="text-base text-charcoal/50">Service location:</h5>
+          <span className="font-medium text-base text-charcoal">
+            {`${branchInfo?.address || ""}${branchInfo?.city ? ", " + branchInfo.city : ""}`}
+          </span>
+        </div>
+      </div>
+
       <div className="w-full">
         <Button
           type="button"
@@ -490,111 +591,82 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
     message: "",
   });
   const { toast } = useToastSafe();
-  const { selections } = useSelection();
-useEffect(() => {
-  if (selectedBranchId !== null && typeof window !== "undefined") {
-    // ✅ Reset session fields when modal opens
-    sessionStorage.setItem("brand_id", "");
-    sessionStorage.setItem("model_id", "");
-    sessionStorage.setItem("service_id", "");
 
-    // ✅ Check login state
-    const auth = window.localStorage.getItem("auth_response");
-    if (!auth) {
-      // Close reservation modal immediately
-      closeModal();
-      // Trigger login modal event
-      const evt = new CustomEvent("open-login-modal");
-      window.dispatchEvent(evt);
+  // ADDED: Reset session ids + Check login each time modal opens
+  useEffect(() => {
+    if (selectedBranchId !== null && typeof window !== "undefined") {
+      sessionStorage.setItem("brand_id", "");  // ADDED
+      sessionStorage.setItem("model_id", "");  // ADDED
+      sessionStorage.setItem("service_id", ""); // ADDED
+      sessionStorage.setItem("reservationTime", "");
+      const auth = window.localStorage.getItem("auth_response"); // ADDED
+      if (!auth) { // ADDED
+        closeModal(); // ADDED
+        window.dispatchEvent(new CustomEvent("open-login-modal")); // ADDED
+      }
     }
-  }
-}, [selectedBranchId]);
+  }, [selectedBranchId, closeModal]);
 
-  // Fetch branch details for Step 2
+  // Fetch branch details for Step 2/3
   const fetchBranchInfo = async (branchId: number) => {
     try {
       const res = await fetch(`${BASE_URL}/api/branches/${branchId}`);
+      // ADDED: 401 handling
+      if (res.status === 401) {
+        await handle401Unauthorized(closeModal);
+        return;
+      }
       const data = await res.json();
-      setBranchInfo(data); console.log("Data::", data);
+      setBranchInfo(data);
     } catch {
       setBranchInfo(null);
     }
   };
 
   // Step 1 → Step 2 ("Make reservation") with validation
-  
   const handleNext = async () => {
-    
     if (step !== 1 || !selectedBranchId) return;
 
     const brandId = Number(sessionStorage.getItem("brand_id"));
     const modelId = Number(sessionStorage.getItem("model_id"));
     const serviceId = Number(sessionStorage.getItem("service_id"));
-    
+    const reservationTime = sessionStorage.getItem("reservationTime");
     const ok = !!brandId && !!modelId && !!serviceId;
-    
-    if (!ok) {
-       setForceValidate(true);
-       return;
+
+    if (!ok || reservationTime == "")  {
+      setForceValidate(true);
+      return;
     }
-    
+    if (reservationTime === null && reservationTime === undefined && reservationTime === '') {
+       setForceValidate(true);
+        return;
+    } 
+
     await fetchBranchInfo(selectedBranchId);
     setStep(2);
   };
 
-  // Step 2 → Step 3 ("Confirm")
+  // Step 2 → Step 3 ("Confirm"): create reservation
   const handleConfirm = async () => {
     try {
       // Read user_id from localStorage.auth_response
-      const authRaw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("auth_response")
-          : null;
+      const authRaw = window.localStorage.getItem("auth_response");
       const auth = authRaw ? JSON.parse(authRaw) : null;
       const userId = Number(auth?.id);
 
-      // Pull ids & labels from selections (and session where needed)
       const brandId = Number(sessionStorage.getItem("brand_id"));
       const modelId = Number(sessionStorage.getItem("model_id"));
       const serviceId = Number(sessionStorage.getItem("service_id"));
-      const modelLabel =
-        (selections as any).selectedModelLabel ||
-        (typeof window !== "undefined"
-          ? sessionStorage.getItem("model_brand") || ""
-          : "");
       const dateISO =
-        (selections as any).selectedDateISO ||
-        (typeof window !== "undefined"
-          ? sessionStorage.getItem("reservationDate") || format(new Date(), "yyyy-MM-dd")
-          : format(new Date(), "yyyy-MM-dd"));
-      const time =
-        (selections as any).selectedTime ||
-        (typeof window !== "undefined"
-          ? sessionStorage.getItem("reservationTime") || ""
-          : "");
+        sessionStorage.getItem("reservationDate") || format(new Date(), "yyyy-MM-dd");
+      const time = sessionStorage.getItem("reservationTime") || "";
 
-      // 1) Resolve car id by (user, brand, model label)
-      /*
-      const res1 = await fetch(`${BASE_URL}/api/cars/id-by-user-brand-model`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: userId,
-          brand_id: brandId,
-          model_brand: modelLabel,
-        }),
-      });
-      if (!res1.ok) throw new Error("Failed to resolve car id");
-      const data1 = await res1.json();
-      const carId = Number(data1?.car_id ?? "");
-*/
-      // 2) Create reservation with "pending" status
       const res2 = await fetch(`${BASE_URL}/api/reservations`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          //carId,
           serviceId,
           brandId,
           modelId,
@@ -603,12 +675,15 @@ useEffect(() => {
           reservationStatus: "pending",
         }),
       });
+      // ADDED: 401 handling
+      if (res2.status === 401) {
+        await handle401Unauthorized(closeModal);
+        return;
+      }
 
       if (!res2.ok) {
-        const errMsg = `Failed to create reservation (status ${res2.status}).`;
-        setResult({ success: false, message: errMsg });
+        setResult({ success: false, message: "Reservation failed." });
         setStep(3);
-        toast({ description: errMsg });
         return;
       }
 
@@ -655,22 +730,28 @@ useEffect(() => {
           </DialogPrimitive.Close>
         </DialogHeader>
 
-        {/* Keep provider + children structure identical */}
+        {/* Provider kept identical */}
         <SelectionProvider>
           {step === 1 && selectedBranchId !== null && (
-            <ServiceCardModalStepOne branchId={selectedBranchId} forceValidate={forceValidate} />
+            <ServiceCardModalStepOne
+              branchId={selectedBranchId}
+              forceValidate={forceValidate}
+              closeModal={closeModal}
+            />
           )}
+
           {step === 2 && <ServiceCardModalStepTwo branchInfo={branchInfo} />}
+
           {step === 3 && (
             <ServiceCardModalStepThree
               onClose={handleCloseAll}
               success={result.success}
               message={result.message}
+              branchInfo={branchInfo}
             />
           )}
         </SelectionProvider>
 
-        {/* Footer buttons (kept same visual classes) */}
         <DialogFooter className="px-8">
           {step === 1 && (
             <Button
