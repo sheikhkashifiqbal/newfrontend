@@ -33,7 +33,7 @@ const ModalBox: React.FC<ModalProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 data-[state=open]:animate-overlayShow" />
         <Dialog.Content
-          className={`fixed left-1/2 top-1/2 max-h-[85vh] overflow-y-auto w-[90vw] -translate-x-1/2 -translate-y-1/2 rounded-md bg-white p-6 shadow-lg focus:outline-none data-[state=open]:animate-contentShow ${bg}`}
+          className={`fixed left-1/2 top-1/2 max-h-[85vh] overflow-y-auto w-[90vw] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-lg focus:outline-none data-[state=open]:animate-contentShow ${bg}`}
           style={{ maxWidth }}
         >
           {title && (

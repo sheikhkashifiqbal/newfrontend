@@ -459,7 +459,7 @@ const ProfileInfo: React.FC = () => {
             open={true}
             onOpenChange={() => setOpenModal(null)}
             title={openModal === "edit" ? "Edit Vehicle" : "Add New Vehicle"}
-            maxWidth="808px"
+            maxWidth="440px"
           >
             <AddCarDetails
               mode={openModal}
@@ -676,58 +676,57 @@ const AddCarDetails: React.FC<{
     })();
   }, [mode, carId, userId]);
 
-const handleSave = async () => {
-  if (!validate()) return;
+  const handleSave = async () => {
+    if (!validate()) return;
 
-  try {
-    if (mode === "edit" && form.carId) {
-      // UPDATE existing car
-      const payload = {
-        carId: form.carId,
-        userId: form.userId,
-        brandId: form.brandId!, // guaranteed by validate()
-        carModel: form.carModel,
-        vinNumber: form.vinNumber,
-        plateNumber: form.plateNumber,
-      };
+    try {
+      if (mode === "edit" && form.carId) {
+        // UPDATE existing car
+        const payload = {
+          carId: form.carId,
+          userId: form.userId,
+          brandId: form.brandId!, // guaranteed by validate()
+          carModel: form.carModel,
+          vinNumber: form.vinNumber,
+          plateNumber: form.plateNumber,
+        };
 
-      const res = await fetch(`${BASE_URL}/api/cars/${form.carId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      onSaved(); // parent shows toast + closes modal + refreshes list
+        const res = await fetch(`${BASE_URL}/api/cars/${form.carId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to save");
+        onSaved(); // parent shows toast + closes modal + refreshes list
 
-    } else if (mode === "add") {
-      // CREATE new car  ✅ (this was missing)
-      const payload = {
-        userId: form.userId,
-        brandId: form.brandId!, // guaranteed by validate()
-        carModel: form.carModel,
-        vinNumber: form.vinNumber,
-        plateNumber: form.plateNumber,
-      };
+      } else if (mode === "add") {
+        // CREATE new car  ✅ (this was missing)
+        const payload = {
+          userId: form.userId,
+          brandId: form.brandId!, // guaranteed by validate()
+          carModel: form.carModel,
+          vinNumber: form.vinNumber,
+          plateNumber: form.plateNumber,
+        };
 
-      const res = await fetch(`${BASE_URL}/api/cars`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to create");
-      onSaved(); // same UX as edit: toast “The record is saved”, modal closes, list reloads
+        const res = await fetch(`${BASE_URL}/api/cars`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to create");
+        onSaved(); // same UX as edit: toast “The record is saved”, modal closes, list reloads
+      }
+    } catch (e) {
+      console.error(e);
     }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
+  };
 
   return (
-    <div className="my-6 rounded-lg">
-      <h2 className="text-blue-500 font-semibold mb-4">Car details</h2>
+    <div className="mt-6">
+      {/* <h2 className="text-blue-500 font-semibold mb-4">Car details</h2> */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         {/* Car Brand */}
         <div>
           <label className="block mb-2 text-sm font-medium text-gray-700">Your car brand</label>
@@ -819,7 +818,7 @@ const handleSave = async () => {
         </div>
       </div>
 
-      <div className="flex justify-end mt-8 gap-4">
+      <div className="flex justify-end mt-4 gap-4">
         <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-[8px] text-gray-700">
           Cancel
         </button>
