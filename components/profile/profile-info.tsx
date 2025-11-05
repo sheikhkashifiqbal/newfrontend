@@ -476,7 +476,7 @@ const ProfileInfo: React.FC = () => {
             open={true}
             onOpenChange={() => setOpenModal(null)}
             title={openModal === "edit" ? "Edit Vehicle" : "Add New Vehicle"}
-            maxWidth="808px"
+            maxWidth="440px"
           >
             <AddCarDetails
               mode={openModal}
@@ -718,7 +718,7 @@ const AddCarDetails: React.FC<{
         onSaved(); // parent shows toast + closes modal + refreshes list
 
       } else if (mode === "add") {
-        // CREATE new car
+
         const payload = {
           userId: form.userId,
           brandId: form.brandId!, // guaranteed by validate()
@@ -733,7 +733,9 @@ const AddCarDetails: React.FC<{
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error("Failed to create");
-        onSaved(); // same UX as edit: toast + close + reload
+
+        onSaved(); // same UX as edit: toast “The record is saved”, modal closes, list reloads
+
       }
     } catch (e) {
       console.error(e);
@@ -741,10 +743,10 @@ const AddCarDetails: React.FC<{
   };
 
   return (
-    <div className="my-6 rounded-lg">
-      <h2 className="text-blue-500 font-semibold mb-4">Car details</h2>
+    <div className="mt-6">
+      {/* <h2 className="text-blue-500 font-semibold mb-4">Car details</h2> */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         {/* Car Brand */}
         <div>
           <label className="block mb-2 text-sm font-medium text-gray-700">Your car brand</label>
@@ -836,7 +838,7 @@ const AddCarDetails: React.FC<{
         </div>
       </div>
 
-      <div className="flex justify-end mt-8 gap-4">
+      <div className="flex justify-end mt-4 gap-4">
         <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-[8px] text-gray-700">
           Cancel
         </button>
