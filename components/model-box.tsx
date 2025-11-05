@@ -37,7 +37,7 @@ const ModalBox: React.FC<ModalProps> = ({
         <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/50 data-[state=open]:animate-overlayShow" />
         {/* Content above overlay */}
         <Dialog.Content
-          className={`fixed left-1/2 top-1/2 max-h-[85vh] overflow-y-auto w-[90vw] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-lg focus:outline-none data-[state=open]:animate-contentShow ${bg}`}
+          className={`fixed left-1/2 top-1/2 z-[1001] max-h-[85vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-6 shadow-2xl focus:outline-none data-[state=open]:animate-contentShow ${bg}`}
           style={{ maxWidth }}
           onPointerDownOutside={disableOutsideClose ? (e) => e.preventDefault() : undefined}
           onEscapeKeyDown={disableOutsideClose ? (e) => e.preventDefault() : undefined}
