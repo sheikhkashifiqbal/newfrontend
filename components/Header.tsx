@@ -67,6 +67,7 @@ export default function Header() {
 
   // ✅ Determine which header section to show
   useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
       const authData = localStorage.getItem("auth_response");
       if (authData) {

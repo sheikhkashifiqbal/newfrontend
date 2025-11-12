@@ -12,10 +12,11 @@ const tabs = [
 
 type BrandOption = { brand_id: number; brand_name: string };
 type ServiceOption = { service_id: number; service_name: string };
+type GlobalServiceOption = { serviceId: number; serviceName: string };
 
 type BranchServiceRow = {
   brand_name: string;
-  brand_icon: string; // icon.jpg
+  brand_icon: string;
   status: string;
   available_services: { id: number; service_name: string; status: string }[];
 };
@@ -51,15 +52,14 @@ function mode<T>(arr: T[], key?: (x: T) => any): any {
 const PerformanceCenterPage = () => {
   const [activeTab, setActiveTab] = useState<any>("Company Services");
   const [openModal, setOpenModal] = useState<any>(false);
-
   const params = useSearchParams();
   const branchId = Number(params?.get("branchId") || 1);
-
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   // Filters
   const [brandOptions, setBrandOptions] = useState<BrandOption[]>([]);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [globalServiceOptions, setGlobalServiceOptions] = useState<GlobalServiceOption[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState<number | "">("");
   const [selectedServiceId, setSelectedServiceId] = useState<number | "">("");
 
@@ -67,19 +67,18 @@ const PerformanceCenterPage = () => {
   const [grid, setGrid] = useState<BranchServiceRow[]>([]);
   const [loadingGrid, setLoadingGrid] = useState<boolean>(false);
 
-  // Branch info (address & hours)
+  // Branch info
   const [addressText, setAddressText] = useState<string>("Branch Address");
   const [mapUrl, setMapUrl] = useState<string>("#");
   const [hoursToday, setHoursToday] = useState<string>("Saturday: 10:00–16:00");
   const [hoursRange, setHoursRange] = useState<string>("Monday–Friday: 09:00–18:00");
+  const [managerPhone, setManagerPhone] = useState<string>("+99450 289–09–85");
+  const [managerMobile, setManagerMobile] = useState<string>("+99450 289–09–80");
 
-  // ---- API: Brands (on load of Company Services) ----
+  // ---- API: Brands ----
   useEffect(() => {
     let alive = true;
     async function loadBrands() {
-        console.log("branch_id", branchId);
-        console.log("branch_id", branchId);
-
       try {
         if (!branchId || activeTab !== "Company Services") return;
         const res = await fetch(`${BASE_URL}/api/branch-catalog/brands`, {
@@ -101,7 +100,7 @@ const PerformanceCenterPage = () => {
     };
   }, [BASE_URL, branchId, activeTab]);
 
-  // ---- API: Services (when brand changes) ----
+  // ---- API: Services (dependent on brand) ----
   useEffect(() => {
     let alive = true;
     async function loadServices() {
@@ -115,23 +114,44 @@ const PerformanceCenterPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ branch_id: branchId, brand_id: selectedBrandId }),
         });
+        
         if (!res.ok) throw new Error("Failed to load services");
         const json = await res.json();
+        console.log("JSONN", json);
         const services: ServiceOption[] = json?.services ?? [];
-        if (alive) setServiceOptions(services);
+        if (alive)
+        {
+            setServiceOptions(services);
+            //setGlobalServiceOptions(services);
+        }
       } catch {
         if (alive) setServiceOptions([]);
       }
     }
     loadServices();
-    // clear service selection if brand changes
     setSelectedServiceId("");
     return () => {
       alive = false;
     };
   }, [BASE_URL, branchId, selectedBrandId, activeTab]);
 
-  // ---- API: Services Grid (when filters change) ----
+  // ---- ✅ NEW: Global Services on Page Load ----
+  useEffect(() => {
+    async function loadGlobalServices() {
+      try {
+        const res = await fetch(`${BASE_URL}/api/services`);
+        if (!res.ok) throw new Error("Failed to load global services");
+        const json = await res.json();
+        const data: GlobalServiceOption[] = Array.isArray(json) ? json : [];
+        setGlobalServiceOptions(data);
+      } catch {
+        setGlobalServiceOptions([]);
+      }
+    }
+    loadGlobalServices();
+  }, [BASE_URL]);
+
+  // ---- API: Services Grid ----
   useEffect(() => {
     let alive = true;
     async function loadGrid() {
@@ -162,7 +182,7 @@ const PerformanceCenterPage = () => {
     };
   }, [BASE_URL, branchId, selectedBrandId, selectedServiceId, activeTab]);
 
-  // ---- API: Work Days (opening hours) ----
+  // ---- API: Work Days ----
   useEffect(() => {
     let alive = true;
     async function loadHours() {
@@ -171,40 +191,32 @@ const PerformanceCenterPage = () => {
         const res = await fetch(`${BASE_URL}/api/work-days/search`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ branchId: branchId }),
+          body: JSON.stringify({ branchId }),
         });
         if (!res.ok) throw new Error("Failed to load work days");
-        const json: { workId: number; branchId: number; workingDay: string; from: string; to: string; status: string }[] =
-          await res.json();
+        const json = await res.json();
 
         if (!alive) return;
 
-        const todayIdx = new Date().getDay(); // 0 Sun ... 6 Sat
-        const todayName = indexDay[todayIdx]; // e.g., "Sunday"
-        const todayRow = (json || []).find(
-          (row) => (row.workingDay || "").toLowerCase() === todayName.toLowerCase()
+        const todayIdx = new Date().getDay();
+        const todayName = indexDay[todayIdx];
+        const todayRow = json.find(
+          (row: any) => (row.workingDay || "").toLowerCase() === todayName.toLowerCase()
         );
         if (todayRow) {
-          setHoursToday(
-            `${todayName}: ${todayRow.from || "00:00"}–${todayRow.to || "00:00"}`
-          );
+          setHoursToday(`${todayName}: ${todayRow.from}–${todayRow.to}`);
         } else {
           setHoursToday("Closed today");
         }
 
-        // Range: determine min and max working day present
-        const days = (json || []).map((r) => (r.workingDay || "").toLowerCase()).filter((x) => x in dayIndex);
+        const days = json.map((r: any) => r.workingDay.toLowerCase()).filter((x: string) => x in dayIndex);
         if (days.length) {
-          const indices = days.map((d) => dayIndex[d]).sort((a, b) => a - b);
+          const indices = days.map((d: string) => dayIndex[d]).sort((a: number, b: number) => a - b);
           const start = indexDay[indices[0]];
           const end = indexDay[indices[indices.length - 1]];
-
-          // Mode of from/to
-          const fromMode = mode(json || [], (r) => r.from) || "09:00";
-          const toMode = mode(json || [], (r) => r.to) || "18:00";
+          const fromMode = mode(json, (r: any) => r.from) || "09:00";
+          const toMode = mode(json, (r: any) => r.to) || "18:00";
           setHoursRange(`${start}–${end}: ${fromMode}–${toMode}`);
-        } else {
-          setHoursRange("Monday–Friday: 09:00–18:00");
         }
       } catch {
         setHoursToday("Saturday: 10:00–16:00");
@@ -217,28 +229,35 @@ const PerformanceCenterPage = () => {
     };
   }, [BASE_URL, branchId]);
 
-  // ---- API: Branch Address / Map ----
+  // ---- API: Branch Address / Map + Company ----
   useEffect(() => {
     let alive = true;
     async function loadBranch() {
       try {
-        console.log("branchID:::",branchId);
         if (!branchId) return;
         const res = await fetch(`${BASE_URL}/api/branches/${branchId}`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-         // body: JSON.stringify({ branch_id: branchId }),
         });
         if (!res.ok) throw new Error("Failed to load branch");
-        const json = await res.json();
-        console.log("JSON::", json);
+        const branchJson = await res.json();
+
         if (!alive) return;
-        const city = json?.city ? String(json.city) : "";
-        const address = json?.address ? String(json.address) : "";
+        const city = branchJson?.city ? String(branchJson.city) : "";
+        const address = branchJson?.address ? String(branchJson.address) : "";
         const composed = [address, city].filter(Boolean).join(", ");
-        
         setAddressText(composed || "Branch Address");
-        setMapUrl(json?.branchAddress || "#");
+        setMapUrl(branchJson?.branchAddress || "#");
+
+        // ✅ NEW: Call company details API
+        if (branchJson?.companyId) {
+          const companyRes = await fetch(`${BASE_URL}/api/companies/${branchJson.companyId}`);
+          if (companyRes.ok) {
+            const companyJson = await companyRes.json();
+            setManagerPhone(companyJson?.managerPhone || "+99450 289–09–85");
+            setManagerMobile(companyJson?.managerMobile || "+99450 289–09–80");
+          }
+        }
       } catch {
         setAddressText("Branch Address");
         setMapUrl("#");
@@ -253,6 +272,30 @@ const PerformanceCenterPage = () => {
   return (
     <>
       <div className="bg-[#F8F9FA] min-h-screen">
+        {/* Back Button */}
+        <div className="max-w-[1224px] mx-auto px-4 pt-6">
+            <button
+                onClick={() => (window.location.href = "/services")}
+                className="flex items-center gap-2 text-[#3F72AF] font-medium hover:text-[#265d97] transition-colors"
+            >
+                <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-5 h-5"
+                >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 19.5L8.25 12l7.5-7.5"
+                />
+                </svg>
+                Back to Services
+            </button>
+        </div>
+
         {/* Header */}
         <div className="flex justify-center py-8 px-2 max-w-[1224px] mx-auto">
           <div className="relative w-full">
@@ -277,7 +320,6 @@ const PerformanceCenterPage = () => {
                 />
                 <div>
                   <p className="text-2xl md:text-[32px] font-semibold">Performance Center</p>
-                  {/* Optional overall stars text — you can wire this to your own field if needed */}
                   <p className="text-sm">⭐</p>
                 </div>
               </div>
@@ -288,8 +330,8 @@ const PerformanceCenterPage = () => {
         {/* Company Info */}
         <section className="max-w-[1120px] mx-auto px-4 text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
-            <p>📍 {addressText || "Branch Address"}</p>
-            <a href={mapUrl || "#"} target="_blank" rel="noreferrer" className="text-blue-500 underline">
+            <p>📍 {addressText}</p>
+            <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
               Google Map
             </a>
           </div>
@@ -298,8 +340,8 @@ const PerformanceCenterPage = () => {
             <p>{hoursToday}</p>
           </div>
           <div>
-            <p>📞 +99450 289–09–85</p>
-            <p>📞 +99450 289–09–80</p>
+            <p>📞 {managerPhone}</p>
+            <p>📞 {managerMobile}</p>
           </div>
         </section>
 
@@ -323,15 +365,16 @@ const PerformanceCenterPage = () => {
           </div>
         </div>
 
-        {/* Active Tab Content */}
+        {/* Active Tab */}
         <div className="max-w-[1120px] mx-auto px-4">
           {activeTab === "Company Services" ? (
             <>
-              {/* Filters + Button */}
+              {/* Filters */}
               <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                <div className="">
+                <div>
                   <p className="mb-2">Filter by</p>
                   <div className="flex gap-2">
+                    {/* Brand Selector */}
                     <div className="relative">
                       <select
                         className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
@@ -360,34 +403,39 @@ const PerformanceCenterPage = () => {
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <select
-                        className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
-                        value={selectedServiceId}
-                        onChange={(e) =>
-                          setSelectedServiceId(e.target.value ? Number(e.target.value) : "")
-                        }
-                        disabled={!selectedBrandId}
-                      >
-                        <option value="">Service</option>
-                        {serviceOptions.map((s) => (
-                          <option key={s.service_id} value={s.service_id}>
-                            {s.service_name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                        <svg
-                          className="w-4 h-4 text-gray-500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    {/* ✅ Global Services Selector */}
+{/* ✅ Services Selector (shows brand-specific when brand selected, otherwise global) */}
+<div className="relative">
+  <select
+    className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
+    value={selectedServiceId}
+    onChange={(e) =>
+      setSelectedServiceId(e.target.value ? Number(e.target.value) : "")
+    }
+  >
+    <option value="">Service</option>
+    {(selectedBrandId ? serviceOptions : globalServiceOptions).map((s: any) => (
+      <option
+        key={selectedBrandId ? s.service_id : s.serviceId}
+        value={selectedBrandId ? s.service_id : s.serviceId}
+      >
+        {selectedBrandId ? s.service_name : s.serviceName}
+      </option>
+    ))}
+  </select>
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg
+      className="w-4 h-4 text-gray-500"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+</div>
+
                   </div>
                 </div>
                 <button

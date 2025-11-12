@@ -203,7 +203,7 @@ const CompanyReviews: React.FC<{ branchId: number }> = ({ branchId }) => {
           {/* Reviews */}
           <div className="space-y-6">
             {filteredReviews.map((review, index) => (
-              <div key={index} className="pb-6 border-b border-gray-200">
+              <div key={index} className="pb-6 border-b border-gray-200" style={{display:"flex"}}>
                 <div className="flex gap-1 items-center mb-2 text-[#F9B774]">
                   {Array(5)
                     .fill(0)
@@ -220,7 +220,7 @@ const CompanyReviews: React.FC<{ branchId: number }> = ({ branchId }) => {
                       </svg>
                     ))}
                 </div>
-                <p className="text-gray-800 text-sm mb-2">{review.text}</p>
+                <p className="text-gray-800 text-sm mb-2" style={{marginLeft:"10px"}}>{review.text}</p>
                 <p className="text-gray-500 text-sm italic">
                   By {review.author} &nbsp; {review.date}
                 </p>

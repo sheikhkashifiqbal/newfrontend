@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import * as React from 'react'
+import { useRouter } from "next/navigation";
 
 interface ICardHeader {
   containerClassname?: string
@@ -12,9 +13,12 @@ interface ICardHeader {
   stars: number
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 export function CardHeader({ containerClassname, branchName, logoImg, stars }: ICardHeader) {
+
+
   return (
     <div className={cn('p-4 pb-0 flex items-center gap-x-4', containerClassname)}>
       <img
@@ -79,20 +83,31 @@ export default function ServiceCenterCard({
     Array.isArray(serviceNames) && serviceNames.some((s) => Boolean(s) && String(s).trim() !== '')
   if (!hasBookedServices) return null
 
-  const [isHovered, setIsHovered] = useState(false)
+  const [isHovered, setIsHovered] = useState(false);
+  const router = useRouter();
+  const handleImageClick = () => {
+    // ✅ Redirect to the performance center page with branchId param
+    router.push(`/services/single?branchId=${branchId}`);
+  };
 
   return (
     <div className={cn(isLastRow && 'h-[550px]')}>
+      
       <div
+        onClick={handleImageClick}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleImageClick()}
+
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+         role="link"
         className={cn(
           'max-w-[350px] 1000:max-w-[310px] xl:max-w-[290px] max-h-[460px] w-full overflow-hidden duration-700 ease-in-out rounded-3xl flex flex-col',
           isHovered && 'max-h-[520px] shadow-[0px_24px_32px_0px_#DBE2EF]'
         )}
       >
         <img
-          className="rounded-t-3xl max-h-[160px] object-cover w-full"
+          className="w-full h-[200px] object-cover cursor-pointer transition duration-150 group-hover:brightness-95"
+
           src={`${BASE_URL}/images/${branchCoverImg}`}
           alt={`${branchName} cover`}
         />
@@ -112,6 +127,7 @@ export default function ServiceCenterCard({
           Make a reservation
         </button>
       </div>
+      
     </div>
   )
 }
