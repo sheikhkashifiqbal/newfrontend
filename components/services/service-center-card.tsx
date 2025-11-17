@@ -87,14 +87,13 @@ export default function ServiceCenterCard({
   const router = useRouter();
   const handleImageClick = () => {
     // ✅ Redirect to the performance center page with branchId param
-    router.push(`/services/single?branchId=${branchId}`);
+    router.push(`/services/profile?branchId=${branchId}`);
   };
 
   return (
     <div className={cn(isLastRow && 'h-[550px]')}>
       
       <div
-        onClick={handleImageClick}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleImageClick()}
 
         onMouseEnter={() => setIsHovered(true)}
@@ -107,7 +106,7 @@ export default function ServiceCenterCard({
       >
         <img
           className="w-full h-[200px] object-cover cursor-pointer transition duration-150 group-hover:brightness-95"
-
+          onClick={handleImageClick}
           src={`${BASE_URL}/images/${branchCoverImg}`}
           alt={`${branchName} cover`}
         />
@@ -118,7 +117,7 @@ export default function ServiceCenterCard({
         </div>
 
         <button
-          onClick={() => onClick(branchId)}
+         onClick={() => onClick(branchId)}
           className={cn(
             'w-full bg-steel-blue py-3 px-6 rounded-b-3xl text-white duration-700 ease-in-out text-base font-semibold',
             isHovered ? 'max-h-[60px]' : 'max-h-[0px] p-0'
