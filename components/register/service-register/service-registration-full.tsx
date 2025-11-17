@@ -30,7 +30,9 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
   const [step,setStep] = useState<1 | 2 >(1);
 
   // Load lists (services)
-  const [services, setServices] = useState<Array<{ serviceId: number | string; serviceName: string }>>([]);
+  const [services, setServices] = useState<
+  Array<{ serviceId: number | string; serviceName: string; serviceType?: string }>
+>([]);
   const [brands, setBrands] = useState<string[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
 
@@ -46,9 +48,12 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
             ? sJson.map((x: any) => ({
                 serviceId: x.serviceId ?? x.id ?? x.service_id,
                 serviceName: x.serviceName ?? x.name ?? String(x),
+                // new: serviceType coming from backend
+                serviceType: x.serviceType ?? x.service_type ?? undefined,
               }))
             : []
         );
+
       } catch (e) {
         console.error(e);
       } finally {
@@ -319,12 +324,14 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
           ? info.carBrands.map((x: any) => Number(x)).filter((n: any) => Number.isFinite(n))
           : [];
 
-        const payloads = brandIds.map((brandId: number) => ({
-          branchId,
-          brandId,
-          serviceId,
-          qty,
-        }));
+      const payloads = brandIds.map((brandId: number) => ({
+        branchId,
+        brandId,
+        serviceId,
+        qty,
+        experts: Number((b as any).experts ?? 1)   // <-- NEW
+      }));
+
 
         await Promise.all(
           payloads.map((p:any)  =>
