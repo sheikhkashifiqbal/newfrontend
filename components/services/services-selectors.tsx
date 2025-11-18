@@ -4,7 +4,7 @@ import { DatePicker } from "@/components/app-custom/date-pick";
 import { CarSelector } from "@/components/services/selectors/car-selector";
 import { CarModelSelector } from "@/components/services/selectors/car-model-selector";
 import { ServiceSelector } from "@/components/services/selectors/service-selector";
-import { CitySelector } from "@/components/services/selectors/city-selector";
+import { CitySelector } from "@/components/services/selectors/city-selector-service";
 import CustomBlueBtn from "@/components/app-custom/CustomBlueBtn";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
@@ -117,7 +117,7 @@ export default function ServicesSelectors({
     if (!selectedBrand?.id) e.brand = "Please select a car brand";
     if (!selectedModel?.id) e.model = "Please select a car model";
     if (!selectedService?.id) e.service = "Please select a service";
-    if (!selectedCity?.id) e.city = "Please select a city";
+    if (!selectedCity?.label) e.city = "Please select a city";
     setErrors(e);
     const firstKey = Object.keys(e)[0];
     if (firstKey && errorRefs[firstKey as keyof typeof errorRefs].current)

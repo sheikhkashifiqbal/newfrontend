@@ -32,7 +32,7 @@ export default function Services() {
 
   const doFetch = useCallback(async (payload: Record<string, unknown>) => {
     try {
-      const res = await fetch(`${BASE_URL}/api/branches/services/search`, {
+      const res = await fetch(`${BASE_URL}/api/reservations/search-branches`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
