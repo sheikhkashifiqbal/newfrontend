@@ -1,9 +1,10 @@
 "use client";
-import ModalBox from "@/components/model-box";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MakeAReservation } from "./MakeAReservation";
 import CompanyReviews from "./company-review";
 import { useSearchParams } from "next/navigation";
+import ServiceCardModal from "@/components/services/service-card-modal";
+import LoginPopupModal from "@/components/login/LoginPopupModal";
 
 const tabs = [
   { label: "Company Services", icon: "/icons/tool-02.svg" },
@@ -32,6 +33,25 @@ const dayIndex: Record<string, number> = {
 };
 const indexDay = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+/* ---------- Local JWT helpers (same logic as LoginPopupModal) ---------- */
+function getJwtExpiryEpochLocal(token?: string): number | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const payload = JSON.parse(atob(parts[1]));
+    return typeof payload?.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+function isJwtValidLocal(token?: string): boolean {
+  const exp = getJwtExpiryEpochLocal(token);
+  if (!exp) return false;
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  return exp > nowEpoch;
+}
+
 function mode<T>(arr: T[], key?: (x: T) => any): any {
   const counts = new Map<any, number>();
   for (const item of arr) {
@@ -51,10 +71,16 @@ function mode<T>(arr: T[], key?: (x: T) => any): any {
 
 const PerformanceCenterPage = () => {
   const [activeTab, setActiveTab] = useState<any>("Company Services");
-  const [openModal, setOpenModal] = useState<any>(false);
   const params = useSearchParams();
   const branchId = Number(params?.get("branchId") || 1);
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  // 🔐 Login state (for hiding address/phones + deciding what to open)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+
+  // Reservation & login modal state
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
 
   // Filters
   const [brandOptions, setBrandOptions] = useState<BrandOption[]>([]);
@@ -74,6 +100,27 @@ const PerformanceCenterPage = () => {
   const [hoursRange, setHoursRange] = useState<string>("Monday–Friday: 09:00–18:00");
   const [managerPhone, setManagerPhone] = useState<string>("+99450 289–09–85");
   const [managerMobile, setManagerMobile] = useState<string>("+99450 289–09–80");
+
+  // 🔐 Detect login on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("auth_response");
+      if (!raw) {
+        setIsLoggedIn(false);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const token = parsed?.token as string | undefined;
+      if (!token || !isJwtValidLocal(token)) {
+        setIsLoggedIn(false);
+        return;
+      }
+      setIsLoggedIn(true);
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, []);
 
   // ---- API: Brands ----
   useEffect(() => {
@@ -114,15 +161,13 @@ const PerformanceCenterPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ branch_id: branchId, brand_id: selectedBrandId }),
         });
-        
+
         if (!res.ok) throw new Error("Failed to load services");
         const json = await res.json();
         console.log("JSONN", json);
         const services: ServiceOption[] = json?.services ?? [];
-        if (alive)
-        {
-            setServiceOptions(services);
-            //setGlobalServiceOptions(services);
+        if (alive) {
+          setServiceOptions(services);
         }
       } catch {
         if (alive) setServiceOptions([]);
@@ -135,7 +180,7 @@ const PerformanceCenterPage = () => {
     };
   }, [BASE_URL, branchId, selectedBrandId, activeTab]);
 
-  // ---- ✅ NEW: Global Services on Page Load ----
+  // ---- Global Services on Page Load ----
   useEffect(() => {
     async function loadGlobalServices() {
       try {
@@ -209,7 +254,9 @@ const PerformanceCenterPage = () => {
           setHoursToday("Closed today");
         }
 
-        const days = json.map((r: any) => r.workingDay.toLowerCase()).filter((x: string) => x in dayIndex);
+        const days = json
+          .map((r: any) => r.workingDay.toLowerCase())
+          .filter((x: string) => x in dayIndex);
         if (days.length) {
           const indices = days.map((d: string) => dayIndex[d]).sort((a: number, b: number) => a - b);
           const start = indexDay[indices[0]];
@@ -249,7 +296,7 @@ const PerformanceCenterPage = () => {
         setAddressText(composed || "Branch Address");
         setMapUrl(branchJson?.branchAddress || "#");
 
-        // ✅ NEW: Call company details API
+        // Company details (manager phones)
         if (branchJson?.companyId) {
           const companyRes = await fetch(`${BASE_URL}/api/companies/${branchJson.companyId}`);
           if (companyRes.ok) {
@@ -269,31 +316,56 @@ const PerformanceCenterPage = () => {
     };
   }, [BASE_URL, branchId]);
 
+  // 🔘 Make a reservation button handler (Option 2 behavior)
+  const handleMakeReservationClick = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("auth_response");
+      if (!raw) {
+        // Not logged in → open login popup only
+        setIsLoginOpen(true);
+        window.dispatchEvent(new CustomEvent("open-login-modal"));
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const token = parsed?.token as string | undefined;
+      if (!token || !isJwtValidLocal(token)) {
+        // Token missing or expired → treat as not logged in
+        setIsLoginOpen(true);
+        window.dispatchEvent(new CustomEvent("open-login-modal"));
+        return;
+      }
+
+      // Logged in → open reservation modal for this branch
+      setSelectedBranchId(branchId);
+    } catch {
+      // Any error → fall back to login popup
+      setIsLoginOpen(true);
+      window.dispatchEvent(new CustomEvent("open-login-modal"));
+    }
+  };
+
   return (
     <>
       <div className="bg-[#F8F9FA] min-h-screen">
         {/* Back Button */}
         <div className="max-w-[1224px] mx-auto px-4 pt-6">
-            <button
-                onClick={() => (window.location.href = "/services")}
-                className="flex items-center gap-2 text-[#3F72AF] font-medium hover:text-[#265d97] transition-colors"
+          <button
+            onClick={() => (window.location.href = "/services")}
+            className="flex items-center gap-2 text-[#3F72AF] font-medium hover:text-[#265d97] transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-5 h-5"
             >
-                <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-5 h-5"
-                >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 19.5L8.25 12l7.5-7.5"
-                />
-                </svg>
-                Back to Services
-            </button>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Back to Services
+          </button>
         </div>
 
         {/* Header */}
@@ -330,18 +402,35 @@ const PerformanceCenterPage = () => {
         {/* Company Info */}
         <section className="max-w-[1120px] mx-auto px-4 text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
-            <p>📍 {addressText}</p>
-            <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
-              Google Map
-            </a>
+            {/* Hide address + map if user not logged in */}
+            {isLoggedIn && (
+              <>
+
+                <p>📍 {addressText}</p>
+              </>
+               )}
+              <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
+                  Google Map
+                </a>
+              
+           
           </div>
           <div>
-            <p>🕒 {hoursRange}</p>
-            <p>{hoursToday}</p>
+            {isLoggedIn && (
+            <>
+             <p>🕒 {hoursRange}</p>
+             <p>🕒 {hoursToday}</p>
+            </>
+             )}
           </div>
           <div>
-            <p>📞 {managerPhone}</p>
-            <p>📞 {managerMobile}</p>
+            {/* Hide manager phones if user not logged in */}
+            {isLoggedIn && (
+              <>
+                <p>📞 {managerPhone}</p>
+                <p>📞 {managerMobile}</p>
+              </>
+            )}
           </div>
         </section>
 
@@ -403,55 +492,59 @@ const PerformanceCenterPage = () => {
                       </div>
                     </div>
 
-                    {/* ✅ Global Services Selector */}
-{/* ✅ Services Selector (shows brand-specific when brand selected, otherwise global) */}
-<div className="relative">
-  <select
-    className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
-    value={selectedServiceId}
-    onChange={(e) =>
-      setSelectedServiceId(e.target.value ? Number(e.target.value) : "")
-    }
-  >
-    <option value="">Service</option>
-    {(selectedBrandId ? serviceOptions : globalServiceOptions).map((s: any) => (
-      <option
-        key={selectedBrandId ? s.service_id : s.serviceId}
-        value={selectedBrandId ? s.service_id : s.serviceId}
-      >
-        {selectedBrandId ? s.service_name : s.serviceName}
-      </option>
-    ))}
-  </select>
-  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-    <svg
-      className="w-4 h-4 text-gray-500"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  </div>
-</div>
-
+                    {/* Services Selector (brand-specific or global) */}
+                    <div className="relative">
+                      <select
+                        className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
+                        value={selectedServiceId}
+                        onChange={(e) =>
+                          setSelectedServiceId(e.target.value ? Number(e.target.value) : "")
+                        }
+                      >
+                        <option value="">Service</option>
+                        {(selectedBrandId ? serviceOptions : globalServiceOptions).map((s: any) => (
+                          <option
+                            key={selectedBrandId ? s.service_id : s.serviceId}
+                            value={selectedBrandId ? s.service_id : s.serviceId}
+                          >
+                            {selectedBrandId ? s.service_name : s.serviceName}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                        <svg
+                          className="w-4 h-4 text-gray-500"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                {/* 🔘 Make a reservation button with login check + branchId usage */}
                 <button
-                  onClick={() => setOpenModal(true)}
+                  onClick={handleMakeReservationClick}
                   className="bg-[#3F72AF] hover:bg-[#2753c3] text-white px-6 py-2 rounded-md text-sm"
                 >
-                  Make Reservation
+                  Make a reservation
                 </button>
               </div>
 
               {/* Services Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-12">
                 {loadingGrid ? (
-                  <div className="col-span-full py-8 text-center text-gray-500">Loading services…</div>
+                  <div className="col-span-full py-8 text-center text-gray-500">
+                    Loading services…
+                  </div>
                 ) : grid.length === 0 ? (
-                  <div className="col-span-full py-8 text-center text-gray-500">No services found.</div>
+                  <div className="col-span-full py-8 text-center text-gray-500">
+                    No services found.
+                  </div>
                 ) : (
                   grid.map((row, idx) => {
                     const logo = `${BASE_URL}/images/${row.brand_icon}`;
@@ -487,15 +580,14 @@ const PerformanceCenterPage = () => {
         </div>
       </div>
 
-      <ModalBox
-        open={openModal}
-        onOpenChange={() => setOpenModal(null)}
-        title="Make the reservation"
-        maxWidth="808px"
-        bg="bg-gray-50"
-      >
-        <MakeAReservation />
-      </ModalBox>
+      {/* 🔐 Login popup (opened when user not logged in) */}
+      <LoginPopupModal isOpen={isLoginOpen} setIsOpen={setIsLoginOpen} />
+
+      {/* 📅 Reservation modal (service-card-modal.tsx) */}
+      <ServiceCardModal
+        selectedBranchId={selectedBranchId}
+        closeModal={() => setSelectedBranchId(null)}
+      />
     </>
   );
 };

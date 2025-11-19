@@ -29,7 +29,8 @@ export function CardHeader({ containerClassname, branchName, logoImg, stars }: I
       <div className="flex flex-col gap-y-0.5">
         <h5 className="text-charcoal text-base font-semibold">{branchName}</h5>
         <div className="flex items-center gap-x-1">
-          <StarIcon className="!size-5" />
+          <StarIcon className="!size-2" />
+          <img src={`/assets/icons/services/YellowStarIcon.svg`} width="17" />
           <h6 className="text-charcoal text-sm font-semibold">{stars?.toFixed(1) ?? '0.0'}</h6>
         </div>
       </div>
