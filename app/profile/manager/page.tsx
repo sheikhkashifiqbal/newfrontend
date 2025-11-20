@@ -190,6 +190,20 @@ const tabItems = [
     ),
   },
   {
+    label: "Spare part request",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M7 7H17V17H7V7Z"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M3 3L21 21" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: "Profile info",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">

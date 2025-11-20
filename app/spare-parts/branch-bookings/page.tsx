@@ -236,6 +236,13 @@ export default function SparePartsRequestPage() {
     );
   };
 
+  // 🔹 UI labels for tabs (logic still uses original TabStatus strings)
+  const tabLabelMap: Record<TabStatus, string> = {
+    Pending: "Spare part requests",
+    "Accepted offers": "Accepted offers",
+    "Accepted requests": "Sent offers",
+  };
+
   if (branchId == null) return null;
 
   return (
@@ -304,44 +311,49 @@ export default function SparePartsRequestPage() {
       {/* Tabs Section */}
       <section className="border-b border-gray-200 mb-8">
         <div className="flex gap-3 sm:gap-10 max-w-[1120px] mx-auto px-4">
-          {(["Accepted offers", "Accepted requests", "Pending"] as TabStatus[]).map(
-            (tab) => {
-              const isActive = activeTab === tab;
-              const borderColor =
-                tab === "Accepted offers"
-                  ? "border-blue-400"
-                  : tab === "Accepted requests"
-                  ? "border-green-400"
-                  : "border-yellow-400";
-              return (
-                <button
-                  key={tab}
-                  className={`px-0 py-4 font-medium flex gap-1 sm:gap-3 items-center ${
-                    isActive
-                      ? `text-gray-700 border-b-2 ${borderColor}`
-                      : "text-gray-300 hover:text-gray-700"
-                  }`}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  <img
-                    src={
-                      tab === "Accepted offers"
-                        ? "/icons/clock-fast-forward.svg"
-                        : tab === "Accepted requests"
-                        ? "/icons/check-circle-broken.svg"
-                        : "/icons/clock-refresh.svg"
-                    }
-                    width={24}
-                    alt={`${tab} icon`}
-                  />
-                  <p>{tab}</p>
-                  <span className="px-3 py-[2px] border border-[#E9ECEF] rounded-3xl">
-                    {tabCounts[tab]}
-                  </span>
-                </button>
-              );
-            }
-          )}
+          {(
+            [
+              "Pending",
+              "Accepted offers",
+              "Accepted requests",
+            ] as TabStatus[]
+          ).map((tab) => {
+            const isActive = activeTab === tab;
+            const borderColor =
+              tab === "Accepted offers"
+                ? "border-blue-400"
+                : tab === "Accepted requests"
+                ? "border-green-400"
+                : "border-yellow-400";
+            return (
+              <button
+                key={tab}
+                className={`px-0 py-4 font-medium flex gap-1 sm:gap-3 items-center ${
+                  isActive
+                    ? `text-gray-700 border-b-2 ${borderColor}`
+                    : "text-gray-300 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                <img
+                  src={
+                    tab === "Accepted offers"
+                      ? "/icons/clock-fast-forward.svg"
+                      : tab === "Accepted requests"
+                      ? "/icons/check-circle-broken.svg"
+                      : "/icons/clock-refresh.svg"
+                  }
+                  width={24}
+                  alt={`${tab} icon`}
+                />
+                {/* 🔹 Show custom labels while logic uses original TabStatus */}
+                <p>{tabLabelMap[tab]}</p>
+                <span className="px-3 py-[2px] border border-[#E9ECEF] rounded-3xl">
+                  {tabCounts[tab]}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
