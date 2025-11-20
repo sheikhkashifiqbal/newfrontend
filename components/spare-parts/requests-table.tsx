@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 // ⚠️ Update the import path to where your page lives in your app
-import type { SparePartRequestUI, ApiSparePartItem } from "@/app/spare-parts/request/page"; // update the import path to where your page lives
+import type { SparePartRequestUI, ApiSparePartItem } from "@/app/spare-parts/customer-bookings/page"; // update the import path to where your page lives
 
 interface SparePartsTableProps {
   services?: SparePartRequestUI[];
@@ -106,7 +106,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
     const row = modalItems[idx];
     if (!row?.id) return;
     try {
-      const res = await fetch(`${BASE_URL}/spare-parts/request-details/${row.id}`, {
+      const res = await fetch(`${BASE_URL}/api/spare-parts/request-details/${row.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
