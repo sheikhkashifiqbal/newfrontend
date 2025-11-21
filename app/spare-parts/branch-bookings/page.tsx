@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import NavTabs from "@/components/nav-tabs";
-import SparePartsTable from "@/components/spare-parts/requests-table";
+import NavTabs from "@/components/spareparts-nav-tabs";
+import SparePartsTable from "@/components/spare-parts/spareparts-requests-table";
 
 export type TabStatus = "Accepted offers" | "Accepted requests" | "Pending";
 
@@ -243,12 +243,32 @@ export default function SparePartsRequestPage() {
     "Accepted requests": "Sent offers",
   };
 
+  // 🔹 NEW: handle top nav tab redirects
+  const handleTopTabsChange = (label: string) => {
+    if (label === "Profile info") {
+      window.location.href = "/profile/manager";
+      return;
+    }
+    if (label === "Spare part request") {
+      window.location.href = "/spare-parts/branch-bookings";
+      return;
+    }
+    if (label === "My bookings") {
+      window.location.href = "/services/branch-bookings";
+      return;
+    }
+  };
+
   if (branchId == null) return null;
 
   return (
     <div className="bg-gray-50 pb-20">
       <section className="max-w-[1120px] mx-auto px-4 py-8">
-        <NavTabs tabItems={tabItems} defaultActiveTab="Spare part request" />
+        <NavTabs
+          tabItems={tabItems}
+          defaultActiveTab="Spare part request"
+          onChange={handleTopTabsChange}
+        />
       </section>
 
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
@@ -262,8 +282,6 @@ export default function SparePartsRequestPage() {
         <div>
           <label className="block mt-6 text-sm text-[#495057]">Filters</label>
           <div className="mt-3 flex gap-3 flex-wrap">
-
-            {/* NEW Brand Filter */}
             <div className="relative">
               <select
                 className="appearance-none bg-[#E9ECEF] min-w-[200px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
@@ -283,7 +301,6 @@ export default function SparePartsRequestPage() {
               </div>
             </div>
 
-            {/* Existing Spare Part Filter */}
             <div className="relative">
               <select
                 className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
@@ -303,7 +320,6 @@ export default function SparePartsRequestPage() {
               </div>
             </div>
 
-            {/* ❌ VIN Filter Removed (as requested) */}
           </div>
         </div>
       </section>
@@ -346,7 +362,6 @@ export default function SparePartsRequestPage() {
                   width={24}
                   alt={`${tab} icon`}
                 />
-                {/* 🔹 Show custom labels while logic uses original TabStatus */}
                 <p>{tabLabelMap[tab]}</p>
                 <span className="px-3 py-[2px] border border-[#E9ECEF] rounded-3xl">
                   {tabCounts[tab]}
