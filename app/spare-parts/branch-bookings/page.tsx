@@ -273,10 +273,10 @@ export default function SparePartsRequestPage() {
 
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
         <h2 className="text-[#3F72AF] text-2xl md:text-[32px] font-semibold">
-          Spare part request
+          Spare part requests
         </h2>
         <p className="text-[#ADB5BD] text-xl md:text[20px] mt-2">
-          See your scheduled services from your calendar.
+          See your request from users.
         </p>
 
         <div>

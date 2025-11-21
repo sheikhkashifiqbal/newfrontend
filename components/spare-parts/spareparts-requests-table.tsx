@@ -11,7 +11,7 @@ interface SparePartsTableProps {
 // Match backend casing used in your examples ("class A/B/C")
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CLASS_OPTIONS = ["class A", "class B", "class C"] as const;
-const API_URL = `${BASE_URL}/api/spare-parts/offers/by-user`;
+const API_URL = `${BASE_URL}/api/spare-parts/offers/store-branch`;
 
 /* -------------------- Tiny Toast (no dependency) -------------------- */
 type ToastType = "success" | "error";
@@ -54,11 +54,15 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
   // --- Refresh modal data from server whenever popup opens ---
   const refreshModalFromServer = async (requestId: number) => {
     try {
-      const userId = Number(localStorage.getItem("user_id") || 1);
+      //const userId = Number(localStorage.getItem("user_id") || 1);
+      const authRaw = localStorage.getItem("auth_response");
+      const parsed = authRaw ? JSON.parse(authRaw) : null;
+      const id = parsed?.branch_id;
+
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({ branch_id: id }),
       });
       const list: any[] = await res.json();
       const row = list.find((d: any) => d.sparepartsrequest_id === requestId);
