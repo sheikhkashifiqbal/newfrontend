@@ -24,7 +24,7 @@ const ProfileInfoPage = () => {
   >([]);
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
 
-  // ✅ Step 1: Check localStorage and auth_response for branch_id
+  // Load auth + branch once page loads
   useEffect(() => {
     try {
       const authRaw = localStorage.getItem("auth_response");
@@ -42,7 +42,7 @@ const ProfileInfoPage = () => {
         setBranchList(branches);
       }
 
-      // Determine which branch_id to use
+      // Determine branch selection
       let currentBranchId: string | null = null;
 
       if (storedSelectedBranch) {
@@ -63,23 +63,24 @@ const ProfileInfoPage = () => {
     }
   }, []);
 
-  // ✅ Step 3: Handle dropdown change
+  // When user changes branch dropdown
   const handleBranchChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const newBranchId = event.target.value;
     localStorage.setItem("selected_branch", newBranchId);
     localStorage.setItem("branch_id", newBranchId);
-    window.location.reload();
+    window.location.reload(); // Full reload as required
   };
 
-  if (selectedBranch === null) return null; // wait for branch selection
+  if (selectedBranch === null) return null; // wait before rendering
 
   return (
     <div className="bg-[#F8F9FA] min-h-screen">
+      {/* Main Top Navigation Tabs */}
       <main className="max-w-[1120px] mx-auto px-4 py-8">
         <NavTabs tabItems={tabItems} defaultActiveTab="Profile info" />
       </main>
 
-      {/* Section Title & Filters */}
+      {/* Title Section */}
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
         <h2 className="text-[#3F72AF] text-2xl md:text-[32px] font-semibold">
           Profile info
@@ -88,7 +89,7 @@ const ProfileInfoPage = () => {
           Everything about your profile
         </p>
 
-        {/* ✅ Step 2: Dropdown Selector for Branch List */}
+        {/* Branch Dropdown */}
         {branchList.length > 0 && (
           <div className="mt-4">
             <label
@@ -113,7 +114,7 @@ const ProfileInfoPage = () => {
         )}
       </section>
 
-      {/* Tabs Section */}
+      {/* Inner Profile Section Tabs */}
       <section className="border-b border-gray-200 mb-8">
         <div className="flex gap-3 lg:justify-between lg:gap-12 max-w-[1120px] mx-auto px-4 flex-wrap">
           {(
@@ -161,6 +162,7 @@ const ProfileInfoPage = () => {
         </div>
       </section>
 
+      {/* Module Content */}
       <section className="max-w-[1120px] mx-auto px-4">
         {activeTab === "Work schedule" && <WorkSchedule />}
         {activeTab === "My services" && <MyServices />}
@@ -175,9 +177,14 @@ const ProfileInfoPage = () => {
 
 export default ProfileInfoPage;
 
+
+// -------------------------
+// TAB ITEMS WITH REDIRECT
+// -------------------------
 const tabItems = [
   {
     label: "My bookings",
+    path: "/services/branch-bookings",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <path
@@ -191,6 +198,7 @@ const tabItems = [
   },
   {
     label: "Spare part request",
+    path: "/spare-parts/branch-bookings",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <path
@@ -205,6 +213,7 @@ const tabItems = [
   },
   {
     label: "Profile info",
+    path: "/profile/manager",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <path

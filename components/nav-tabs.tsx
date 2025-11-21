@@ -1,53 +1,65 @@
 // components/NavTabs.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type TabItem = {
-    label: string;
-    icon: React.ReactNode;
+  label: string;
+  icon: React.ReactNode;
+  path?: string;
 };
 
 type NavTabsProps = {
-    tabItems: TabItem[];
-    defaultActiveTab?: string;
-    onChange?: (tab: string) => void;
+  tabItems: TabItem[];
+  defaultActiveTab?: string;
+  onChange?: (tab: string) => void;
 };
 
 const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange }) => {
-    const [activeTab, setActiveTab] = useState(defaultActiveTab || tabItems[0]?.label);
+  const router = useRouter();
 
-    const handleTabClick = (label: string) => {
-        setActiveTab(label);
-        onChange?.(label); // Optional callback to parent
-    };
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return localStorage.getItem("active_tab") || defaultActiveTab || tabItems[0]?.label;
+  });
 
-    return (
-        <div className="flex flex-col-reverse md:flex-row md:items-center gap-3 md:justify-between">
-            <div className="flex items-center gap-3">
-                {tabItems.map(({ label, icon }) => (
-                    <button
-                        key={label}
-                        className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${activeTab === label ? "bg-blue-50 !text-[#3F72AF]" : ""
-                            }`}
-                        onClick={() => handleTabClick(label)}
-                    >
-                        {/* Clone icon and apply dynamic stroke if possible */}
-                        {React.isValidElement(icon)
-                            ? React.cloneElement(
-                                icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
-                                {
-                                    stroke: activeTab === label ? "#3F72AF" : "#495057",
-                                }
-                            )
-                            : icon}
+  useEffect(() => {
+    localStorage.setItem("active_tab", activeTab);
+  }, [activeTab]);
 
-                        {label}
-                    </button>
-                ))}
-            </div>
-            {/* Log out button (desktop only) */}
-           
-        </div>
-    );
+  const handleTabClick = (item: TabItem) => {
+    setActiveTab(item.label);
+    onChange?.(item.label);
+
+    if (item.path) {
+      window.location.href = item.path; // full reload required ✔
+    }
+  };
+
+  return (
+    <div className="flex flex-col-reverse md:flex-row md:items-center gap-3 md:justify-between">
+      <div className="flex items-center gap-3">
+        {tabItems.map((item) => (
+          <button
+            key={item.label}
+            className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${
+              activeTab === item.label ? "bg-blue-50 !text-[#3F72AF]" : ""
+            }`}
+            onClick={() => handleTabClick(item)}
+          >
+            {React.isValidElement(item.icon)
+              ? React.cloneElement(
+                  item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
+                  {
+                    stroke: activeTab === item.label ? "#3F72AF" : "#495057",
+                  }
+                )
+              : item.icon}
+
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export default NavTabs;
