@@ -24,8 +24,8 @@ export type ApiSparePartsResponse = {
   spareparts_type: string;
   state: string;
   spare_part: ApiSparePartItem[];
-  brand_id?: number;       // ⚠ added: some records include brand_id
-  brand_name?: string;     // ⚠ added
+  brand_id?: number; // ⚠ added: some records include brand_id
+  brand_name?: string; // ⚠ added
   manager_mobile: string;
   id: number;
   request_status: string;
@@ -107,6 +107,11 @@ const tabItems = [
   },
 ];
 
+type BranchOption = {
+  branch_id: number;
+  branch_name: string;
+};
+
 export default function SparePartsRequestPage() {
   const [activeTab, setActiveTab] = useState<TabStatus>("Accepted offers");
   const [selectedPart, setSelectedPart] = useState<string>("All");
@@ -115,21 +120,77 @@ export default function SparePartsRequestPage() {
   const [sparePartRequests, setSparePartRequests] = useState<SparePartRequestUI[]>([]);
   const [branchId, setBranchId] = useState<number | null>(null);
 
-  // ⬇ REPLACE userId logic with branch_id
+  // NEW: hold branch list from auth_response for dropdown
+  const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
+
+  // ✅ UPDATED: get branch_id from localStorage 'branch_id' first, then fallback to auth_response
   useEffect(() => {
     try {
-      const authRaw = localStorage.getItem("auth_response");
-      if (!authRaw) {
-        window.location.href = "/";
-        return;
+      // 1) Try to read from localStorage key 'branch_id'
+      const storedBranchIdRaw = localStorage.getItem("branch_id");
+      let branchFromStorage: number | null = null;
+
+      if (storedBranchIdRaw) {
+        const parsedNum = Number(storedBranchIdRaw);
+        if (!Number.isNaN(parsedNum)) {
+          branchFromStorage = parsedNum;
+        }
       }
 
-      const parsed = JSON.parse(authRaw);
-      const id = parsed?.branch_id;
-      if (id) {
-        localStorage.setItem("branchId", String(id));
-        setBranchId(Number(id));
+      // 2) Read auth_response (for branch_list + fallback branch_id)
+      const authRaw = localStorage.getItem("auth_response");
+      let parsedAuth: any = null;
+
+      if (authRaw) {
+        parsedAuth = JSON.parse(authRaw);
+
+        // If there is a branch_list in auth_response, store it for dropdown
+        if (Array.isArray(parsedAuth?.branch_list)) {
+          const list: BranchOption[] = parsedAuth.branch_list
+            .filter(
+              (b: any) =>
+                b &&
+                (typeof b.branch_id === "number" ||
+                  (typeof b.branch_id === "string" && b.branch_id !== ""))
+            )
+            .map((b: any) => ({
+              branch_id:
+                typeof b.branch_id === "number"
+                  ? b.branch_id
+                  : Number(b.branch_id),
+              branch_name: String(b.branch_name ?? ""),
+            }))
+            .filter((b: BranchOption) => !Number.isNaN(b.branch_id));
+
+          setBranchOptions(list);
+        }
+      }
+
+      // 3) Decide final branch_id: localStorage 'branch_id' first, else auth_response.branch_id
+      let branchFromAuth: number | null = null;
+      if (parsedAuth && parsedAuth.branch_id != null) {
+        if (typeof parsedAuth.branch_id === "number") {
+          branchFromAuth = parsedAuth.branch_id;
+        } else {
+          const parsedNum = Number(parsedAuth.branch_id);
+          if (!Number.isNaN(parsedNum)) {
+            branchFromAuth = parsedNum;
+          }
+        }
+      }
+
+      const finalBranchId = branchFromStorage ?? branchFromAuth;
+
+      if (finalBranchId != null) {
+        setBranchId(finalBranchId);
+
+        // Store in required key 'branch_id'
+        localStorage.setItem("branch_id", String(finalBranchId));
+
+        // Keep existing compatibility key if it was used before
+        localStorage.setItem("branchId", String(finalBranchId));
       } else {
+        // If no branch id anywhere, redirect to home
         window.location.href = "/";
       }
     } catch {
@@ -243,7 +304,7 @@ export default function SparePartsRequestPage() {
     "Accepted requests": "Sent offers",
   };
 
-  // 🔹 NEW: handle top nav tab redirects
+  // 🔹 handle top nav tab redirects
   const handleTopTabsChange = (label: string) => {
     if (label === "Profile info") {
       window.location.href = "/profile/manager";
@@ -279,6 +340,52 @@ export default function SparePartsRequestPage() {
           See your request from users.
         </p>
 
+        {/* ✅ NEW: Select Branch dropdown (from auth_response.branch_list) */}
+        {branchOptions.length > 0 && (
+          <div className="mt-6">
+            <label className="block text-sm text-[#495057] mb-2">
+              Select Branch
+            </label>
+            <div className="relative inline-block">
+              <select
+                className="appearance-none bg-[#E9ECEF] min-w-[240px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
+                value={branchId ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const numeric = Number(val);
+                  if (Number.isNaN(numeric)) return;
+
+                  // update state and localStorage 'branch_id' as requested
+                  setBranchId(numeric);
+                  localStorage.setItem("branch_id", String(numeric));
+
+                  // keep compatibility key if used elsewhere
+                  localStorage.setItem("branchId", String(numeric));
+                }}
+              >
+                <option value="">Select Branch</option>
+                {branchOptions.map((b) => (
+                  <option key={b.branch_id} value={b.branch_id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg
+                  className="w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block mt-6 text-sm text-[#495057]">Filters</label>
           <div className="mt-3 flex gap-3 flex-wrap">
@@ -295,7 +402,13 @@ export default function SparePartsRequestPage() {
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
@@ -314,12 +427,17 @@ export default function SparePartsRequestPage() {
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -328,11 +446,7 @@ export default function SparePartsRequestPage() {
       <section className="border-b border-gray-200 mb-8">
         <div className="flex gap-3 sm:gap-10 max-w-[1120px] mx-auto px-4">
           {(
-            [
-              "Pending",
-              "Accepted offers",
-              "Accepted requests",
-            ] as TabStatus[]
+            ["Pending", "Accepted offers", "Accepted requests"] as TabStatus[]
           ).map((tab) => {
             const isActive = activeTab === tab;
             const borderColor =
