@@ -163,13 +163,14 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
     }
   };
 
-  const acceptOrDecline = async (sparepartsrequest_id: number, next: "accepted_offer" | "pending") => {
+  const acceptOrDecline = async (sparepartsrequest_id: number, next: "accepted_offer" | "pending" | "canceled") => {
     try {
       await fetch(`${BASE_URL}/api/spareparts-requests/${sparepartsrequest_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_status: next }),
+        body: JSON.stringify({ requestStatus: next }),
       });
+      console.log("Statusss", next);
       onStatusChange?.(sparepartsrequest_id, next);
     } catch (e) {
       console.error("Failed to update request status:", e);
@@ -239,31 +240,50 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
                   <td className="px-4 py-4 break-words">{r.state}</td>
 
                   {/* Spare parts column */}
-                  <td className="px-0 py-4">
-                    {columns.showAcceptDecline ? (
-                      <div className="flex gap-2">
-                        <button
-                          className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
-                          onClick={() => acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
-                          onClick={() => acceptOrDecline(r.sparepartsrequest_id, "pending")}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-                        onClick={() => openModal(r.spareParts, r.carPart, columns.canEditSpareParts, r.sparepartsrequest_id)}
-                      >
-                        {columns.sparePartsButtonLabel}
-                      </button>
-                    )}
-                  </td>
+{/* Spare parts column */}
+<td className="px-0 py-4">
+  {columns.showAcceptDecline ? (
+    <div className="flex gap-2 items-center">
+      {/* ➤ NEW VIEW BUTTON ADDED FOR ACCEPTED REQUESTS */}
+      <button
+        className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+        onClick={() =>
+          openModal(
+            r.spareParts,
+            r.carPart,
+            false, // keep View-only mode for Accepted Requests
+            r.sparepartsrequest_id
+          )
+        }
+      >
+        View
+      </button>
+
+      {/* EXISTING BUTTONS - NOT MODIFIED */}
+      <button
+        className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
+        onClick={() => acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")}
+      >
+        Accept
+      </button>
+
+      <button
+        className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
+        onClick={() => acceptOrDecline(r.sparepartsrequest_id, "canceled")}
+      >
+        Decline
+      </button>
+    </div>
+  ) : (
+    <button
+      className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+      onClick={() => openModal(r.spareParts, r.carPart, columns.canEditSpareParts, r.sparepartsrequest_id)}
+    >
+      {columns.sparePartsButtonLabel}
+    </button>
+  )}
+</td>
+
 
                   {/* Visible only for Accepted offers */}
                   {columns.showAction && <td className="px-0 py-0 break-words">{r.managerMobile}AAA</td>}
