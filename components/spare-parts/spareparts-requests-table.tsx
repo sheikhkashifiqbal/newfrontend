@@ -106,29 +106,48 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
   };
 
   // ---- API helpers for detail rows
-  const updateDetailAt = async (idx: number) => {
-    const row = modalItems[idx];
-    if (!row?.id) return;
-    try {
-      const res = await fetch(`${BASE_URL}/api/spare-parts/request-details/${row.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sparepartsrequest_id: row.sparepartsrequest_id,
-          spare_part: row.spare_part,
-          class_type: row.class_type,
-          qty: Number(row.qty) || 0,
-          price: Number(row.price) || 0,
-        }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      showToast("Row updated successfully", "success");
-      if (modalRequestId) await refreshModalFromServer(modalRequestId);
-    } catch (e) {
-      console.error("Failed to update detail:", e);
-      showToast("Update failed", "error");
-    }
-  };
+ const updateDetailAt = async (idx: number) => {
+  const row = modalItems[idx];
+  if (!row?.id) return;
+
+  try {
+    // --- FIRST REQUIRED API CALL ---
+    const res = await fetch(`${BASE_URL}/api/spare-parts/request-details/${row.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sparepartsrequest_id: row.sparepartsrequest_id,
+        spare_part: row.spare_part,
+        class_type: row.class_type,
+        qty: Number(row.qty) || 0,
+        price: Number(row.price) || 0,
+      }),
+    });
+
+    if (!res.ok) throw new Error(String(res.status));
+
+    // --- SECOND API CALL (Automatically after first one succeeds) ---
+    await fetch(`http://localhost:8081/api/spareparts-requests/${row.sparepartsrequest_id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestStatus: "accepted_request" }),
+    });
+
+    // Show success notification
+    showToast("Updated successfully!", "success");
+
+    // Refresh popup UI
+    if (modalRequestId) await refreshModalFromServer(modalRequestId);
+
+    // Notify parent state updater if provided
+    onStatusChange?.(row.sparepartsrequest_id!, "accepted_request");
+
+  } catch (e) {
+    console.error("Failed to update detail:", e);
+    showToast("Update failed", "error");
+  }
+};
+
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const createDetailAt = async (idx: number) => {
@@ -393,7 +412,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
                               }
                               title="Update this row"
                             >
-                              Update
+                              Accept
                             </button>
                             {/* Delete icon removed as per requirement */}
                           </td>
