@@ -17,7 +17,7 @@ export default function ServiceBookingsUpcomingTab() {
 		{
 			id: 1,
 			date: '20.12.2024, 14:30',
-			car: 'Mercedes Benz CL 65 AMG',
+			car: 'Mercedes Benz CL 65 AMG, 99-AA-999',
 			plate: '99-AA-999',
 			boxNumber: 1,
 			serviceType: 'Engine',

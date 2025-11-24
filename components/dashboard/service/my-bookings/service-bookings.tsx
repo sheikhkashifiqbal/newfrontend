@@ -26,9 +26,6 @@ export default function ServiceBookings() {
 		setViewMode(viewMode === 'list' ? 'calendar' : 'list');
 	}
 
-
-
-
 	return (
 			<div className={'pt-5 flex flex-col gap-y-5'}>
 				<DashboardHeaderText viewMode={viewMode} switchViewMode={switchViewMode} title={"My Bookings"} subtitle={"See your scheduled services from your calendar."} />

@@ -20,7 +20,7 @@ export interface IServiceBookingUpcoming {
 export const ServiceBookingsUpcomingTabColumns = (onView: (row: IServiceBookingUpcoming) => void): ColumnDef<IServiceBookingUpcoming>[] => [
 	{
 		accessorKey: "date",
-		header: "Date and Time"
+		header: "Service & Location"
 	},
 	{
 		accessorKey: "car",
