@@ -26,9 +26,8 @@ const useToast = () => {
   const Toast = () =>
     toast ? (
       <div
-        className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm ${
-          toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-        }`}
+        className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
         role="status"
         aria-live="polite"
       >
@@ -106,47 +105,47 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
   };
 
   // ---- API helpers for detail rows
- const updateDetailAt = async (idx: number) => {
-  const row = modalItems[idx];
-  if (!row?.id) return;
+  const updateDetailAt = async (idx: number) => {
+    const row = modalItems[idx];
+    if (!row?.id) return;
 
-  try {
-    // --- FIRST REQUIRED API CALL ---
-    const res = await fetch(`${BASE_URL}/api/spare-parts/request-details/${row.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sparepartsrequest_id: row.sparepartsrequest_id,
-        spare_part: row.spare_part,
-        class_type: row.class_type,
-        qty: Number(row.qty) || 0,
-        price: Number(row.price) || 0,
-      }),
-    });
+    try {
+      // --- FIRST REQUIRED API CALL ---
+      const res = await fetch(`${BASE_URL}/api/spare-parts/request-details/${row.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sparepartsrequest_id: row.sparepartsrequest_id,
+          spare_part: row.spare_part,
+          class_type: row.class_type,
+          qty: Number(row.qty) || 0,
+          price: Number(row.price) || 0,
+        }),
+      });
 
-    if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) throw new Error(String(res.status));
 
-    // --- SECOND API CALL (Automatically after first one succeeds) ---
-    await fetch(`http://localhost:8081/api/spareparts-requests/${row.sparepartsrequest_id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestStatus: "accepted_request" }),
-    });
+      // --- SECOND API CALL (Automatically after first one succeeds) ---
+      await fetch(`http://localhost:8081/api/spareparts-requests/${row.sparepartsrequest_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestStatus: "accepted_request" }),
+      });
 
-    // Show success notification
-    showToast("Updated successfully!", "success");
+      // Show success notification
+      showToast("Updated successfully!", "success");
 
-    // Refresh popup UI
-    if (modalRequestId) await refreshModalFromServer(modalRequestId);
+      // Refresh popup UI
+      if (modalRequestId) await refreshModalFromServer(modalRequestId);
 
-    // Notify parent state updater if provided
-    onStatusChange?.(row.sparepartsrequest_id!, "accepted_request");
+      // Notify parent state updater if provided
+      onStatusChange?.(row.sparepartsrequest_id!, "accepted_request");
 
-  } catch (e) {
-    console.error("Failed to update detail:", e);
-    showToast("Update failed", "error");
-  }
-};
+    } catch (e) {
+      console.error("Failed to update detail:", e);
+      showToast("Update failed", "error");
+    }
+  };
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -297,132 +296,126 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
 
       {/* Spare parts vertical modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* backdrop */}
-          <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
+        <div className="fixed inset-0 bg-black/30 flex justify-center items-center z-50">
+          <div className="bg-white w-[95%] sm:w-[850px] rounded-2xl shadow-xl p-6 space-y-6">
 
-          {/* panel: bigger width, taller height (still vertical) */}
-          <div className="relative bg-white rounded-xl shadow-xl max-h-[90vh] overflow-hidden w-[96%] sm:w-[680px] md:w-[740px]">
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h3 className="text-base font-semibold text-[#212529]">Spare parts</h3>
-              <div className="flex items-center gap-3">
-                {/* + Add item removed as per requirement */}
-                <button onClick={closeModal} className="text-[#6C757D] text-sm">
-                  Close
-                </button>
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">Required spare part</h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  For <span className="text-indigo-600 font-medium cursor-pointer hover:underline">New Engine Parts</span> of VIN{" "}
+                  <span className="text-indigo-600 underline cursor-pointer">27393A7GDB67WOP921</span>
+                </p>
               </div>
+              <button className="text-gray-400 hover:text-gray-600 text-xl" onClick={closeModal}>✕</button>
             </div>
 
-            <div className="overflow-y-auto max-h-[80vh]">
-              <table className="min-w-full text-base">
-                <thead className="bg-[#F8F9FA] sticky top-0">
-                  <tr className="text-[#ADB5BD] text-sm">
-                    <th className="text-left px-5 py-3 w-[56px]">No.</th>
-                    <th className="text-left px-5 py-3 w-[180px]">Spareparts Type</th>
-                    <th className="text-left px-5 py-3 w-[220px]">Spare Part</th>
-                    <th className="text-left px-5 py-3 w-[160px]">Class Type</th>
-                    <th className="text-left px-5 py-3 w-[120px]">Qty</th>
-                    <th className="text-left px-5 py-3 w-[140px]">Price</th>
-                    {editMode && <th className="text-right px-3 py-3 w-[140px]">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {modalItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={editMode ? 7 : 6} className="px-5 py-8 text-center text-[#6C757D]">
-                        No items
-                      </td>
-                    </tr>
+            <hr className="border-gray-200" />
+
+            {/* Tabs */}
+            <div className="flex gap-3">
+              <button className="px-5 py-1.5 bg-blue-100 text-blue-600 font-medium rounded-lg">
+                Engine
+              </button>
+            </div>
+
+            {/* Table */}
+            <div className={`grid ${editMode ? "grid-cols-8" : "grid-cols-7"} text-gray-500 font-medium text-sm px-2`}>
+              <div className="col-span-2">Spareparts Type</div>
+              <div className="col-span-2">Spare Part</div>
+              <div className="text-center">Class Type</div>
+              <div className="text-center">Qty</div>
+              <div className="text-center">Price</div>
+              {editMode && <div className="text-center">Actions</div>}
+            </div>
+
+
+            <div className="space-y-3">
+              {modalItems?.map((item, idx) => (
+                <div key={item.id} className={`grid gap-3 items-center ${editMode ? "grid-cols-8" : "grid-cols-7"}`}>
+                  {/* Part Name */}
+                  <input
+                    value={modalCarPart}
+                    readOnly
+                    className="col-span-2 w-full px-4 py-3 bg-gray-50 rounded-xl focus:outline-none border border-gray-200 text-gray-700"
+                  />
+                  <input
+                    value={item.spare_part}
+                    readOnly
+                    className="col-span-2 w-full px-4 py-3 bg-gray-50 rounded-xl focus:outline-none border border-gray-200 text-gray-700"
+                  />
+                  <input
+                    value={item.class_type}
+                    readOnly
+                    className="w-full px-4 py-3 bg-gray-50 rounded-xl focus:outline-none border border-gray-200 text-gray-700"
+                  />
+
+                  <input
+                    type="number"
+                    min={0}
+                    className={`w-full px-4 py-3 bg-gray-50 rounded-xl focus:outline-none border border-gray-200 text-gray-700 ${editMode ? "bg-white" : "bg-[#E9ECEF] text-[#495057]"
+                      }`}
+                    value={String(item.qty ?? "")}
+                    readOnly={!editMode}
+                    onChange={
+                      editMode
+                        ? (e) =>
+                          setModalItems((prev) =>
+                            prev.map((x, i) =>
+                              i === idx ? { ...x, qty: Number(e.target.value) } : x
+                            )
+                          )
+                        : undefined
+                    }
+                  />
+
+
+                  {editMode ? (
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="w-full px-4 py-3 bg-gray-50 rounded-xl focus:outline-none border border-gray-200 text-gray-700"
+                      value={String(item.price ?? "")}
+                      onChange={(e) =>
+                        setModalItems((prev) =>
+                          prev.map((x, i) =>
+                            i === idx ? { ...x, price: Number(e.target.value) } : x
+                          )
+                        )
+                      }
+                    />
                   ) : (
-                    modalItems.map((it, idx) => (
-                      <tr key={`${it.id ?? it.spare_part}-${idx}`} className="text-[#495057] align-middle">
-                        <td className="px-5 py-3">{idx + 1}</td>
-                        <td className="px-5 py-3 break-words">{modalCarPart}</td>
-
-                        {/* Spare Part - always read-only text field */}
-                        <td className="px-0 py-0 break-words">
-                          <input
-                            className="w-full border rounded px-2 py-1 bg-[#E9ECEF] text-[#495057]"
-                            value={it.spare_part}
-                            readOnly
-                          />
-                        </td>
-
-                        {/* Class Type - always read-only text field */}
-                        <td className="px-0 py-0">
-                          <input
-                            className="w-full border rounded px-2 py-1 bg-[#E9ECEF] text-[#495057]"
-                            value={it.class_type}
-                            readOnly
-                          />
-                        </td>
-
-                        {/* Qty - editable in Pending (editMode true), read-only otherwise */}
-                        <td className="px-0 py-0">
-                          <input
-                            type="number"
-                            min={0}
-                            className={`w-full border rounded px-2 py-1 ${
-                              editMode ? "bg-white" : "bg-[#E9ECEF] text-[#495057]"
-                            }`}
-                            value={String(it.qty ?? "")}
-                            readOnly={!editMode}
-                            onChange={
-                              editMode
-                                ? (e) =>
-                                    setModalItems((prev) =>
-                                      prev.map((x, i) =>
-                                        i === idx ? { ...x, qty: Number(e.target.value) } : x
-                                      )
-                                    )
-                                : undefined
-                            }
-                          />
-                        </td>
-
-                        {/* Price - keep same behavior as old code */}
-                        <td className="px-0 py-0">
-                          {editMode ? (
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="w-full border rounded px-2 py-1"
-                              value={String(it.price ?? "")}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx ? { ...x, price: Number(e.target.value) } : x
-                                  )
-                                )
-                              }
-                            />
-                          ) : (
-                            it.price
-                          )}
-                        </td>
-
-                        {/* Actions: only Update button, label changed from Add/Update → Update, delete removed */}
-                        {editMode && (
-                          <td className="px-3 py-3 text-right whitespace-nowrap">
-                            <button
-                              className="mr-2 py-1 px-3 border rounded-[8px] text-[#0D6EFD] text-xs font-semibold"
-                              onClick={() =>
-                                modalItems[idx]?.id ? updateDetailAt(idx) : createDetailAt(idx)
-                              }
-                              title="Update this row"
-                            >
-                              Accept
-                            </button>
-                            {/* Delete icon removed as per requirement */}
-                          </td>
-                        )}
-                      </tr>
-                    ))
+                    <input
+                      value={item.price}
+                      readOnly
+                      className="w-full px-4 py-3 bg-gray-50 rounded-xl focus:outline-none border border-gray-200 text-gray-700"
+                    />
                   )}
-                </tbody>
-              </table>
+
+
+
+                  {editMode && (
+                      <button
+                        className="mr-2 py-4 px-3 border rounded-[8px] text-[#0D6EFD] text-xs font-semibold"
+                        onClick={() =>
+                          modalItems[idx]?.id ? updateDetailAt(idx) : createDetailAt(idx)
+                        }
+                        title="Update this row"
+                      >
+                        Accept
+                      </button>
+                  )}
+
+                </div>
+              ))}
             </div>
+
+            {/* Button */}
+            <button className="w-full bg-[#3F72AF] text-white text-lg py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-[#335c8c] transition">
+              📞 +994 55 995 47 65
+            </button>
           </div>
         </div>
       )}
@@ -431,3 +424,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
 };
 
 export default SparePartsTable;
+
+
+
+
+
+

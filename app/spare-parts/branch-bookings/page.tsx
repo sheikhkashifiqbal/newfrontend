@@ -487,10 +487,101 @@ export default function SparePartsRequestPage() {
       </section>
 
       <SparePartsTable
-        services={filteredRequests}
+        services={DUMMY_SPARE_PART_REQUESTS}
         activeTab={activeTab}
         onStatusChange={handleLocalStatusChange}
       />
     </div>
   );
 }
+
+
+
+const DUMMY_SPARE_PART_REQUESTS: SparePartRequestUI[] = [
+  {
+    id: 1,
+    sparepartsrequest_id: 101,
+    date: "2025-11-20",
+    branchName: "Main Branch-4",
+    address: "Rolla Street",
+    city: "Sharjah",
+    serviceLocation: "Main Branch-4, Rolla Street, Sharjah",
+    vinOrPlate: "VIN1234567890",
+    carPart: "Engine",
+    brandId: 1,
+    brandName: "Toyota",
+    state: "Dubai",
+    spareParts: [
+      {
+        id: 1001,
+        sparepartsrequest_id: 101,
+        spare_part: "Engine Oil Filter",
+        class_type: "class A",
+        qty: 2,
+        price: 120,
+      },
+      {
+        id: 1002,
+        sparepartsrequest_id: 101,
+        spare_part: "Air Filter",
+        class_type: "class B",
+        qty: 1,
+        price: 80,
+      },
+    ],
+    managerMobile: "+971500000001",
+    status: "Pending",
+  },
+  {
+    id: 2,
+    sparepartsrequest_id: 102,
+    date: "2025-11-21",
+    branchName: "Central Branch",
+    address: "Al Nahda Road",
+    city: "Dubai",
+    serviceLocation: "Central Branch, Al Nahda Road, Dubai",
+    vinOrPlate: "VIN0987654321",
+    carPart: "Suspension",
+    brandId: 2,
+    brandName: "Honda",
+    state: "Dubai",
+    spareParts: [
+      {
+        id: 1003,
+        sparepartsrequest_id: 102,
+        spare_part: "Front Shock Absorber",
+        class_type: "class A",
+        qty: 2,
+        price: 450,
+      },
+    ],
+    managerMobile: "+971500000002",
+    status: "Accepted offers",
+  },
+  {
+    id: 3,
+    sparepartsrequest_id: 103,
+    date: "2025-11-22",
+    branchName: "Main Branch-4",
+    address: "Rolla Street",
+    city: "Sharjah",
+    serviceLocation: "Main Branch-4, Rolla Street, Sharjah",
+    vinOrPlate: "VIN5555555555",
+    carPart: "Brakes",
+    brandId: 1,
+    brandName: "Toyota",
+    state: "Sharjah",
+    spareParts: [
+      {
+        id: 1004,
+        sparepartsrequest_id: 103,
+        spare_part: "Brake Pad Set",
+        class_type: "class C",
+        qty: 1,
+        price: 300,
+      },
+    ],
+    managerMobile: "+971500000003",
+    status: "Accepted requests",
+  },
+];
