@@ -4,6 +4,8 @@ import ModalBox from "@/components/model-box";
 import CompanyReviews from "./company-review";
 import { MakeAReservation } from "./MakeAReservation";
 import { useSearchParams } from "next/navigation";
+import { FiPlus } from "react-icons/fi";
+import { RxCross2 } from "react-icons/rx";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -11,6 +13,120 @@ const tabs = [
   { label: "Company Spare Parts", icon: "/icons/tool-02.svg" },
   { label: "Company Reviews", icon: "/icons/star.svg" },
 ];
+
+/* ===================== POPUP COMPONENT (View / Edit) START ===================== */
+const ViewEditModel = ({ openModal, setModalOpen }: any) => {
+  const [parts, setParts] = useState([
+    { id: 1, name: "#1 Engine Block", qty: "" },
+    { id: 2, name: "#2 Pistons", qty: "" },
+    { id: 3, name: "#3 Cylinder Head", qty: "" },
+  ]);
+
+  const handleAdd = () => {
+    setParts([
+      ...parts,
+      { id: Date.now(), name: "", qty: "" }
+    ]);
+  };
+
+  const handleRemove = (id: number) => {
+    setParts(parts.filter((item) => item.id !== id));
+  };
+
+  const handleChange = (id: number, field: string, value: string) => {
+    setParts(
+      parts.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  return (
+    <ModalBox
+      open={openModal}
+      onOpenChange={setModalOpen}
+      title=""
+      maxWidth="627px"
+      bg="bg-gray-50"
+    >
+      {/* Header */}
+      <div className="pb-2">
+        <h2 className="text-[24px] text-gray-900 font-semibold -mt-5">
+          Required spare parts
+        </h2>
+
+        <p className="mt-1 text-gray-600 text-[15px] leading-tight">
+          For{" "}
+          <span className="text-[#3F72AF] underline cursor-pointer">
+            New Engine Parts
+          </span>{" "}
+          of VIN{" "}
+          <span className="text-[#3F72AF] underline cursor-pointer">
+            27393A7GDB67WOP921
+          </span>
+        </p>
+      </div>
+
+      <hr className="my-5 border-gray-200" />
+
+      <div className="px-2">
+
+        {/* Tab */}
+        <button className="mb-6 px-5 py-2 bg-[#E9EEF5] rounded-lg text-sm border border-gray-200 text-[#4B5563] font-medium">
+          Engine
+        </button>
+
+        {/* Head row */}
+        <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+          <span className="col-span-7">Part name</span>
+          <span className="col-span-3">Qty.</span>
+          <span className="col-span-2 text-center">Delete</span>
+        </div>
+
+        {/* Input rows */}
+        {parts.map((item) => (
+          <div key={item.id} className="grid grid-cols-12 gap-3 mb-3">
+            <input
+              value={item.name}
+              onChange={(e) => handleChange(item.id, "name", e.target.value)}
+              placeholder="Enter part name"
+              className="col-span-7 bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+            />
+
+            <input
+              value={item.qty}
+              onChange={(e) => handleChange(item.id, "qty", e.target.value)}
+              placeholder="Ex: 100"
+              className="col-span-3 bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+            />
+
+            <button
+              onClick={() => handleRemove(item.id)}
+              className="col-span-2 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition"
+            >
+              <RxCross2 size={18} className="text-gray-600" />
+            </button>
+          </div>
+        ))}
+
+        {/* Add spare button */}
+        <button
+          onClick={handleAdd}
+          className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100"
+        >
+          <FiPlus size={16} />
+          Add spare part
+        </button>
+
+        {/* Footer */}
+        <button className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow mt-8">
+          Update Request
+        </button>
+      </div>
+    </ModalBox>
+  );
+};
+/* ===================== POPUP COMPONENT (View / Edit) END ===================== */
 
 export default function SparePartsProfile() {
   const [activeTab, setActiveTab] = useState("Company Spare Parts");
@@ -98,7 +214,6 @@ export default function SparePartsProfile() {
             map: json[0].location,
             manager_mobile: json[0].manager_mobile,
             manager_phone: json[0].manager_phone,
-
           });
         }
         setGrid(json || []);
@@ -117,7 +232,7 @@ export default function SparePartsProfile() {
       .then((r) => r.json())
       .then((days) => {
         const todayIdx = new Date().getDay();
-        const names = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+        const names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
         const today = names[todayIdx];
         const todayObj = days.find((d: any) => d.workingDay?.toLowerCase() === today);
         if (todayObj)
@@ -162,8 +277,12 @@ export default function SparePartsProfile() {
         {/* Address and Hours */}
         <section className="max-w-[1120px] mx-auto px-4 text-sm text-gray-700 grid sm:grid-cols-3 gap-4 mb-6">
           <div>
-            <p>📍 {topAddress.address}, {topAddress.city}</p>
-            <a href={topAddress.map || "#"} target="_blank" className="text-blue-500 underline">Google Map</a>
+            <p>
+              📍 {topAddress.address}, {topAddress.city}
+            </p>
+            <a href={topAddress.map || "#"} target="_blank" className="text-blue-500 underline">
+              Google Map
+            </a>
           </div>
           <div>
             <p>🕒 {weekdayText}</p>
@@ -182,11 +301,14 @@ export default function SparePartsProfile() {
               <button
                 key={label}
                 onClick={() => setActiveTab(label)}
-                className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 ${activeTab === label
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-400 hover:text-gray-700"}`}
+                className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 ${
+                  activeTab === label
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-400 hover:text-gray-700"
+                }`}
               >
-                <img src={icon} alt={label} className="w-5 h-5" />{label}
+                <img src={icon} alt={label} className="w-5 h-5" />
+                {label}
               </button>
             ))}
           </div>
@@ -211,7 +333,9 @@ export default function SparePartsProfile() {
                     >
                       <option value="">Car brand</option>
                       {carBrands.map((b) => (
-                        <option key={b.brand_id} value={b.brand_id}>{b.brand_name}</option>
+                        <option key={b.brand_id} value={b.brand_id}>
+                          {b.brand_name}
+                        </option>
                       ))}
                     </select>
 
@@ -222,12 +346,15 @@ export default function SparePartsProfile() {
                     >
                       <option value="">Service</option>
                       {services.map((s) => (
-                        <option key={s.spareparts_id} value={s.spareparts_id}>{s.spareparts_type}</option>
+                        <option key={s.spareparts_id} value={s.spareparts_id}>
+                          {s.spareparts_type}
+                        </option>
                       ))}
                     </select>
                   </div>
                 </div>
 
+                {/* ===================== POPUP TRIGGER (Make Reservation) ===================== */}
                 <button
                   onClick={() => setOpenModal(true)}
                   className="bg-[#3F72AF] hover:bg-[#2753c3] text-white px-6 py-2 rounded-md text-sm"
@@ -251,7 +378,10 @@ export default function SparePartsProfile() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {b.available_spareparts?.map((sp: any) => (
-                          <span key={`${sp.spareparts_id}-${sp.spareparts_type}`} className="inline-flex items-center rounded-full border border-[#E9ECEF] bg-white px-3 py-1 text-gray-700">
+                          <span
+                            key={`${sp.spareparts_id}-${sp.spareparts_type}`}
+                            className="inline-flex items-center rounded-full border border-[#E9ECEF] bg-white px-3 py-1 text-gray-700"
+                          >
                             {sp.spareparts_type}
                           </span>
                         ))}
@@ -267,9 +397,11 @@ export default function SparePartsProfile() {
         </div>
       </div>
 
-      <ModalBox open={openModal} onOpenChange={setOpenModal} title="Make the reservation" maxWidth="808px" bg="bg-gray-50">
-        <MakeAReservation />
-      </ModalBox>
+      {/* ===================== POPUP USAGE (View / Edit) START ===================== */}
+      {openModal && (
+        <ViewEditModel openModal={openModal} setModalOpen={setOpenModal} />
+      )}
+      {/* ===================== POPUP USAGE (View / Edit) END ===================== */}
     </>
   );
 }
