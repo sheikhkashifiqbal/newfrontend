@@ -8,7 +8,7 @@ interface SparePartsTableProps {
   onStatusChange?: (sparepartsrequest_id: number, nextStatus: string) => void;
 }
 
-// Match backend casing used in your examples ("class A/B/C")
+// Match backend casing used in your examples ("class A/B/C") dashboard/service
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CLASS_OPTIONS = ["class A", "class B", "class C"] as const;
 const API_URL = `${BASE_URL}/api/spare-parts/offers/store-branch`;
