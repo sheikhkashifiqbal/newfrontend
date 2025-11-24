@@ -26,9 +26,8 @@ const useToast = () => {
   const Toast = () =>
     toast ? (
       <div
-        className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm ${
-          toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-        }`}
+        className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
         role="status"
         aria-live="polite"
       >
@@ -240,49 +239,49 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({ services = [], active
                   <td className="px-4 py-4 break-words">{r.state}</td>
 
                   {/* Spare parts column */}
-{/* Spare parts column */}
-<td className="px-0 py-4">
-  {columns.showAcceptDecline ? (
-    <div className="flex gap-2 items-center">
-      {/* ➤ NEW VIEW BUTTON ADDED FOR ACCEPTED REQUESTS */}
-      <button
-        className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-        onClick={() =>
-          openModal(
-            r.spareParts,
-            r.carPart,
-            false, // keep View-only mode for Accepted Requests
-            r.sparepartsrequest_id
-          )
-        }
-      >
-        View
-      </button>
+                  {/* Spare parts column */}
+                  <td className="px-0 py-4">
+                    {columns.showAcceptDecline ? (
+                      <div className="flex gap-2 items-center">
+                        {/* ➤ NEW VIEW BUTTON ADDED FOR ACCEPTED REQUESTS */}
+                        <button
+                          className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+                          onClick={() =>
+                            openModal(
+                              r.spareParts,
+                              r.carPart,
+                              false, // keep View-only mode for Accepted Requests
+                              r.sparepartsrequest_id
+                            )
+                          }
+                        >
+                          View
+                        </button>
 
-      {/* EXISTING BUTTONS - NOT MODIFIED */}
-      <button
-        className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
-        onClick={() => acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")}
-      >
-        Accept
-      </button>
+                        {/* EXISTING BUTTONS - NOT MODIFIED */}
+                        <button
+                          className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
+                          onClick={() => acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")}
+                        >
+                          Accept
+                        </button>
 
-      <button
-        className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
-        onClick={() => acceptOrDecline(r.sparepartsrequest_id, "canceled")}
-      >
-        Decline
-      </button>
-    </div>
-  ) : (
-    <button
-      className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-      onClick={() => openModal(r.spareParts, r.carPart, columns.canEditSpareParts, r.sparepartsrequest_id)}
-    >
-      {columns.sparePartsButtonLabel}
-    </button>
-  )}
-</td>
+                        <button
+                          className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
+                          onClick={() => acceptOrDecline(r.sparepartsrequest_id, "canceled")}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+                        onClick={() => openModal(r.spareParts, r.carPart, columns.canEditSpareParts, r.sparepartsrequest_id)}
+                      >
+                        {columns.sparePartsButtonLabel}
+                      </button>
+                    )}
+                  </td>
 
 
                   {/* Visible only for Accepted offers */}
