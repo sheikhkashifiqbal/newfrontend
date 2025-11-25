@@ -121,7 +121,8 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const json = await res.json()
+      const json = await res.json();
+      console.log("JSONNN::", json);
       sessionStorage.setItem('sp_search_results', JSON.stringify(Array.isArray(json) ? json : []))
     } catch {
       sessionStorage.setItem('sp_search_results', JSON.stringify([]))

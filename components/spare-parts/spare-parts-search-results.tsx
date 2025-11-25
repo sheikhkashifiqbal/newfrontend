@@ -98,7 +98,7 @@ function ResultCard({
           </div>
         ))}
         <CustomBlueBtn
-          text={'Request'}
+          text={'Make Reservation'}
           className={'h-[40px] bg-white font-semibold border-[1.5px] border-steel-blue text-steel-blue py-3 px-4'}
           onClick={() => onRequest(item.branch_id)} // pass branch_id as requested
         />
@@ -112,11 +112,11 @@ function SparePartsSearchResults() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lon: number }>({ lat: 25.276987, lon: 55.296249 })
   const [sortOrder, setSortOrder] = useState<SortOrder>('all')
   const [selectedCity, setSelectedCity] = useState<string | undefined>(undefined)  // ✅
-
+  
   // Load results, user location, and selected city written by selectors page
-  useEffect(() => {
+   useEffect(() => {
     try {
-      const r = JSON.parse(sessionStorage.getItem('sp_search_results') || '[]')
+      const r = JSON.parse(sessionStorage.getItem('sp_search_results') || '[]');
       const loc = JSON.parse(sessionStorage.getItem('sp_user_location') || '{"lat":25.276987,"lon":55.296249}')
       setRawResults(Array.isArray(r) ? r : [])
       if (loc && typeof loc.lat === 'number' && typeof loc.lon === 'number') {

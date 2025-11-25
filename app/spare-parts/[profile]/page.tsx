@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import ModalBox from "@/components/model-box";
+import ModalBox from "@/components/spareparts-model-box";
 import CompanyReviews from "./company-review";
 import { MakeAReservation } from "./MakeAReservation";
 import { useSearchParams } from "next/navigation";
@@ -15,12 +15,26 @@ const tabs = [
 ];
 
 /* ===================== POPUP COMPONENT (View / Edit) START ===================== */
-const ViewEditModel = ({ openModal, setModalOpen }: any) => {
+const ViewEditModel = ({
+  openModal,
+  setModalOpen,
+  sparepartsId,
+  branchId,
+  spareTypeLabel,
+  vin,
+  onVinChange,
+  showToast,
+}: any) => {
   const [parts, setParts] = useState([
-    { id: 1, name: "#1 Engine Block", qty: "" },
-    { id: 2, name: "#2 Pistons", qty: "" },
-    { id: 3, name: "#3 Cylinder Head", qty: "" },
+    { id: 1, name: "", qty: "" },
+    { id: 2, name: "", qty: "" },
+    { id: 3, name: "", qty: "" },
   ]);
+
+  const [errors, setErrors] = useState<{
+    [key: number]: { name?: string; qty?: string };
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAdd = () => {
     setParts([
@@ -31,14 +45,141 @@ const ViewEditModel = ({ openModal, setModalOpen }: any) => {
 
   const handleRemove = (id: number) => {
     setParts(parts.filter((item) => item.id !== id));
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
   };
 
-  const handleChange = (id: number, field: string, value: string) => {
+  const handleChange = (id: number, field: "name" | "qty", value: string) => {
     setParts(
       parts.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
       )
     );
+    setErrors((prev) => {
+      const copy = { ...prev };
+      if (copy[id]) {
+        copy[id] = {
+          ...copy[id],
+          [field]: "",
+        };
+      }
+      return copy;
+    });
+  };
+
+  const validateParts = () => {
+    const newErrors: {
+      [key: number]: { name?: string; qty?: string };
+    } = {};
+
+    parts.forEach((p) => {
+      const hasName = p.name.trim().length > 0;
+      const hasQty = p.qty.trim().length > 0;
+
+      if (!hasName || !hasQty) {
+        newErrors[p.id] = {
+          name: !hasName ? "Part name is required." : "",
+          qty: !hasQty ? "Qty is required." : "",
+        };
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    // Validate part rows
+    const valid = validateParts();
+    if (!valid) return;
+
+    if (!sparepartsId || !branchId) {
+      showToast("error", "Missing required data to submit request.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // Read userId from localStorage (auth_response)
+      const raw = typeof window !== "undefined" ? localStorage.getItem("auth_response") : null;
+      let userId: number | null = null;
+
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed.id === "number") {
+            userId = parsed.id;
+          } else if (parsed && typeof parsed.user_id === "number") {
+            userId = parsed.user_id;
+          }
+        } catch {
+          // ignore parse error
+        }
+      }
+
+      if (!userId) {
+        showToast("error", "User information not found.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Current date in YYYY-MM-DD
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10);
+
+      // 1️⃣ First POST: /api/spareparts-requests
+      const mainResp = await fetch(`${BASE_URL}/api/spareparts-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,                 // from auth_response
+          sparepartsId,           // selected Spare Part Type ID
+          branchId,               // from query string
+          date: dateStr,          // current date
+          vinNumber: vin,         // from VIN field
+          requestStatus: "pending",
+        }),
+      });
+
+      if (!mainResp.ok) {
+        throw new Error("Failed to create spare parts request.");
+      }
+      
+      const mainData = await mainResp.json(); console.log(mainData);
+      const spareRequestId = mainData.sparepartsrequestId;
+
+
+      if (!spareRequestId) {
+        throw new Error("Request ID not returned from server.");
+      }
+        
+      // 2️⃣ Second POST (loop): /api/spare-parts/request-details
+      for (const p of parts) {
+        await fetch(`${BASE_URL}/api/spare-parts/request-details`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sparepartsrequest_id: spareRequestId,
+            spare_part: p.name,
+            class_type: "",
+            qty: p.qty,
+            price: "0.0",
+          }),
+        });
+      }
+
+      // 3️⃣ Toast on success
+      showToast("success", "Request is submitted successfully");
+      setModalOpen(false);
+    } catch (error) {
+      showToast("error", "Failed to submit request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -56,49 +197,70 @@ const ViewEditModel = ({ openModal, setModalOpen }: any) => {
         </h2>
 
         <p className="mt-1 text-gray-600 text-[15px] leading-tight">
-          For{" "}
+          
           <span className="text-[#3F72AF] underline cursor-pointer">
-            New Engine Parts
+            
           </span>{" "}
-          of VIN{" "}
-          <span className="text-[#3F72AF] underline cursor-pointer">
-            27393A7GDB67WOP921
-          </span>
+           VIN{" "}
+          {/* VIN FIELD (replacing static text 27393A7GDB67WOP921) */}
+          <input
+            value={vin}
+            onChange={(e) => onVinChange(e.target.value)}
+            placeholder="Enter VIN number"
+            className="ml-1 border-b border-[#3F72AF] bg-transparent text-[#3F72AF] text-sm focus:outline-none"
+          />
         </p>
       </div>
 
       <hr className="my-5 border-gray-200" />
 
       <div className="px-2">
-
         {/* Tab */}
         <button className="mb-6 px-5 py-2 bg-[#E9EEF5] rounded-lg text-sm border border-gray-200 text-[#4B5563] font-medium">
-          Engine
+          {spareTypeLabel || "Engine"}
         </button>
 
         {/* Head row */}
         <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
           <span className="col-span-7">Part name</span>
-          <span className="col-span-3">Qty.</span>
+          <span className="col-span-3">Qty</span>
           <span className="col-span-2 text-center">Delete</span>
         </div>
 
         {/* Input rows */}
         {parts.map((item) => (
           <div key={item.id} className="grid grid-cols-12 gap-3 mb-3">
-            <input
-              value={item.name}
-              onChange={(e) => handleChange(item.id, "name", e.target.value)}
-              placeholder="Enter part name"
-              className="col-span-7 bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-            />
+            <div className="col-span-7">
+              <input
+                value={item.name}
+                onChange={(e) =>
+                  handleChange(item.id, "name", e.target.value)
+                }
+                placeholder="Enter part name"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+              />
+              {errors[item.id]?.name && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors[item.id]?.name}
+                </p>
+              )}
+            </div>
 
-            <input
-              value={item.qty}
-              onChange={(e) => handleChange(item.id, "qty", e.target.value)}
-              placeholder="Ex: 100"
-              className="col-span-3 bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-            />
+            <div className="col-span-3">
+              <input
+                value={item.qty}
+                onChange={(e) =>
+                  handleChange(item.id, "qty", e.target.value)
+                }
+                placeholder="Ex: 100"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+              />
+              {errors[item.id]?.qty && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors[item.id]?.qty}
+                </p>
+              )}
+            </div>
 
             <button
               onClick={() => handleRemove(item.id)}
@@ -119,8 +281,12 @@ const ViewEditModel = ({ openModal, setModalOpen }: any) => {
         </button>
 
         {/* Footer */}
-        <button className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow mt-8">
-          Update Request
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[16px] font-semibold py-4 rounded-xl shadow mt-8"
+        >
+          {isSubmitting ? "Submitting..." : "Submit Request"}
         </button>
       </div>
     </ModalBox>
@@ -132,16 +298,52 @@ export default function SparePartsProfile() {
   const [activeTab, setActiveTab] = useState("Company Spare Parts");
   const [openModal, setOpenModal] = useState(false);
   const searchParams = useSearchParams();
-  const branchId = useMemo(() => Number(searchParams.get("branchId")), [searchParams]);
+  const branchId = useMemo(
+    () => Number(searchParams.get("branchId")),
+    [searchParams]
+  );
 
-  const [carBrands, setCarBrands] = useState<{ brand_id: number; brand_name: string }[]>([]);
-  const [services, setServices] = useState<{ spareparts_id: number; spareparts_type: string }[]>([]);
+  const [carBrands, setCarBrands] = useState<
+    { brand_id: number; brand_name: string }[]
+  >([]);
+  const [services, setServices] = useState<
+    { spareparts_id: number; spareparts_type: string }[]
+  >([]);
   const [grid, setGrid] = useState<any[]>([]);
   const [selBrand, setSelBrand] = useState<number | "">("");
   const [selService, setSelService] = useState<number | "">("");
   const [topAddress, setTopAddress] = useState<any>({});
   const [todayText, setTodayText] = useState("Saturday: 10:00–16:00");
   const [weekdayText, setWeekdayText] = useState("Monday–Friday: 09:00–18:00");
+
+  const [selBrandError, setSelBrandError] = useState<string>("");
+  const [selServiceError, setSelServiceError] = useState<string>("");
+
+  const [vin, setVin] = useState<string>("");
+
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setToast({ type, message });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // VIN from query string (if exists)
+ useEffect(() => {
+  const vinParam = searchParams.get("vin");
+  if (vinParam && !vin) {
+    setVin(vinParam);
+  }
+}, [searchParams, vin]);
+
 
   const dedupeSpareTypes = (arr: any[]) => {
     const seen = new Set<string>();
@@ -232,33 +434,78 @@ export default function SparePartsProfile() {
       .then((r) => r.json())
       .then((days) => {
         const todayIdx = new Date().getDay();
-        const names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+        const names = [
+          "sunday",
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+        ];
         const today = names[todayIdx];
-        const todayObj = days.find((d: any) => d.workingDay?.toLowerCase() === today);
+        const todayObj = days.find(
+          (d: any) => d.workingDay?.toLowerCase() === today
+        );
         if (todayObj)
-          setTodayText(`${capitalize(todayObj.workingDay)}: ${todayObj.from}–${todayObj.to}`);
+          setTodayText(
+            `${capitalize(todayObj.workingDay)}: ${todayObj.from}–${todayObj.to}`
+          );
 
         const actives = days.filter((d: any) => d.status === "active");
         if (actives.length) {
           const idx = (n: string) => names.indexOf(n.toLowerCase());
-          const sorted = actives.sort((a: any, b: any) => idx(a.workingDay) - idx(b.workingDay));
+          const sorted = actives.sort(
+            (a: any, b: any) => idx(a.workingDay) - idx(b.workingDay)
+          );
           const first = sorted[0].workingDay;
           const last = sorted[sorted.length - 1].workingDay;
 
           const mode = (arr: string[]) => {
             const count: any = {};
             arr.forEach((v) => (count[v] = (count[v] || 0) + 1));
-            return Object.keys(count).reduce((a, b) => (count[a] > count[b] ? a : b));
+            return Object.keys(count).reduce((a, b) =>
+              count[a] > count[b] ? a : b
+            );
           };
           const from = mode(actives.map((d: any) => d.from));
           const to = mode(actives.map((d: any) => d.to));
-          setWeekdayText(`${capitalize(first)}–${capitalize(last)}: ${from}–${to}`);
+          setWeekdayText(
+            `${capitalize(first)}–${capitalize(last)}: ${from}–${to}`
+          );
         }
       })
       .catch(() => {});
   }, [branchId]);
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const handleOpenModal = () => {
+    let valid = true;
+
+    if (!selBrand) {
+      setSelBrandError("Please select car brand.");
+      valid = false;
+    } else {
+      setSelBrandError("");
+    }
+
+    if (!selService) {
+      setSelServiceError("Please select spare part type.");
+      valid = false;
+    } else {
+      setSelServiceError("");
+    }
+
+    if (!valid) return;
+
+    setOpenModal(true);
+  };
+
+  const selectedSpareTypeLabel = useMemo(() => {
+    const found = services.find((s) => s.spareparts_id === selService);
+    return found?.spareparts_type || "";
+  }, [services, selService]);
 
   return (
     <>
@@ -280,7 +527,11 @@ export default function SparePartsProfile() {
             <p>
               📍 {topAddress.address}, {topAddress.city}
             </p>
-            <a href={topAddress.map || "#"} target="_blank" className="text-blue-500 underline">
+            <a
+              href={topAddress.map || "#"}
+              target="_blank"
+              className="text-blue-500 underline"
+            >
               Google Map
             </a>
           </div>
@@ -322,41 +573,70 @@ export default function SparePartsProfile() {
               <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
                 <div>
                   <p className="mb-2">Filter by</p>
-                  <div className="flex gap-2">
-                    <select
-                      className="bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px]"
-                      value={selBrand}
-                      onChange={(e) => {
-                        setSelBrand(Number(e.target.value));
-                        setSelService("");
-                      }}
-                    >
-                      <option value="">Car brand</option>
-                      {carBrands.map((b) => (
-                        <option key={b.brand_id} value={b.brand_id}>
-                          {b.brand_name}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <select
+                        className="bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px]"
+                        value={selBrand}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSelBrand(v ? Number(v) : "");
+                          setSelService("");
+                          setSelBrandError("");
+                        }}
+                      >
+                        <option value="">Car brand</option>
+                        {carBrands.map((b) => (
+                          <option key={b.brand_id} value={b.brand_id}>
+                            {b.brand_name}
+                          </option>
+                        ))}
+                      </select>
 
-                    <select
-                      className="bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px]"
-                      value={selService}
-                      onChange={(e) => setSelService(Number(e.target.value))}
-                    >
-                      <option value="">Service</option>
-                      {services.map((s) => (
-                        <option key={s.spareparts_id} value={s.spareparts_id}>
-                          {s.spareparts_type}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        className="bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px]"
+                        value={selService}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSelService(v ? Number(v) : "");
+                          setSelServiceError("");
+                        }}
+                      >
+                        <option value="">Spare Part Type</option>
+                        {services.map((s) => (
+                          <option
+                            key={s.spareparts_id}
+                            value={s.spareparts_id}
+                          >
+                            {s.spareparts_type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Validation messages for selectors */}
+                    <div className="flex gap-2">
+                      <div className="min-w-[184px]">
+                        {selBrandError && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {selBrandError}
+                          </p>
+                        )}
+                      </div>
+                      <div className="min-w-[184px]">
+                        {selServiceError && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {selServiceError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* ===================== POPUP TRIGGER (Make Reservation) ===================== */}
                 <button
-                  onClick={() => setOpenModal(true)}
+                  onClick={handleOpenModal}
                   className="bg-[#3F72AF] hover:bg-[#2753c3] text-white px-6 py-2 rounded-md text-sm"
                 >
                   Make Reservation
@@ -367,7 +647,10 @@ export default function SparePartsProfile() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-12">
                 {grid.flatMap((g, i) =>
                   g.brands?.map((b: any, j: number) => (
-                    <div key={`${i}-${j}`} className="rounded-2xl bg-white p-6 relative">
+                    <div
+                      key={`${i}-${j}`}
+                      className="rounded-2xl bg-white p-6 relative"
+                    >
                       <div className="flex items-center gap-2 mb-4">
                         <img
                           src={`${BASE_URL}/images/${b.brand_icon}`}
@@ -399,9 +682,29 @@ export default function SparePartsProfile() {
 
       {/* ===================== POPUP USAGE (View / Edit) START ===================== */}
       {openModal && (
-        <ViewEditModel openModal={openModal} setModalOpen={setOpenModal} />
+        <ViewEditModel
+          openModal={openModal}
+          setModalOpen={setOpenModal}
+          sparepartsId={selService}
+          branchId={branchId}
+          spareTypeLabel={selectedSpareTypeLabel}
+          vin={vin}
+          onVinChange={setVin}
+          showToast={showToast}
+        />
       )}
       {/* ===================== POPUP USAGE (View / Edit) END ===================== */}
+
+      {/* Simple Toast */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-[1100] rounded-md px-4 py-3 shadow-lg text-white ${
+            toast.type === "success" ? "bg-green-600" : "bg-red-600"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
     </>
   );
 }

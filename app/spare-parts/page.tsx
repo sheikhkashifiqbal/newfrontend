@@ -9,9 +9,10 @@ export default function SparePartsPage() {
 	const [showResults, setShowResults] = useState(false);
 
 	function handleSearch() {
+		console.log("Make True");
 		setShowResults(true);
 	}
-
+    console.log("Show Results::", showResults);
 	return (
 			<div className={'min-h-screen bg-light-gray'}>
 				<SparePartsSearchSelectors onSearchClick={handleSearch}/>
