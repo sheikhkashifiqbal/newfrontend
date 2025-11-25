@@ -217,7 +217,7 @@ const ViewEditModel = ({
       <div className="px-2">
         {/* Tab */}
         <button className="mb-6 px-5 py-2 bg-[#E9EEF5] rounded-lg text-sm border border-gray-200 text-[#4B5563] font-medium">
-          {spareTypeLabel || "Engine"}
+          {spareTypeLabel}
         </button>
 
         {/* Head row */}
@@ -252,7 +252,7 @@ const ViewEditModel = ({
                 onChange={(e) =>
                   handleChange(item.id, "qty", e.target.value)
                 }
-                placeholder="Ex: 100"
+                placeholder="Enter qty"
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
               />
               {errors[item.id]?.qty && (

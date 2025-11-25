@@ -30,9 +30,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export default function SparePartsSearchSelectors({ onSearchClick }: ISparePartsSearchSelectors) {
   const [vin, setVin] = useState<string>('')
-  const [serviceId, setServiceId] = useState<string>('')   
-  const [states, setStates] = useState<string[]>([])        
-  const [cityId, setCityId] = useState<string>('')          
+  const [serviceId, setServiceId] = useState<string>('')   // service (Select service)
+  const [states, setStates] = useState<string[]>([])       // new / used
+  const [cityId, setCityId] = useState<string>('')         // city
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [loading, setLoading] = useState<boolean>(false)
   const [cityMap, setCityMap] = useState<Record<string, string>>({})
@@ -59,7 +59,7 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
     const newId = spareParts.length + 1
     setSpareParts(prev => [
       ...prev,
-      { id: newId, name: ``, quantity: 1 },
+      { id: newId, name: `Part name`, quantity: 1 },
     ])
   }
 
@@ -90,7 +90,7 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
     })
   }, [])
 
-  // ✅ Validation: includes state
+  // ✅ Validation: includes state/city/service/vin
   const validate = useCallback((): boolean => {
     const next: ValidationErrors = {}
     if (!vin.trim()) next.vin = 'VIN is required'
@@ -100,6 +100,32 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
     setErrors(next)
     return Object.keys(next).length === 0
   }, [vin, serviceId, states, cityId])
+
+  // ✅ Allow other components (search-results) to trigger validation
+  useEffect(() => {
+    const handler = () => {
+      // run same validation used in handleSearch
+      validate()
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sp-validate-selectors', handler)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sp-validate-selectors', handler)
+      }
+    }
+  }, [validate])
+
+  // ✅ Sync spare parts rows to sessionStorage so results popup can use them
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      sessionStorage.setItem('sp_spare_parts', JSON.stringify(spareParts))
+    } catch {
+      // ignore
+    }
+  }, [spareParts])
 
   const handleSearch = useCallback(async () => {
     if (!validate()) return
@@ -167,7 +193,7 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
                 {errors.vin && <p className="text-red-500 text-sm">{errors.vin}</p>}
               </div>
 
-              {/* Service */}
+              {/* Service (Select service) */}
               <div className="flex flex-col gap-1">
                 <ServiceSelector
                   value={serviceId}
@@ -195,14 +221,14 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
               </div>
             </div>
 
-            {/* Spare Parts (unchanged) */}
+            {/* Spare Parts (dynamic) */}
             {spareParts.length > 0 &&
               spareParts.map((part) => (
                 <div key={part.id} className="grid grid-cols-12 gap-3 items-center">
                   <input
                     className="col-span-9 pl-5 py-3 rounded-[8px] border text-base"
                     type="text"
-                    value={part.name}
+                    placeholder={part.name}
                     onChange={e =>
                       setSpareParts(prev =>
                         prev.map(p => (p.id === part.id ? { ...p, name: e.target.value } : p))
@@ -210,9 +236,19 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
                     }
                   />
                   <div className="col-span-2 flex items-center justify-center gap-10 border rounded-[8px] px-3 py-3 bg-white">
-                    <button className='text-gray-300 hover:text-gray-700' onClick={() => handleQuantityChange(part.id, 'decrement')}>−</button>
-                    <span>{part.quantity}</span>
-                    <button className='text-gray-300 hover:text-gray-700' onClick={() => handleQuantityChange(part.id, 'increment')}>+</button>
+                    <button
+                      className='text-gray-300 hover:text-gray-700'
+                      onClick={() => handleQuantityChange(part.id, 'decrement')}
+                    >
+                      −
+                    </button>
+                    <span className="qty">{part.quantity}</span>
+                    <button
+                      className='text-gray-300 hover:text-gray-700'
+                      onClick={() => handleQuantityChange(part.id, 'increment')}
+                    >
+                      +
+                    </button>
                   </div>
                   <button
                     className="col-span-1 text-xl border border-white text-gray-700 py-2.5 rounded-[8px]"
