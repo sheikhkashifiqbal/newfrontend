@@ -1,6 +1,4 @@
-'use client'
-
-
+'use client';
 
 import {Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -15,112 +13,306 @@ import CustomFormField from "@/components/app-custom/CustomFormField";
 import {Form} from "@/components/ui/form";
 import {Button} from "@/components/ui/button";
 import CustomBlueBtn from "@/components/app-custom/CustomBlueBtn";
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
+import {IReservationServiceSparepart} from "@/components/dashboard/service/my-bookings/list-view/upcoming-tab/service-bookings-upcoming-columns";
+
+import { toast } from "sonner";
+//:contentReference[oaicite:3]{index=3}
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface IServiceBookingsAddEditSpareParts {
-	selectedRow?: number | null
-	closePopup: () => void
+	open: boolean;
+	reservationId: number | null;
+	reservationParts: IReservationServiceSparepart[];
+	onClose: () => void;
+	onSaved: () => void;
 }
 
-export default function ServiceBookingsAddEditSparePartsPopup({selectedRow, closePopup}: IServiceBookingsAddEditSpareParts) {
+interface ISparePartOption {
+	sparepartsId: number;
+	sparepartsType: string;
+}
 
-	const addEditSparePartsFormSchema = z.object({
-		parts: z.array(z.object({
-			name:  z.string({required_error: "name is required"}).nonempty({message: "name is required"}),
-			quantity: z.number({required_error: "qty. is required"}).min(1, {message: 'qty. should be at least 1'})
-		}, {required_error: 'Define at least 1 part'})).min(1)
-	})
+const addEditSparePartsFormSchema = z.object({
+	parts: z.array(z.object({
+		id: z.number().optional(),
+		name: z.string({required_error: "name is required"}).nonempty({message: "name is required"}),
+		quantity: z.number({required_error: "qty. is required"}).min(1, {message: 'qty. should be at least 1'})
+	}, {required_error: 'Define at least 1 part'})).min(1)
+});
+
+export default function ServiceBookingsAddEditSparePartsPopup({
+	open,
+	reservationId,
+	reservationParts,
+	onClose,
+	onSaved
+}: IServiceBookingsAddEditSpareParts) {
+
+	//const {toast} = useToast();
+
+	const [sparePartOptions, setSparePartOptions] = useState<ISparePartOption[]>([]);
+	const [selectedSparepartsId, setSelectedSparepartsId] = useState<number | "">("");
 
 	const form = useForm<z.infer<typeof addEditSparePartsFormSchema>>({
 		resolver: zodResolver(addEditSparePartsFormSchema),
 		defaultValues: {
-			parts: [{}]
+			parts: []
 		},
-		mode: 'onChange'
-	})
+		mode: "onChange"
+	});
 
-	const { fields, append, remove } = useFieldArray({
+	const {fields, append, remove} = useFieldArray({
 		control: form.control,
-		name: 'parts'
-	})
+		name: "parts"
+	});
 
+	// Fetch spare part options when popup opens
+	useEffect(() => {
+		if (!open) return;
 
-	function onSubmit(values: z.infer<typeof addEditSparePartsFormSchema>) {
-		console.log(values)
+		async function fetchSpareParts() {
+			try {
+				const res = await fetch(`${BASE_URL}/api/spare-parts`);
+				if (!res.ok) {
+					console.error("Failed to fetch spare parts", res.status);
+					return;
+				}
+				const data = await res.json();
+				if (Array.isArray(data)) {
+					setSparePartOptions(data as ISparePartOption[]);
+					// Default selected: first from backend OR first of existing parts
+					if (reservationParts && reservationParts.length > 0) {
+						setSelectedSparepartsId(reservationParts[0].spareparts_id);
+					} else if (data[0]) {
+						setSelectedSparepartsId(data[0].sparepartsId);
+					}
+				}
+			} catch (e) {
+				console.error("Failed to fetch spare parts list", e);
+			}
+		}
+
+		fetchSpareParts();
+	}, [open, reservationParts]);
+
+	// Initialize form values from reservationParts when popup opens
+	useEffect(() => {
+		if (!open) return;
+
+		if (reservationParts && reservationParts.length > 0) {
+			form.reset({
+				parts: reservationParts.map((p) => ({
+					id: p.reservation_service_sparepart_id,
+					name: p.part_name,
+					quantity: p.qty
+				}))
+			});
+		} else {
+			// default one empty row
+			form.reset({
+				parts: [{
+					id: undefined,
+					name: "",
+					quantity: 1
+				}]
+			});
+		}
+	}, [open, reservationParts, form]);
+
+	const selectedSparePartLabel =
+		sparePartOptions.find(o => o.sparepartsId === selectedSparepartsId)?.sparepartsType ?? "Select spare part type";
+
+	async function handleDeleteRow(index: number, id?: number) {
+		try {
+			if (id) {
+				await fetch(`${BASE_URL}/api/reservation-service-spareparts/${id}`, {
+					method: "DELETE"
+				});
+			}
+			if (fields.length > 1) {
+				remove(index);
+			}
+		} catch (e) {
+			console.error("Failed to delete spare part row", e);
+			toast.error( "Failed to delete spare part.");
+		}
 	}
 
+	async function onSubmit(values: z.infer<typeof addEditSparePartsFormSchema>) {
+		if (!reservationId) {
+			toast.error( "Reservation ID is missing.");
+	
+			return;
+		}
+
+		if (!selectedSparepartsId) {
+			toast.error( "Please select a spare part type.");
+	
+			return;
+		}
+
+		try {
+			// Existing rows (PUT)
+			const existing = values.parts.filter(p => p.id);
+			for (const part of existing) {
+				await fetch(`${BASE_URL}/api/reservation-service-spareparts/${part.id}`, {
+					method: "PUT",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({
+						partName: part.name,
+						qty: part.quantity,
+						reservationId: reservationId,
+						sparepartsId: selectedSparepartsId
+					})
+				});
+			}
+
+			// New rows (POST)
+			const created = values.parts.filter(p => !p.id);
+			for (const part of created) {
+				await fetch(`${BASE_URL}/api/reservation-service-spareparts`, {
+					method: "POST",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({
+						partName: part.name,
+						qty: part.quantity,
+						reservationId: reservationId,
+						sparepartsId: selectedSparepartsId
+					})
+				});
+			}
+
+			toast.success("Spare parts updated successfully.");
+
+			await onSaved();
+			handleClose();
+		} catch (e) {
+			console.error("Failed to save spare parts", e);
+			toast.error("Failed to save spare parts.");
+
+		}
+	}
+
+	function handleClose() {
+		onClose();
+		setTimeout(() => {
+			form.reset();
+		}, 300);
+	}
 
 	return (
-			<Dialog open={!!selectedRow}>
-				<DialogContent className={cn("overflow-y-auto max-w-[95%] 650:max-w-[520px] max-h-[450px] 650:max-h-[550px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-8")}>
-					<ScrollArea className={'h-[450px] 650:h-[550px]'}>
-						<DialogHeader className={'w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0'}>
-							<div className={'flex justify-between items-center'}>
-								<DialogTitle className={'p-0 m-0 text-2xl text-charcoal font-medium'}>
-									Required spare part
-								</DialogTitle>
-								<DialogPrimitive.Close onClick={() => {
-									closePopup()
-									setTimeout(() => {
-										form.reset()
-									},300)
-								}}>
-									<X className={'size-6 text-charcoal/50'}/>
-								</DialogPrimitive.Close>
+		<Dialog open={open}>
+			<DialogContent
+				className={cn(
+					"overflow-y-auto max-w-[95%] 650:max-w-[520px] max-h-[450px] 650:max-h-[550px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-8"
+				)}
+			>
+				<ScrollArea className={"h-[450px] 650:h-[550px]"}>
+					<DialogHeader className={"w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0"}>
+						<div className={"flex justify-between items-center"}>
+							<DialogTitle className={"p-0 m-0 text-2xl text-charcoal font-medium"}>
+								Required spare part
+							</DialogTitle>
+							<DialogPrimitive.Close onClick={handleClose}>
+								<X className={"size-6 text-charcoal/50"}/>
+							</DialogPrimitive.Close>
+						</div>
+
+						{/* Spare part type chip + selector (engine, brakes, etc.) */}
+						<div className="flex flex-col gap-3">
+							<div className={"max-w-fit bg-ice-mist rounded-[8px] py-2 px-4 border border-soft-sky"}>
+								{selectedSparePartLabel}
 							</div>
-						</DialogHeader>
+							<div className="flex flex-col gap-1 max-w-xs">
+								<label className="text-xs text-dark-gray font-medium">
+									Spare part type
+								</label>
+								<select
+									className="h-10 rounded-md border border-soft-gray bg-white px-3 text-sm text-dark-gray"
+									value={selectedSparepartsId}
+									onChange={(e) => {
+										const val = Number(e.target.value);
+										setSelectedSparepartsId(isNaN(val) ? "" : val);
+									}}
+								>
+									<option value="">Select type</option>
+									{sparePartOptions.map((opt) => (
+										<option key={opt.sparepartsId} value={opt.sparepartsId}>
+											{opt.sparepartsType}
+										</option>
+									))}
+								</select>
+							</div>
+						</div>
+					</DialogHeader>
 
-						<Form {...form}>
-							<form onSubmit={form.handleSubmit(onSubmit)} className={'px-8 pt-8 flex flex-col gap-y-4'}>
-								<div className={'max-w-fit bg-ice-mist rounded-[8px] py-2 px-4 border border-soft-sky'}>Engine</div>
-								<div className={'flex flex-col gap-y-4'}>
-									{fields.map((field, index) => {
-										return (
-												<div className={'flex gap-4'} key={field.id}>
-													<CustomFormField
-															name={`parts.${index}.name`}
-															control={form.control}
-															isItalicPlaceholder={true}
-															label={'Part name'}
-															placeholder={'Enter part name'}
-															containerClassname={'basis-[60%]'}
-													/>
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(onSubmit)} className={"px-8 pt-8 flex flex-col gap-y-4"}>
+							<div className={"flex flex-col gap-y-4"}>
+								{fields.map((field, index) => {
+									const fieldId = form.watch(`parts.${index}.id`);
+									return (
+										<div className={"flex gap-4"} key={field.id}>
+											{/* Hidden field for id */}
+											<input
+												type="hidden"
+												{...form.register(`parts.${index}.id` as const)}
+											/>
 
-													<CustomFormField
-															name={`parts.${index}.quantity`}
-															control={form.control}
-															isItalicPlaceholder={true}
-															label={'Qty.'}
-															placeholder={'Ex: 100'}
-															containerClassname={'basis-[30%]'}
-															inputType={'number'}
-													/>
+											<CustomFormField
+												name={`parts.${index}.name`}
+												control={form.control}
+												isItalicPlaceholder={true}
+												label={"Part name"}
+												placeholder={"Enter part name"}
+												containerClassname={"basis-[60%]"}
+											/>
 
-													<div className={'flex flex-col gap-y-3 basis-[10%]'}>
-														<h5 className={'text-dark-gray text-sm font-medium'}>Delete</h5>
-														<div onClick={() => {
-															if(fields.length > 1) remove(index)
-														}} className={'cursor-pointer flex items-center justify-center h-14 rounded-xl border border-soft-gray bg-white px-4'}>
-															<X className={'text-[#AEA8A8] size-6'}/>
-														</div>
-													</div>
+											<CustomFormField
+												name={`parts.${index}.quantity`}
+												control={form.control}
+												isItalicPlaceholder={true}
+												label={"Qty."}
+												placeholder={"Ex: 100"}
+												containerClassname={"basis-[30%]"}
+												inputType={"number"}
+											/>
+
+											<div className={"flex flex-col gap-y-3 basis-[10%]"}>
+												<h5 className={"text-dark-gray text-sm font-medium"}>Delete</h5>
+												<div
+													onClick={() => handleDeleteRow(index, fieldId)}
+													className={
+														"cursor-pointer flex items-center justify-center h-14 rounded-xl border border-soft-gray bg-white px-4"
+													}
+												>
+													<X className={"text-[#AEA8A8] size-6"}/>
 												</div>
-										)
-									})}
-								</div>
-								<Button type={"button"} onClick={() => {
-									// @ts-ignore
-									append({})
-								}} className={'max-w-fit flex items-center rounded-[8px] py-3 px-4 bg-soft-gray'}>
-									<PlusIcon className={'text-dark-gray text-base'}/>
-									<h6 className={'text-xs font-medium text-dark-gray'}>Add spare part</h6>
-								</Button>
+											</div>
+										</div>
+									);
+								})}
+							</div>
 
-								<CustomBlueBtn type={"submit"} text={"Add Spare Parts"}/>
-							</form>
-						</Form>
-					</ScrollArea>
-				</DialogContent>
-			</Dialog>
-	)
+							<Button
+								type={"button"}
+								onClick={() => {
+									// @ts-ignore
+									append({id: undefined, name: "", quantity: 1});
+								}}
+								className={"max-w-fit flex items-center rounded-[8px] py-3 px-4 bg-soft-gray"}
+							>
+								<PlusIcon className={"text-dark-gray text-base"}/>
+								<h6 className={"text-xs font-medium text-dark-gray"}>Add spare part</h6>
+							</Button>
+
+							<CustomBlueBtn type={"submit"} text={"Add Spare Parts"}/>
+						</form>
+					</Form>
+				</ScrollArea>
+			</DialogContent>
+		</Dialog>
+	);
 }
