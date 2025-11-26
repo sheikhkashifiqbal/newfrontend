@@ -136,20 +136,19 @@ export default function ServiceBookingsAddEditSparePartsPopup({
 			}
 		} catch (e) {
 			console.error("Failed to delete spare part row", e);
-			toast.error( "Failed to delete spare part.");
+			toast.error("Failed to delete spare part.");
 		}
 	}
 
 	async function onSubmit(values: z.infer<typeof addEditSparePartsFormSchema>) {
+		console.log("ReservationId::", reservationId);
 		if (!reservationId) {
-			toast.error( "Reservation ID is missing.");
-	
+			toast.error("Reservation ID is missing.");
 			return;
 		}
 
 		if (!selectedSparepartsId) {
-			toast.error( "Please select a spare part type.");
-	
+			toast.error("Please select a spare part type.");
 			return;
 		}
 
@@ -191,7 +190,6 @@ export default function ServiceBookingsAddEditSparePartsPopup({
 		} catch (e) {
 			console.error("Failed to save spare parts", e);
 			toast.error("Failed to save spare parts.");
-
 		}
 	}
 
@@ -265,7 +263,7 @@ export default function ServiceBookingsAddEditSparePartsPopup({
 												name={`parts.${index}.name`}
 												control={form.control}
 												isItalicPlaceholder={true}
-												label={"Part name"}
+												label={"Enter part name"}
 												placeholder={"Enter part name"}
 												containerClassname={"basis-[60%]"}
 											/>
@@ -274,7 +272,7 @@ export default function ServiceBookingsAddEditSparePartsPopup({
 												name={`parts.${index}.quantity`}
 												control={form.control}
 												isItalicPlaceholder={true}
-												label={"Qty."}
+												label={"Ex: 100"}
 												placeholder={"Ex: 100"}
 												containerClassname={"basis-[30%]"}
 												inputType={"number"}
