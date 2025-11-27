@@ -1,10 +1,13 @@
-// ⬇️ Updated CustomFormField.tsx
+// ⬇️ ONLY the changes shown; keep the rest of your file as-is
 "use client"
 import {HTMLInputTypeAttribute, memo, ReactNode} from "react";
 import {FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
 import CustomInput from "@/components/app-custom/custom-input";
 import {cn} from "@/lib/utils";
 import { useFormContext } from "react-hook-form";
+
+
+
 
 export interface ICustomFormField {
   control: any
@@ -18,9 +21,11 @@ export interface ICustomFormField {
   isItalicPlaceholder?: boolean
   className?: string
   containerClassname?: string
-  registerOptions?: any;        // 👈 needed for schema validation
+  /** If provided, runs on blur. Return a string to show as an error; return null/undefined to clear. */
   asyncValidate?: (value: any) => Promise<string | null | undefined>
 }
+
+// ...imports and component signature unchanged above...
 
 function CustomFormField({
   control,
@@ -34,12 +39,11 @@ function CustomFormField({
   isItalicPlaceholder = false,
   className,
   containerClassname,
-  registerOptions,
   asyncValidate
 }: ICustomFormField) {
+  const { setError, clearErrors } = useFormContext();
 
-  const { setError, clearErrors, register } = useFormContext();
-
+  // small helper so we can reuse it for blur + enter
   const runAsyncValidation = async (value: any) => {
     if (!asyncValidate) return;
     try {
@@ -47,6 +51,7 @@ function CustomFormField({
       if (msg) setError(name as any, { type: "server", message: msg });
       else clearErrors(name as any);
     } catch {
+      // network/other failures: don't block user
       clearErrors(name as any);
     }
   };
@@ -55,7 +60,6 @@ function CustomFormField({
     <FormField
       control={control}
       name={name}
-      rules={registerOptions}     // 👈 now RHF receives validation rules
       render={({ field, fieldState }) => (
         <FormItem className={cn(containerClassname)}>
           {rightMostLabel ? (
@@ -68,13 +72,17 @@ function CustomFormField({
           )}
 
           <FormControl>
+            {/* ⬇️ wrapper catches blur + Enter without touching CustomInput’s props */}
             <div
-              onBlur={() => {
+              onBlur={(e) => {
+                // mark as touched for RHF
                 field.onBlur();
+                // async duplicate check
                 runAsyncValidation(field.value);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
+                  // run the same validation when user presses Enter
                   runAsyncValidation(field.value);
                 }
               }}
@@ -84,13 +92,10 @@ function CustomFormField({
                 isItalicPlaceholder={isItalicPlaceholder}
                 inputType={inputType}
                 placeholder={placeholder}
-                {...field}
-                
-                // 👉 ensure Zod receives correct type
+                {...field}                        
                 value={field.value ?? ""}
-                onChange={(value: string) =>
-                  field.onChange(inputType === "number" ? Number(value) : value)
-                }
+                onChange={(value: string) => field.onChange(inputType === "number" ? Number(value) : value)}
+                /* ⛔ do NOT pass onBlur here, CustomInput doesn't accept it */
               />
             </div>
           </FormControl>
@@ -103,4 +108,4 @@ function CustomFormField({
   );
 }
 
-export default memo(CustomFormField);
+export default CustomFormField;
