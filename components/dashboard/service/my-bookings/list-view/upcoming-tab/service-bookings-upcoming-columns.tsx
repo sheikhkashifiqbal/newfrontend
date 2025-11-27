@@ -35,7 +35,7 @@ export interface IServiceBookingReservationRow {
 	reservation_service_sparepart: IReservationServiceSparepart[];
 }
 
-export type ServiceBookingsTabType = "upcoming" | "completed" | "cancelled";
+export type ServiceBookingsTabType = "pending" | "completed" | "cancelled";
 
 interface ICreateColumnsOptions {
 	tab: ServiceBookingsTabType;
@@ -131,7 +131,7 @@ export const ServiceBookingsUpcomingTabColumns = (
 	];
 
 	// Upcoming tab: add Required spare part column
-	if (tab === "upcoming") {
+	if (tab === "pending") {
 		baseColumns.push({
 			accessorKey: "requiredSpareParts",
 			header: "Required spare part",

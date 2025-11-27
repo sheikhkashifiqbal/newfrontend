@@ -31,7 +31,7 @@ export default function ServiceBookingsListView({
     {
       index: 0,
       icon: <UpcomingIcon className={"!size-6"} />,
-      text: "Upcoming",
+      text: "pending",
       borderColor: "#00A6FB",
     },
     {
@@ -159,7 +159,7 @@ export default function ServiceBookingsListView({
   const sortedReservations = sortBySelectedDay(reservations);
 
   const upcomingReservations = sortedReservations.filter(
-    (r) => r.reservation_status === "upcoming"
+    (r) => r.reservation_status === "pending"
   );
   const completedReservations = sortedReservations.filter(
     (r) => r.reservation_status === "completed"
@@ -207,7 +207,7 @@ export default function ServiceBookingsListView({
       {/* TAB CONTENT */}
       {activeTab === 0 && (
         <ServiceBookingsUpcomingTab
-          tab="upcoming"
+          tab="pending"
           data={upcomingReservations}
           onRefresh={() => fetchReservations(branchId)}
           loading={loading}

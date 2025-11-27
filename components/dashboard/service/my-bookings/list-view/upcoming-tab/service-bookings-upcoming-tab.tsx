@@ -91,7 +91,7 @@ export default function ServiceBookingsUpcomingTab({
 	const columns = ServiceBookingsUpcomingTabColumns({
 		tab,
 		onView: (row) => {
-			if (tab === "upcoming") {
+			if (tab === "pending") {
 				setViewedRow(row);
 			}
 		},
@@ -113,7 +113,7 @@ export default function ServiceBookingsUpcomingTab({
 			)}
 
 			{/* Popup only for Upcoming tab */}
-			{tab === "upcoming" && (
+			{tab === "pending" && (
 				<ServiceBookingsAddEditSparePartsPopup
 					open={!!viewedRow}
 					reservationId={viewedRow?.reservation_id ?? null}
