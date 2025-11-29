@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 // ⚠️ Update the import path to where your page lives in your app
-import type { SparePartRequestUI, ApiSparePartItem } from "@/app/spare-parts/request/page"; // update the import path to where your page lives
+import type { SparePartRequestUI, ApiSparePartItem } from "@/app/spare-parts/branch-bookings/page"; // update the import path to where your page lives
 import ModalBox from "../model-box";
 import { FiPlus } from "react-icons/fi";
 import { RxCross2 } from "react-icons/rx";
