@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 
-export type ReservationStatus = "upcoming" | "completed" | "cancelled";
+export type ReservationStatus = "pending" | "completed" | "cancelled";
 
 export type ReservationSparePart = {
   reservation_service_sparepart_id: number;
@@ -35,7 +35,7 @@ export type ReservationRow = {
 
 type BookingTableProps = {
   bookings: ReservationRow[];
-  activeTab: "Upcoming" | "Completed" | "Cancelled";
+  activeTab: "Pending" | "Completed" | "Cancelled";
   onOpenSpareParts: (reservation: ReservationRow) => void;
   onCancel: (reservation: ReservationRow) => void;
   onReschedule?: (reservation: ReservationRow) => void; // reserved
@@ -63,7 +63,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
   onCancel,
   onReschedule,
 }) => {
-  const isUpcoming = activeTab === "Upcoming";
+  const isUpcoming = activeTab === "Pending";
   const isCompleted = activeTab === "Completed";
   const isCancelled = activeTab === "Cancelled";
 

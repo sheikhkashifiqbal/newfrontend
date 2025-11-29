@@ -9,11 +9,11 @@ import NavTabs from "@/components/nav-tabs";
 
 /** ----- Tabs / Page Layout State ----- */
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-const statuses = ["Upcoming", "Completed", "Cancelled"] as const;
+const statuses = ["Pending", "Completed", "Cancelled"] as const;
 type TabStatus = typeof statuses[number];
 
 const MyBooking: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabStatus>("Upcoming");
+  const [activeTab, setActiveTab] = useState<TabStatus>("Pending");
   const [data, setData] = useState<ReservationRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -81,10 +81,10 @@ const MyBooking: React.FC = () => {
 
   /** Counts for tabs */
   const tabCounts = useMemo(() => {
-    const counts: Record<TabStatus, number> = { Upcoming: 0, Completed: 0, Cancelled: 0 };
+    const counts: Record<TabStatus, number> = { Pending: 0, Completed: 0, Cancelled: 0 };
     for (const r of data) {
       const s = r.reservation_status;
-      if (s === "upcoming") counts.Upcoming++;
+      if (s === "pending") counts.Pending++;
       else if (s === "completed") counts.Completed++;
       else if (s === "cancelled") counts.Cancelled++;
     }
@@ -257,7 +257,7 @@ const MyBooking: React.FC = () => {
               >
                 <img
                   src={
-                    tab === "Upcoming"
+                    tab === "Pending"
                       ? "/icons/clock-fast-forward.svg"
                       : tab === "Completed"
                       ? "/icons/check-circle-broken.svg"
@@ -267,7 +267,7 @@ const MyBooking: React.FC = () => {
                   height={20}
                   alt=""
                 />
-                <span>{tab}</span>
+                <span>{tab == "Pending" ? "UpComing": tab} </span>
                 <span className="px-2 py-[2px] text-xs border border-[#E9ECEF] rounded-2xl">
                   {tabCounts[tab] ?? 0}
                 </span>

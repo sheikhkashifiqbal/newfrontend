@@ -31,7 +31,7 @@ export default function ServiceBookingsListView({
     {
       index: 0,
       icon: <UpcomingIcon className={"!size-6"} />,
-      text: "pending",
+      text: "Pending",
       borderColor: "#00A6FB",
     },
     {
@@ -175,29 +175,36 @@ export default function ServiceBookingsListView({
         <DashboardContainer>
           <ScrollArea>
             <div className={"flex gap-10"}>
-              {tabs.map((tab) => {
-                const isActiveTab = tab.index === activeTab;
-                const IconComponent = tab.icon;
+            {tabs.map((tab) => {
+              const isActiveTab = tab.index === activeTab;
+              const IconComponent = tab.icon;
 
-                return (
-                  <div
-                    key={tab.text}
-                    onClick={() => handleTabClick(tab.index)}
-                    style={
-                      isActiveTab
-                        ? { borderColor: tab.borderColor, borderBottomWidth: "2px" }
-                        : {}
-                    }
-                    className={cn(
-                      "cursor-pointer text-sm flex min-w-fit w-[144px] text-misty-gray items-center justify-center gap-3 py-4",
-                      isActiveTab && `text-dark-gray font-medium border-b-2`
-                    )}
-                  >
-                    {IconComponent}
-                    {tab.text}
-                  </div>
-                );
-              })}
+              // 👉 Dynamic record count logic
+              let count = 0;
+              if (tab.index === 0) count = upcomingReservations.length;
+              if (tab.index === 1) count = completedReservations.length;
+              if (tab.index === 2) count = cancelledReservations.length;
+
+              return (
+                <div
+                  key={tab.text}
+                  onClick={() => handleTabClick(tab.index)}
+                  style={
+                    isActiveTab
+                      ? { borderColor: tab.borderColor, borderBottomWidth: "2px" }
+                      : {}
+                  }
+                  className={cn(
+                    "cursor-pointer text-sm flex min-w-fit w-[144px] text-misty-gray items-center justify-center gap-3 py-4",
+                    isActiveTab && `text-dark-gray font-medium border-b-2`
+                  )}
+                >
+                  {IconComponent}
+                  {tab.text} <span className="text-[#3F72AF] font-semibold">({count})</span>
+                </div>
+              );
+            })}
+
             </div>
             <ScrollBar className={"h-0"} orientation="horizontal" />
           </ScrollArea>
