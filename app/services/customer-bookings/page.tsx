@@ -187,7 +187,7 @@ const MyBooking: React.FC = () => {
     ) {
       return;
     }
-
+    console.log('reservation::', reservation);
     const reqBody: any = {
       userId: reservation.user_id ?? userId,
       carId: reservation.car_id,
@@ -196,7 +196,7 @@ const MyBooking: React.FC = () => {
       reservationTime: reservation.reservation_time?.slice(0, 5) ?? "",
       reservationStatus: "canceled",
     };
-
+    
     Object.keys(reqBody).forEach((k) => reqBody[k] === undefined && delete reqBody[k]);
 
     try {

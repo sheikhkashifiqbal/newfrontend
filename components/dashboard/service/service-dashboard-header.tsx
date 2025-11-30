@@ -53,10 +53,6 @@ export default function ServiceDashboardHeader( {
 					<ScrollBar className={'h-0'} orientation="horizontal" />
 				</ScrollArea>
 
-				<Button className={'h-12 flex items-center justify-center gap-2 border text-dark-gray text-sm font-medium border-soft-gray py-2 px-4 rounded-[8px]'}>
-					<LogoutIcon className={'!size-6'}/>
-					Log out
-				</Button>
 			</DashboardContainer>
 	)
 }
