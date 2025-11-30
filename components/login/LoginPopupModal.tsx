@@ -257,133 +257,73 @@ function ForgotPasswordScreen({
   setPage: (page: 1 | 2 | 3 | 4) => void;
   setVerifyState: (s: VerifyState) => void;
 }) {
-  const [verifyBy, setVerifyBy] = useState<"email" | "mobile">("mobile");
 
-  // Keep both fields optional in base schema; we'll enforce "at least one" manually
-  const schema = z.object({
-    accountType: z.enum(["user", "service", "store"]),
-    email: z.string().email("Invalid email").optional(),
-    mobile: z.string().min(5, "Enter valid mobile").optional(),
+  // 🔥 FORCE email only — remove mobile logic
+  const form = useForm({
+    resolver: zodResolver(
+      z.object({
+        accountType: z.enum(["user", "service", "store"]),
+        email: z.string().email("Invalid email"),
+      })
+    ),
+    defaultValues: { accountType: "user", email: "" },
   });
 
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: { accountType: "user", email: "", mobile: "" },
-    mode: "onChange",
-  });
+  async function handleVerify(values: any) {
+    const typeForAPI = mapToVerifyType(values.accountType);
 
-  const accountTypeLive = form.watch("accountType");
-
-  function handleToggle(next: "email" | "mobile") {
-    setVerifyBy(next);
-    // Clear previous field errors when switching tabs
-    form.clearErrors(["email", "mobile"]);
-  }
-
-  async function handleVerify(values: z.infer<typeof schema>) {
-    console.log("values:::", values);
-    const emailTrim = (values.email ?? "").trim();
-    const mobileTrim = (values.mobile ?? "").trim();
-
-    // ✅ New rule:
-    // - if email present -> no mobile validation
-    // - if mobile present -> no email validation
-    // - if both empty -> show required error on the currently selected input
-    if (!emailTrim && !mobileTrim) {
-      if (verifyBy === "email") {
-        //form.setError("email", { type: "required", message: "Email is required" });
-      } else {
-       // form.setError("mobile", { type: "required", message: "Mobile number is required" });
-      }
-     // return;
-    }
-    console.log("email",emailTrim);
-    // Build request body per rule: prefer email if provided; otherwise send mobile
-    const typeForAPI = mapToVerifyType(values.accountType); // "user" | "manager"
     const body = {
-      email: emailTrim ? emailTrim : "",
-      mobile: emailTrim ? "" : mobileTrim,
+      email: values.email,
+      mobile: "",
       type: typeForAPI,
     };
-    console.log("Body:::", body);
+
     try {
       const res = await fetch(`${BASE_URL}/api/verify/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      // Expected:
-      // { result: true, matchedType: "email"|"mobile", matchedValue: "...", code: "1429" }
-      if (data?.result === true && data?.code && data?.matchedType && data?.matchedValue) {
+
+      if (data?.result && data?.code) {
         setVerifyState({
           type: typeForAPI,
-          matchedType: data.matchedType,      // "email" or "mobile"
-          matchedValue: data.matchedValue,    // address or phone number returned by server
+          matchedType: "email",
+          matchedValue: values.email,
           code: String(data.code),
         });
+
         toast.success("Verification code sent.");
-        setPage(3); // open OTPScreen
+        setPage(3);
       } else {
-        toast.error("No match found with provided details.");
+        toast.error("No matching email found.");
       }
     } catch (e: any) {
-      toast.error("Verification failed: " + (e?.message ?? "Unknown error"));
+      toast.error("Verification failed: " + e.message);
     }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleVerify)} className="flex flex-col gap-y-6 px-8">
-        <AccountTypesContainer form={form} accountTypeLive={accountTypeLive} />
 
-        {/* Toggle buttons */}
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={() => handleToggle("email")}
-            className={cn(
-              "px-3 py-2 text-sm",
-              verifyBy === "email" ? "bg-steel-blue text-white" : "bg-white text-charcoal border border-soft-gray"
-            )}
-          >
-            Verify by email
-          </Button>
-          <Button
-            type="button"
-            onClick={() => handleToggle("mobile")}
-            className={cn(
-              "px-3 py-2 text-sm",
-              verifyBy === "mobile" ? "bg-steel-blue text-white" : "bg-white text-charcoal border border-soft-gray"
-            )}
-          >
-            Verify by mobile
-          </Button>
-        </div>
+        <AccountTypesContainer form={form} accountTypeLive={form.watch("accountType") as "user" | "service" | "store"}
+/>
 
-        {/* Conditionally render only the selected input.
-            (User can switch tabs — rule still holds: only the filled one is required) */}
-        {verifyBy === "email" ? (
-          <CustomFormField
-            control={form.control}
-            name="email"
-            label="Your email"
-            placeholder="you@example.com"
-            inputType="email"
-          />
-        ) : (
-          <CustomFormField
-            control={form.control}
-            name="mobile"
-            label="Your mobile number"
-            placeholder="+92..."
-            inputType="tel"
-          />
-        )}
+        {/* 🔥 Only email input remains */}
+        <CustomFormField
+          control={form.control}
+          name="email"
+          label="Your email"
+          placeholder="you@example.com"
+          inputType="email"
+        />
 
         <CustomBlueBtnCopy type="submit" text="Send code" />
+
         <Button
           type="button"
           onClick={() => setPage(1)}
@@ -408,6 +348,11 @@ function OTPScreen({
   const [sec, setSec] = useState(60);
   const [otp, setOtp] = useState("");
 
+  // 🔥 Sync when user types in CustomOtp
+  const handleOtpChange = (val: string) => {
+    setOtp(val);
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setSec((prev) => {
@@ -423,7 +368,7 @@ function OTPScreen({
 
   function submitOtp() {
     if (!verifyState) {
-      toast.error("Verification session expired. Please try again.");
+      toast.error("Session expired.");
       return;
     }
     if (otp.trim() === verifyState.code) {
@@ -436,19 +381,18 @@ function OTPScreen({
 
   return (
     <div className="flex flex-col gap-y-6 px-8">
-      <div className="flex items-center justify-center">
-        {/* Keep your existing OTP UI */}
-        <CustomOtp />
-      </div>
 
-      {/* Plain input to capture OTP code */}
+      {/* 🔥 Editable OTP and synced */}
+      <CustomOtp value={otp} onChange={handleOtpChange} />
+
+      {/* 🔥 This input is now editable and synced */}
       <div>
         <label className="block text-sm text-charcoal mb-1">Enter the 4-digit code</label>
         <input
           value={otp}
           onChange={(e) => setOtp(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="1429"
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none border-gray-300 focus:ring-2 focus:ring-blue-500"
+          placeholder="1234"
         />
       </div>
 
@@ -459,7 +403,7 @@ function OTPScreen({
           Send again
         </Button>
       ) : (
-        <h4 className="text-center text-sm text-charcoal/60">Resend the code in 00:{sec.toString().padStart(2, "0")}</h4>
+        <h4 className="text-center text-sm text-charcoal/60">Resend in 00:{sec.toString().padStart(2, "0")}</h4>
       )}
     </div>
   );
