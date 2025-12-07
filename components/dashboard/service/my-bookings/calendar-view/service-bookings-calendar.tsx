@@ -62,8 +62,13 @@ type DayScheduleItem = {
 
 const DAY_SCHEDULE_URL = "http://localhost:8081/api/branch-reservations/day-schedule";
 const SERVICES_OFFER_URL = "http://localhost:8081/api/services-offer-by-branch";
-const DISABLE_TIME_SLOT_URL = "http://localhost:8081/api/disable-time-slot";
-const BRANCH_BRAND_SERVICES_URL = "http://localhost:8081/api/branch-brand-services";
+
+// NEW: branch services APIs
+const BRANCH_BRAND_SERVICES_URL = "http://localhost:8081/api/branch-brand-services"; // GET list
+const BRANCH_BRAND_SERVICES_DISABLE_URL = "http://localhost:8081/api/branch-brand-services/disable-branch-service"; // POST
+
+// NEW: disable time-slot service APIs
+const DISABLE_TIME_SLOT_SERVICE_URL = "http://localhost:8081/api/disable-time-slot-service";
 
 const initialData: CalendarData = {
   "09:00": {
@@ -166,7 +171,10 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
   const [rowSwitches, setRowSwitches] = useState<Record<string, boolean>>({});
   const [columnSwitches, setColumnSwitches] = useState<Record<string, boolean>>({});
 
-  // key = `${timeSlot}|${serviceName}` -> {id}
+  // Row-level disableTimeSlot IDs (per time slot)
+  const [rowDisableIds, setRowDisableIds] = useState<Record<string, number | undefined>>({});
+
+  // Cell-level disableTimeSlot IDs: key = `${timeSlot}|${serviceName}`
   const [unavailableSlots, setUnavailableSlots] = useState<Record<string, { id: number }>>({});
 
   const timeSlots = useMemo(() => {
@@ -181,7 +189,16 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
     return localStorage.getItem("branch_id");
   };
 
-  // Fetch day schedule + services-offer-by-branch
+  // Reverse map: serviceId -> serviceName (for GET APIs)
+  const serviceNameById = useMemo(() => {
+    const obj: Record<number, string> = {};
+    Object.entries(serviceIdByName).forEach(([name, id]) => {
+      obj[id] = name;
+    });
+    return obj;
+  }, [serviceIdByName]);
+
+  // Fetch day schedule + services-offer-by-branch (existing behavior)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -233,7 +250,7 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
     fetchData();
   }, [date.isoDate, branchId]);
 
-  // Build headers, data grid & top checkboxes based on responses
+  // Build headers, data grid & top checkboxes based on responses (existing logic)
   useEffect(() => {
     const schedule = daySchedule[0];
     if (!schedule || servicesOffer.length === 0) {
@@ -327,11 +344,127 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
     });
   }, [timeSlots]);
 
+  // NEW: Get branch-brand-services list (GET) to set column switches by status
+  useEffect(() => {
+    const currentBranchId = getBranchId();
+    if (!currentBranchId) return;
+    if (Object.keys(serviceIdByName).length === 0) return;
+
+    const fetchBranchServicesStatus = async () => {
+      try {
+        const res = await fetch(BRANCH_BRAND_SERVICES_URL);
+        if (!res.ok) return;
+
+        const list = await res.json();
+        if (!Array.isArray(list)) return;
+
+        const newColumnSwitches: Record<string, boolean> = {};
+        headers.forEach((name) => {
+          newColumnSwitches[name] = true; // default ON
+        });
+
+        list.forEach((item: any) => {
+          const bId = Number(item.branchId ?? item.branch_id);
+          if (bId !== Number(currentBranchId)) return;
+
+          const svcId = Number(item.serviceId ?? item.service_id);
+          if (!svcId) return;
+
+          const serviceName = Object.entries(serviceIdByName).find(([name, id]) => id === svcId)?.[0];
+          if (!serviceName) return;
+
+          const statusRaw = (item.status ?? "").toString().toLowerCase();
+          const isInactive = statusRaw === "inactive" || statusRaw === "inctive"; // handle typo
+          newColumnSwitches[serviceName] = !isInactive;
+        });
+
+        setColumnSwitches((prev) => ({
+          ...prev,
+          ...newColumnSwitches,
+        }));
+      } catch (e) {
+        console.error("Failed to load branch-brand-services list", e);
+      }
+    };
+
+    fetchBranchServicesStatus();
+  }, [branchId, serviceIdByName, headers]);
+
+  // NEW: Get disable-time-slot-service list (GET) to set row/time + cell unavailable state
+  useEffect(() => {
+    const currentBranchId = getBranchId();
+    if (!currentBranchId) return;
+    if (timeSlots.length === 0) return;
+
+    const fetchDisabledSlots = async () => {
+      try {
+        const res = await fetch(DISABLE_TIME_SLOT_SERVICE_URL);
+        if (!res.ok) return;
+
+        const list = await res.json();
+        if (!Array.isArray(list)) return;
+
+        const newRowSwitches: Record<string, boolean> = {};
+        const newRowIds: Record<string, number> = {};
+        const newUnavailableSlots: Record<string, { id: number }> = {};
+
+        // Start with all rows enabled
+        timeSlots.forEach((t) => {
+          newRowSwitches[t] = true;
+        });
+
+        list.forEach((item: any) => {
+          const bId = Number(item.branchId ?? item.branch_id);
+          if (bId !== Number(currentBranchId)) return;
+
+          const timeSlot = (item.timeSlot ?? item.time_slot) as string | undefined;
+          const disableId = Number(item.disableTimeSlotId ?? item.id);
+          const sId = item.serviceId ?? item.service_id;
+
+          if (!timeSlot || !disableId) return;
+
+          // Row-level disable: only timeSlot (serviceId is null/0/undefined)
+          if (!sId) {
+            if (timeSlots.includes(timeSlot)) {
+              newRowSwitches[timeSlot] = false;
+              newRowIds[timeSlot] = disableId;
+            }
+          } else {
+            // Cell-level disable: timeSlot + serviceId
+            const serviceName = serviceNameById[Number(sId)];
+            if (serviceName && timeSlots.includes(timeSlot)) {
+              const key = `${timeSlot}|${serviceName}`;
+              newUnavailableSlots[key] = { id: disableId };
+            }
+          }
+        });
+
+        setRowSwitches((prev) => ({
+          ...prev,
+          ...newRowSwitches,
+        }));
+        setRowDisableIds((prev) => ({
+          ...prev,
+          ...newRowIds,
+        }));
+        setUnavailableSlots((prev) => ({
+          ...prev,
+          ...newUnavailableSlots,
+        }));
+      } catch (e) {
+        console.error("Failed to load disable-time-slot-service list", e);
+      }
+    };
+
+    fetchDisabledSlots();
+  }, [branchId, timeSlots, serviceNameById]);
+
   const handleTopServicesChange = (services: ITopServiceItem[]) => {
-    // This is now safe, because TopCheckboxes calls onChange from a useEffect, not during render
+    // Safe: TopCheckboxes calls onChange from a useEffect
     setServiceFilters(services);
   };
 
+  // NEW: Row time-slot switch → use disable-time-slot-service (POST / DELETE)
   const handleRowSwitchChange = async (time: string, checked: boolean) => {
     setRowSwitches((prev) => ({
       ...prev,
@@ -343,18 +476,44 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
 
     try {
       if (!checked) {
-        // Checkbox OFF => POST disable-time-slot with branch_id (as per requirement)
-        await fetch(DISABLE_TIME_SLOT_URL, {
+        // Checkbox OFF => POST disable-time-slot-service with branch_id + time_slot
+        const res = await fetch(DISABLE_TIME_SLOT_SERVICE_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             branch_id: Number(currentBranchId),
+            // service_id is optional here (row-wise disable)
+            time_slot: time,
           }),
         });
+
+        if (res.ok) {
+          const json = await res.json().catch(() => null);
+          const newId: number = json?.id ?? json?.disableTimeSlotId ?? 0;
+
+          setRowDisableIds((prev) => ({
+            ...prev,
+            [time]: newId,
+          }));
+
+          // You asked to show toast with message; in this file we just log
+          if (json?.message) {
+            console.log(json.message);
+          }
+        }
       } else {
-        // Checkbox ON => DELETE disable-time-slot/{branch_id}
-        await fetch(`${DISABLE_TIME_SLOT_URL}/${currentBranchId}`, {
+        // Checkbox ON => DELETE disable-time-slot-service/{id} (row level)
+        const id = rowDisableIds[time];
+        if (!id) return;
+
+        await fetch(`${DISABLE_TIME_SLOT_SERVICE_URL}/${id}`, {
           method: "DELETE",
+        });
+
+        setRowDisableIds((prev) => {
+          const copy = { ...prev };
+          delete copy[time];
+          return copy;
         });
       }
     } catch (e) {
@@ -362,6 +521,7 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
     }
   };
 
+  // NEW: Column switch → POST /branch-brand-services/disable-branch-service
   const handleColumnSwitchChange = async (serviceName: string, checked: boolean) => {
     setColumnSwitches((prev) => ({
       ...prev,
@@ -371,11 +531,16 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
     const serviceId = serviceIdByName[serviceName];
     if (!serviceId) return;
 
+    const currentBranchId = getBranchId();
+    if (!currentBranchId) return;
+
     try {
-      await fetch(`${BRANCH_BRAND_SERVICES_URL}/${serviceId}`, {
-        method: "PUT",
+      await fetch(BRANCH_BRAND_SERVICES_DISABLE_URL, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          branch_id: Number(currentBranchId),
+          service_id: serviceId,
           status: checked ? "active" : "inactive",
         }),
       });
@@ -384,6 +549,7 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
     }
   };
 
+  // NEW: Make unavailable / Make available (cell-level) → disable-time-slot-service (POST / DELETE)
   const handleToggleUnavailable = async (time: string, serviceName: string) => {
     const currentBranchId = getBranchId();
     if (!currentBranchId) return;
@@ -396,8 +562,8 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
 
     try {
       if (!existing) {
-        // Make unavailable: POST disable-time-slot with branch_id, service_id, time_slot
-        const res = await fetch(DISABLE_TIME_SLOT_URL, {
+        // Make unavailable: POST /disable-time-slot-service with branch_id, service_id, time_slot
+        const res = await fetch(DISABLE_TIME_SLOT_SERVICE_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -409,27 +575,21 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
 
         if (res.ok) {
           const json = await res.json().catch(() => null);
-          const newId: number = json?.id ?? json?.disable_id ?? json?.slot_id ?? 0;
+          const newId: number = json?.id ?? json?.disableTimeSlotId ?? 0;
 
           setUnavailableSlots((prev) => ({
             ...prev,
             [key]: { id: newId },
           }));
 
-          // Disable row & column switches (set OFF)
-          setRowSwitches((prev) => ({
-            ...prev,
-            [time]: false,
-          }));
-          setColumnSwitches((prev) => ({
-            ...prev,
-            [serviceName]: false,
-          }));
+          if (json?.message) {
+            console.log(json.message);
+          }
         }
       } else {
-        // Make available: DELETE disable-time-slot/{Id}
+        // Make available: DELETE /disable-time-slot-service/{id}
         const id = existing.id;
-        await fetch(`${DISABLE_TIME_SLOT_URL}/${id}`, {
+        await fetch(`${DISABLE_TIME_SLOT_SERVICE_URL}/${id}`, {
           method: "DELETE",
         });
 
@@ -438,16 +598,6 @@ export default function ServiceBookingsCalendar({ date, branchId }: IServiceBook
           delete copy[key];
           return copy;
         });
-
-        // Enable row & column switches (set ON)
-        setRowSwitches((prev) => ({
-          ...prev,
-          [time]: true,
-        }));
-        setColumnSwitches((prev) => ({
-          ...prev,
-          [serviceName]: true,
-        }));
       }
     } catch (e) {
       console.error("Failed to toggle availability for slot", e);
