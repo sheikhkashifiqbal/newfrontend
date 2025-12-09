@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import NavTabs from "@/components/nav-tabs";
 import SparePartsTable from "@/components/spare-parts/requests-table";
+import UserReviewExperiencePopup from "@/components/dashboard/user/my-bookings/completed-tab/user-review-experience-popup";
 
 // UI tab labels used throughout the page
 export type TabStatus = "Accepted offers" | "Accepted requests" | "Pending";
@@ -114,6 +115,7 @@ export default function SparePartsRequestPage() {
   const [selectedVin, setSelectedVin] = useState<string>("All");
   const [sparePartRequests, setSparePartRequests] = useState<SparePartRequestUI[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
+  const [reviewedRow, setReviewedRow] = useState<any | null>(null);
 
   // ✅ Get userId from auth_response, block if missing
   useEffect(() => {
@@ -228,14 +230,23 @@ export default function SparePartsRequestPage() {
       prev.map((r) =>
         r.sparepartsrequest_id === sparepartsrequestId
           ? {
-              ...r,
-              status:
-                statusMap[(nextStatus || "").toLowerCase()] || r.status,
-            }
+            ...r,
+            status:
+              statusMap[(nextStatus || "").toLowerCase()] || r.status,
+          }
           : r
       )
     );
   };
+
+  const handleOpenReviewPopup = (row: any) => {
+    setReviewedRow(row);
+  };
+
+  const closePopup = () => {
+    setReviewedRow(null);
+  };
+
 
   // if (userId == null) return null; // prevent rendering before auth check
 
@@ -331,16 +342,15 @@ export default function SparePartsRequestPage() {
                 tab === "Accepted offers"
                   ? "border-blue-400"
                   : tab === "Accepted requests"
-                  ? "border-green-400"
-                  : "border-yellow-400";
+                    ? "border-green-400"
+                    : "border-yellow-400";
               return (
                 <button
                   key={tab}
-                  className={`px-0 py-4 font-medium flex gap-1 sm:gap-3 items-center ${
-                    isActive
-                      ? `text-gray-700 border-b-2 ${borderColor}`
-                      : "text-gray-300 hover:text-gray-700"
-                  }`}
+                  className={`px-0 py-4 font-medium flex gap-1 sm:gap-3 items-center ${isActive
+                    ? `text-gray-700 border-b-2 ${borderColor}`
+                    : "text-gray-300 hover:text-gray-700"
+                    }`}
                   onClick={() => setActiveTab(tab)}
                 >
                   <img
@@ -348,8 +358,8 @@ export default function SparePartsRequestPage() {
                       tab === "Accepted offers"
                         ? "/icons/clock-fast-forward.svg"
                         : tab === "Accepted requests"
-                        ? "/icons/check-circle-broken.svg"
-                        : "/icons/clock-refresh.svg"
+                          ? "/icons/check-circle-broken.svg"
+                          : "/icons/clock-refresh.svg"
                     }
                     width={24}
                     alt={`${tab} icon`}
@@ -367,10 +377,19 @@ export default function SparePartsRequestPage() {
 
       {/* Table */}
       <SparePartsTable
-        services={[{date: "0"}]}
+        services={[{ date: "0" }]}
         activeTab={activeTab}
         onStatusChange={handleLocalStatusChange}
+        onReviewClick={handleOpenReviewPopup}   // ✅ IMPORTANT
       />
+
+      {/* ✅ POPUP RENDER */}
+      <UserReviewExperiencePopup
+        reviewedRow={reviewedRow}
+        closePopup={closePopup}
+      />
+
+
     </div>
   );
 }

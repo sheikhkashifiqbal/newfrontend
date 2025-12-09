@@ -9,6 +9,7 @@ interface SparePartsTableProps {
   services?: SparePartRequestUI[];
   activeTab?: String;
   onStatusChange?: (sparepartsrequest_id: number, nextStatus: string) => void;
+  onReviewClick: any
 }
 
 // Match backend casing used in your examples ("class A/B/C")
@@ -46,6 +47,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   services = [],
   activeTab = "Accepted offers",
   onStatusChange,
+  onReviewClick
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalItems, setModalItems] = useState<ApiSparePartItem[]>([]);
@@ -104,8 +106,10 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 
   const closeModal = () => setModalOpen(false);
 
-  const onReview = (id: number) => {
-    alert(`Review: ${id}`);
+   const onReview = (row: SparePartRequestUI) => {
+    if (onReviewClick) {
+      onReviewClick(row); // ← FIRE POPUP
+    }
   };
 
   // ---- API helpers for detail rows (kept, not changed in behavior) ----
@@ -365,7 +369,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   </span>
                   <button
                     className="text-[#3F72AF] text-sm font-semibold"
-                    onClick={() => onReview(r.id)}
+                    onClick={() => onReview(r)}
                   >
                     Review it
                   </button>
