@@ -449,7 +449,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   </thead>
 
                   <tbody className="">
-                    {demoModalItems?.length === 0 ? (
+                    {modalItems?.length === 0 ? (
                       <tr>
                         <td
                           colSpan={editMode ? 7 : 6}
@@ -459,7 +459,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      demoModalItems?.map((it, idx) => (
+                      modalItems?.map((it, idx) => (
                         <tr
                           key={`${it.id ?? it.spare_part}-${idx}`}
                           className="text-[#495057] align-middle"
