@@ -377,7 +377,7 @@ export default function SparePartsRequestPage() {
 
       {/* Table */}
       <SparePartsTable
-        services={[{ date: "0" }]}
+        services={filteredRequests}
         activeTab={activeTab}
         onStatusChange={handleLocalStatusChange}
         onReviewClick={handleOpenReviewPopup}   // ✅ IMPORTANT
