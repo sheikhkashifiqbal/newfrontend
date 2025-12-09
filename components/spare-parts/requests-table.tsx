@@ -260,140 +260,125 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
         <div className="text-center py-10 text-gray-500">No services found.</div>
       ) : (
         <div className="rounded-3xl border border-[#E9ECEF] overflow-hidden">
-          <table className="w-full table-fixed divide-y divide-gray-200">
-            <thead className="bg-[#F8F9FA] text-left text-xs text-[#ADB5BD]">
-              <tr>
-                <th className="px-4 py-3 w-[110px] break-words">Date</th>
-                <th className="px-4 py-3 w-[260px] break-words">
-                  Service & Location
-                </th>
-                <th className="px-4 py-3 w-[210px] break-words">VIN / Plate</th>
-                <th className="px-4 py-3 w-[140px] break-words">Car part</th>
-                <th className="px-4 py-3 w-[120px] break-words">State</th>
-                <th className="px-4 py-3 w-[180px] break-words">Spare parts</th>
-                {columns.showAction && (
-                  <th className="px-4 py-3 w-[160px] break-words">Action</th>
-                )}
-                {columns.showReview && (
-                  <th className="px-4 py-3 w-[160px] break-words">Review</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200 text-[#495057] text-base">
-              {services.map((r) => (
-                <tr
-                  key={`${r.id}-${r.vinOrPlate}`}
-                  className="hover:bg-gray-50"
+  <div className="overflow-x-auto w-full">
+    <table className="min-w-max w-full table-auto divide-y divide-gray-200">
+      <thead className="bg-[#F8F9FA] text-left text-xs text-[#ADB5BD]">
+        <tr>
+          <th className="px-4 py-3">Date</th>
+          <th className="px-4 py-3">Service & Location</th>
+          <th className="px-4 py-3">VIN / Plate</th>
+          <th className="px-4 py-3">Car part</th>
+          <th className="px-4 py-3">State</th>
+          <th className="px-4 py-3">Spare parts</th>
+
+          {columns.showAction && <th className="px-4 py-3">Action</th>}
+          {columns.showReview && <th className="px-4 py-3">Review</th>}
+        </tr>
+      </thead>
+
+      <tbody className="bg-white divide-y divide-gray-200 text-[#495057] text-base">
+        {services.map((r) => (
+          <tr key={`${r.id}-${r.vinOrPlate}`} className="hover:bg-gray-50">
+            <td className="px-4 py-4">{r.date}</td>
+
+            <td className="px-4 py-4 font-medium">
+              <div className="flex items-start gap-3">
+                <img
+                  src="/request-img.png"
+                  width={24}
+                  className="mt-[2px]"
+                  alt=""
+                />
+                <div>
+                  <div className="text-[#212529]">{r.branchName}</div>
+                  <div className="text-sm text-[#6C757D]">{r.address}</div>
+                  <div className="text-sm text-[#6C757D]">{r.city}</div>
+                </div>
+              </div>
+            </td>
+
+            <td className="px-4 py-4">{r.vinOrPlate}</td>
+            <td className="px-4 py-4">{r.carPart}</td>
+            <td className="px-4 py-4">{r.state}</td>
+
+            <td className="px-0 py-4 flex justify-center">
+              {columns.showAcceptDecline ? (
+                <div className="flex gap-2 items-center">
+                  <button
+                    className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+                    onClick={() =>
+                      openModal(
+                        r.spareParts,
+                        r.carPart,
+                        false,
+                        r.sparepartsrequest_id
+                      )
+                    }
+                  >
+                    View
+                  </button>
+
+                  <button
+                    className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
+                    onClick={() =>
+                      acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")
+                    }
+                  >
+                    Accept
+                  </button>
+
+                  <button
+                    className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
+                    onClick={() =>
+                      acceptOrDecline(r.sparepartsrequest_id, "canceled")
+                    }
+                  >
+                    Decline
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+                  onClick={() =>
+                    openModal(
+                      r.spareParts,
+                      r.carPart,
+                      columns.canEditSpareParts,
+                      r.sparepartsrequest_id
+                    )
+                  }
                 >
-                  <td className="px-4 py-4 break-words">{r.date}</td>
-                  <td className="px-4 py-4 font-medium break-words">
-                    <div className="flex items-start gap-3">
-                      <img
-                        src="/request-img.png"
-                        width={24}
-                        className="mt-[2px]"
-                        alt=""
-                      />
-                      <div>
-                        <div className="text-[#212529]">{r.branchName}</div>
-                        <div className="text-sm text-[#6C757D]">
-                          {r.address}
-                        </div>
-                        <div className="text-sm text-[#6C757D]">{r.city}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 break-words">{r.vinOrPlate}</td>
-                  <td className="px-4 py-4 break-words">{r.carPart}</td>
-                  <td className="px-4 py-4 break-words">{r.state}</td>
+                  {columns.sparePartsButtonLabel}
+                </button>
+              )}
+            </td>
 
-                  {/* Spare parts column */}
-                  <td className="px-0 py-4">
-                    {columns.showAcceptDecline ? (
-                      <div className="flex gap-2 items-center">
-                        {/* View button for Accepted requests */}
-                        <button
-                          className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-                          onClick={() =>
-                            openModal(
-                              r.spareParts,
-                              r.carPart,
-                              false, // keep View-only mode for Accepted Requests
-                              r.sparepartsrequest_id
-                            )
-                          }
-                        >
-                          View
-                        </button>
+            {columns.showAction && (
+              <td className="px-4 py-4">{r.managerMobile}</td>
+            )}
 
-                        <button
-                          className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
-                          onClick={() =>
-                            acceptOrDecline(
-                              r.sparepartsrequest_id,
-                              "accepted_offer"
-                            )
-                          }
-                        >
-                          Accept
-                        </button>
+            {columns.showReview && (
+              <td className="px-4 py-4">
+                <div className="flex flex-col items-start gap-2">
+                  <span className="text-gray-500 text-sm">
+                    Not reviewed yet.
+                  </span>
+                  <button
+                    className="text-[#3F72AF] text-sm font-semibold"
+                    onClick={() => onReview(r.id)}
+                  >
+                    Review it
+                  </button>
+                </div>
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
 
-                        <button
-                          className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
-                          onClick={() =>
-                            acceptOrDecline(
-                              r.sparepartsrequest_id,
-                              "canceled"
-                            )
-                          }
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-                        onClick={() =>
-                          openModal(
-                            r.spareParts,
-                            r.carPart,
-                            columns.canEditSpareParts,
-                            r.sparepartsrequest_id
-                          )
-                        }
-                      >
-                        {columns.sparePartsButtonLabel}
-                      </button>
-                    )}
-                  </td>
-
-                  {/* Visible only for Accepted offers */}
-                  {columns.showAction && (
-                    <td className="px-0 py-0 break-words">
-                      {r.managerMobile}AAA
-                    </td>
-                  )}
-                  {columns.showReview && (
-                    <td className="px-4 py-4 break-words">
-                      <div className="flex flex-col items-start justify-between gap-2">
-                        <span className="text-gray-500 text-sm">
-                          Not reviewed yet.
-                        </span>
-                        <button
-                          className="text-[#3F72AF] block text-sm font-semibold"
-                          id={`review-btn-${r.id}`}
-                          onClick={() => onReview(r.id)}
-                        >
-                          Review it
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
 
       {/* Spare parts vertical modal */}
@@ -403,7 +388,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
 
           {/* modal wrapper optimized for 800px */}
-          <div className="relative bg-gray-50 rounded-xl shadow-xl max-h-[90vh] 
+          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] 
       overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
 
             {/* Header */}
@@ -460,7 +445,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   </thead>
 
                   <tbody className="">
-                    {modalItems?.length === 0 ? (
+                    {demoModalItems?.length === 0 ? (
                       <tr>
                         <td
                           colSpan={editMode ? 7 : 6}
@@ -470,7 +455,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      modalItems?.map((it, idx) => (
+                      demoModalItems?.map((it, idx) => (
                         <tr
                           key={`${it.id ?? it.spare_part}-${idx}`}
                           className="text-[#495057] align-middle"
@@ -499,7 +484,13 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                                 }
                               />
                             ) : (
-                              it.spare_part
+                              <input
+                                type="text"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.spare_part ?? "")}
+                                disabled
+                              />
                             )}
                           </td>
 
@@ -543,7 +534,13 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                                 </span>
                               </div>
                             ) : (
-                              it.class_type
+                              <input
+                                type="text"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.class_type ?? "")}
+                                disabled
+                              />
                             )}
                           </td>
 
@@ -567,7 +564,13 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                                 }
                               />
                             ) : (
-                              it.qty
+                              <input
+                                type="number"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.qty ?? "")}
+                                disabled
+                              />
                             )}
                           </td>
 
@@ -591,7 +594,13 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                                 }
                               />
                             ) : (
-                              it.price
+                              <input
+                                type="number"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.price ?? "")}
+                                disabled
+                              />
                             )}
                           </td>
 
@@ -616,7 +625,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 
             {/* Bottom Add/Update */}
             {editMode && (
-              <div className="px-3 py-4 flex justify-center">
+              <div className="px-3 pt-4 pb-1 flex justify-center">
                 <button
                   className="py-4 px-6 w-full bg-[#3F72AF] hover:bg-blue-800 text-white rounded-lg"
                   onClick={saveAllRows}
@@ -637,29 +646,29 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 export default SparePartsTable;
 
 
-// const demoModalItems: ApiSparePartItem[] = [
-//   {
-//     id: 101,
-//     sparepartsrequest_id: 1,
-//     spare_part: "Air Filter",
-//     class_type: "class A",
-//     qty: 1,
-//     price: 120,
-//   },
-//   {
-//     id: 102,
-//     sparepartsrequest_id: 1,
-//     spare_part: "Oil Filter",
-//     class_type: "class B",
-//     qty: 2,
-//     price: 45,
-//   },
-//   {
-//     id: 103,
-//     sparepartsrequest_id: 1,
-//     spare_part: "Spark Plug",
-//     class_type: "class C",
-//     qty: 4,
-//     price: 30,
-//   },
-// ];
+const demoModalItems: ApiSparePartItem[] = [
+  {
+    id: 101,
+    sparepartsrequest_id: 1,
+    spare_part: "Air Filter",
+    class_type: "class A",
+    qty: 1,
+    price: 120,
+  },
+  {
+    id: 102,
+    sparepartsrequest_id: 1,
+    spare_part: "Oil Filter",
+    class_type: "class B",
+    qty: 2,
+    price: 45,
+  },
+  {
+    id: 103,
+    sparepartsrequest_id: 1,
+    spare_part: "Spark Plug",
+    class_type: "class C",
+    qty: 4,
+    price: 30,
+  },
+];

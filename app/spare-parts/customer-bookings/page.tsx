@@ -174,7 +174,6 @@ export default function SparePartsRequestPage() {
           status:
             statusMap[(item.request_status || "").toLowerCase()] || "Pending",
         }));
-
         setSparePartRequests(mapped);
       } catch (e) {
         console.error("Failed to fetch spare part requests:", e);
@@ -238,7 +237,7 @@ export default function SparePartsRequestPage() {
     );
   };
 
-  if (userId == null) return null; // prevent rendering before auth check
+  // if (userId == null) return null; // prevent rendering before auth check
 
   return (
     <div className="bg-gray-50 pb-20">
@@ -368,7 +367,7 @@ export default function SparePartsRequestPage() {
 
       {/* Table */}
       <SparePartsTable
-        services={filteredRequests}
+        services={[{date: "0"}]}
         activeTab={activeTab}
         onStatusChange={handleLocalStatusChange}
       />
