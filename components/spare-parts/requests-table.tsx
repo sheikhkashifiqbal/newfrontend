@@ -460,7 +460,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   </thead>
 
                   <tbody className="">
-                    {demoModalItems?.length === 0 ? (
+                    {modalItems?.length === 0 ? (
                       <tr>
                         <td
                           colSpan={editMode ? 7 : 6}
@@ -470,7 +470,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      demoModalItems?.map((it, idx) => (
+                      modalItems?.map((it, idx) => (
                         <tr
                           key={`${it.id ?? it.spare_part}-${idx}`}
                           className="text-[#495057] align-middle"
@@ -637,29 +637,29 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 export default SparePartsTable;
 
 
-const demoModalItems: ApiSparePartItem[] = [
-  {
-    id: 101,
-    sparepartsrequest_id: 1,
-    spare_part: "Air Filter",
-    class_type: "class A",
-    qty: 1,
-    price: 120,
-  },
-  {
-    id: 102,
-    sparepartsrequest_id: 1,
-    spare_part: "Oil Filter",
-    class_type: "class B",
-    qty: 2,
-    price: 45,
-  },
-  {
-    id: 103,
-    sparepartsrequest_id: 1,
-    spare_part: "Spark Plug",
-    class_type: "class C",
-    qty: 4,
-    price: 30,
-  },
-];
+// const demoModalItems: ApiSparePartItem[] = [
+//   {
+//     id: 101,
+//     sparepartsrequest_id: 1,
+//     spare_part: "Air Filter",
+//     class_type: "class A",
+//     qty: 1,
+//     price: 120,
+//   },
+//   {
+//     id: 102,
+//     sparepartsrequest_id: 1,
+//     spare_part: "Oil Filter",
+//     class_type: "class B",
+//     qty: 2,
+//     price: 45,
+//   },
+//   {
+//     id: 103,
+//     sparepartsrequest_id: 1,
+//     spare_part: "Spark Plug",
+//     class_type: "class C",
+//     qty: 4,
+//     price: 30,
+//   },
+// ];
