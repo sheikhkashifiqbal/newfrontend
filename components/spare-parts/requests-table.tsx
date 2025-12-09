@@ -30,9 +30,8 @@ const useToast = () => {
   const Toast = () =>
     toast ? (
       <div
-        className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm ${
-          toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-        }`}
+        className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
         role="status"
         aria-live="polite"
       >
@@ -219,7 +218,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
         // (as per your requirement – repeated for all rows)
         const idSegment = row.id != null ? `/${row.id}` : "";
         const url = `${BASE_URL}/api/spare-parts/request-details${idSegment}`;
-        
+
         console.log("Id:::", idSegment);
 
         await fetch(url, {
@@ -403,202 +402,264 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
           {/* backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
 
-          {/* panel: bigger width, taller height (still vertical) */}
-          <div className="relative bg-white rounded-xl shadow-xl max-h-[90vh] overflow-hidden w-[96%] sm:w-[680px] md:w-[740px]">
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h3 className="text-base font-semibold text-[#212529]">
-                Spare parts
-              </h3>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={closeModal}
-                  className="text-[#6C757D] text-sm"
-                >
-                  Close
-                </button>
+          {/* modal wrapper optimized for 800px */}
+          <div className="relative bg-gray-50 rounded-xl shadow-xl max-h-[90vh] 
+      overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4">
+              <div className="">
+                <h3 className="text-base font-semibold text-[#212529]">Spare parts</h3>
+              <p className="text-sm">For <span className="text-blue-400">New Engine Parts</span> of VIN <span className="text-blue-400">27393A7GDB67WOP921</span></p>
+              </div>
+
+              <button onClick={closeModal} className="text-[#6C757D] text-sm">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M18 6L6 18M6 6L18 18"
+                    stroke="#212529"
+                    strokeOpacity="0.5"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Scroll area */}
+            <div className="overflow-y-auto max-h-[70vh] px-2">
+              {/* horizontal scroll wrapper */}
+              <div className="overflow-x-auto">
+
+                {/* min-width forces mobile scroll instead of squeezing */}
+                <table className="text-base min-w-[650px] md:min-w-full">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="text-[#495057] text-xs md:text-sm">
+                      <th className="text-left px-3 py-3 font-medium w-[20%]">
+                        Parts Type
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[22%]">
+                        Spare Part
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[20%]">
+                        Class Type
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[12%]">
+                        Qty
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[13%]">
+                        Price
+                      </th>
+                      {editMode && (
+                        <th className="text-right px-3 py-3 font-medium w-[10%]">
+                          Actions
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+
+                  <tbody className="">
+                    {modalItems?.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={editMode ? 7 : 6}
+                          className="px-5 py-8 text-center text-[#6C757D]"
+                        >
+                          No items
+                        </td>
+                      </tr>
+                    ) : (
+                      modalItems?.map((it, idx) => (
+                        <tr
+                          key={`${it.id ?? it.spare_part}-${idx}`}
+                          className="text-[#495057] align-middle"
+                        >
+                          {/* Sparepart Type */}
+                          <td className="px-1 py-2">
+                            <input
+                              value={modalCarPart || ""}
+                              className="text-black border p-2.5 rounded-lg w-full"
+                              disabled
+                            />
+                          </td>
+
+                          {/* Spare Part */}
+                          <td className="px-1 py-2">
+                            {editMode ? (
+                              <input
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={it.spare_part}
+                                onChange={(e) =>
+                                  setModalItems((prev) =>
+                                    prev.map((x, i) =>
+                                      i === idx ? { ...x, spare_part: e.target.value } : x
+                                    )
+                                  )
+                                }
+                              />
+                            ) : (
+                              it.spare_part
+                            )}
+                          </td>
+
+                          {/* Class Type */}
+                          <td className="px-1 py-2">
+                            {editMode ? (
+                              <div className="relative w-full">
+                                {/* SELECT BOX */}
+                                <select
+                                  className="text-black border p-2.5 rounded-lg w-full appearance-none pr-10"
+                                  value={it.class_type}
+                                  onChange={(e) =>
+                                    setModalItems((prev) =>
+                                      prev.map((x, i) =>
+                                        i === idx ? { ...x, class_type: e.target.value } : x
+                                      )
+                                    )
+                                  }
+                                >
+                                  {CLASS_OPTIONS.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {/* CUSTOM ICON */}
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                  <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#495057"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M6 9l6 6 6-6" />
+                                  </svg>
+                                </span>
+                              </div>
+                            ) : (
+                              it.class_type
+                            )}
+                          </td>
+
+
+                          {/* Qty */}
+                          <td className="px-1 py-2">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.qty ?? "")}
+                                onChange={(e) =>
+                                  setModalItems((prev) =>
+                                    prev.map((x, i) =>
+                                      i === idx
+                                        ? { ...x, qty: Number(e.target.value) }
+                                        : x
+                                    )
+                                  )
+                                }
+                              />
+                            ) : (
+                              it.qty
+                            )}
+                          </td>
+
+                          {/* Price */}
+                          <td className="px-1 py-2">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.price ?? "")}
+                                onChange={(e) =>
+                                  setModalItems((prev) =>
+                                    prev.map((x, i) =>
+                                      i === idx
+                                        ? { ...x, price: Number(e.target.value) }
+                                        : x
+                                    )
+                                  )
+                                }
+                              />
+                            ) : (
+                              it.price
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          {editMode && (
+                            <td className="px-1 py-2 text-right">
+                              <button
+                                className="border p-2.5 rounded-lg text-red-600 font-bold w-12 hover:bg-red-600 hover:text-white"
+                                onClick={() => deleteDetail(it)}
+                              >
+                                ×
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="overflow-y-auto max-h-[80vh]">
-              <table className="min-w-full text-base">
-                <thead className="bg-[#F8F9FA] sticky top-0">
-                  <tr className="text-[#ADB5BD] text-sm">
-                    <th className="text-left px-5 py-3 w-[56px]">No.</th>
-                    <th className="text-left px-5 py-3 w-[180px]">
-                      Spareparts Type
-                    </th>
-                    <th className="text-left px-5 py-3 w-[220px]">
-                      Spare Part
-                    </th>
-                    <th className="text-left px-5 py-3 w-[160px]">
-                      Class Type
-                    </th>
-                    <th className="text-left px-5 py-3 w-[120px]">Qty</th>
-                    <th className="text-left px-5 py-3 w-[140px]">Price</th>
-                    {editMode && (
-                      <th className="text-right px-3 py-3 w-[140px]">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {modalItems.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={editMode ? 7 : 6}
-                        className="px-5 py-8 text-center text-[#6C757D]"
-                      >
-                        No items
-                      </td>
-                    </tr>
-                  ) : (
-                    modalItems.map((it, idx) => (
-                      <tr
-                        key={`${it.id ?? it.spare_part}-${idx}`}
-                        className="text-[#495057] align-middle"
-                      >
-                        <td className="px-5 py-3">{idx + 1}</td>
-                        <td className="px-5 py-3 break-words">
-                          {modalCarPart}
-                        </td>
-
-                        {/* Spare Part */}
-                        <td className="px-0 py-0 break-words">
-                          {editMode ? (
-                            <input
-                              className="w-full border rounded px-2 py-1"
-                              value={it.spare_part}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx
-                                      ? { ...x, spare_part: e.target.value }
-                                      : x
-                                  )
-                                )
-                              }
-                            />
-                          ) : (
-                            it.spare_part
-                          )}
-                        </td>
-
-                        {/* Class Type */}
-                        <td className="px-0 py-0">
-                          {editMode ? (
-                            <select
-                              className="w-full border rounded px-2 py-1"
-                              value={it.class_type}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx
-                                      ? { ...x, class_type: e.target.value }
-                                      : x
-                                  )
-                                )
-                              }
-                            >
-                              {CLASS_OPTIONS.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            it.class_type
-                          )}
-                        </td>
-
-                        {/* Qty */}
-                        <td className="px-0 py-0">
-                          {editMode ? (
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-full border rounded px-2 py-1"
-                              value={String(it.qty ?? "")}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx
-                                      ? {
-                                          ...x,
-                                          qty: Number(e.target.value),
-                                        }
-                                      : x
-                                  )
-                                )
-                              }
-                            />
-                          ) : (
-                            it.qty
-                          )}
-                        </td>
-
-                        {/* Price */}
-                        <td className="px-0 py-0">
-                          {editMode ? (
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="w-full border rounded px-2 py-1"
-                              value={String(it.price ?? "")}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx
-                                      ? {
-                                          ...x,
-                                          price: Number(e.target.value),
-                                        }
-                                      : x
-                                  )
-                                )
-                              }
-                            />
-                          ) : (
-                            it.price
-                          )}
-                        </td>
-
-                        {/* Actions column: ONLY delete stays here (Add/Update moved below table) */}
-                        {editMode && (
-                          <td className="px-3 py-3 text-right whitespace-nowrap">
-                            <button
-                              title="Delete row"
-                              className="py-1 px-2 border rounded-[8px] text-red-600 text-xs font-bold"
-                              onClick={() => deleteDetail(it)}
-                            >
-                              ×
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 🔹 NEW global Add/Update button centered below the table (Pending tab popup) */}
+            {/* Bottom Add/Update */}
             {editMode && (
-              <div className="px-5 py-4 border-t flex justify-center">
+              <div className="px-3 py-4 flex justify-center">
                 <button
-                  className="py-2 px-6 bg-[#3F72AF] text-white rounded-[999px] text-sm font-semibold"
+                  className="py-4 px-6 w-full bg-[#3F72AF] hover:bg-blue-800 text-white rounded-lg"
                   onClick={saveAllRows}
                 >
-                  Add/Update
+                  Add / Update
                 </button>
               </div>
             )}
           </div>
         </div>
       )}
+
+
     </div>
   );
 };
 
 export default SparePartsTable;
+
+
+// const demoModalItems: ApiSparePartItem[] = [
+//   {
+//     id: 101,
+//     sparepartsrequest_id: 1,
+//     spare_part: "Air Filter",
+//     class_type: "class A",
+//     qty: 1,
+//     price: 120,
+//   },
+//   {
+//     id: 102,
+//     sparepartsrequest_id: 1,
+//     spare_part: "Oil Filter",
+//     class_type: "class B",
+//     qty: 2,
+//     price: 45,
+//   },
+//   {
+//     id: 103,
+//     sparepartsrequest_id: 1,
+//     spare_part: "Spark Plug",
+//     class_type: "class C",
+//     qty: 4,
+//     price: 30,
+//   },
+// ];
