@@ -174,7 +174,6 @@ export default function SparePartsRequestPage() {
           status:
             statusMap[(item.request_status || "").toLowerCase()] || "Pending",
         }));
-
         setSparePartRequests(mapped);
       } catch (e) {
         console.error("Failed to fetch spare part requests:", e);
