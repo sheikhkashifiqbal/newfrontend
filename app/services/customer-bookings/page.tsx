@@ -225,12 +225,27 @@ const MyBooking: React.FC = () => {
   };
 
   // 🚫 Prevent rendering until userId verified
-  if (!userId) return null;
+  // if (!userId) return null;
+
+  const handleTopTabsChange = (label: string) => {
+    if (label === "Profile info") {
+      window.location.href = "/profile/user";
+      return;
+    }
+    if (label === "Spare part request") {
+      window.location.href = "/spare-parts/customer-bookings";
+      return;
+    }
+    if (label === "My bookings") {
+      window.location.href = "/services/customer-bookings";
+      return;
+    }
+  };
 
   return (
     <div className="bg-gray-50 pb-20">
       <section className="max-w-[1120px] mx-auto px-4 py-8">
-        <NavTabs tabItems={tabItems} />
+        <NavTabs tabItems={tabItems} defaultActiveTab="My bookings" id={1} onChange={handleTopTabsChange}/>
       </section>
 
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
@@ -399,6 +414,7 @@ export default MyBooking;
 /** --------- Icons Nav --------- */
 const tabItems = [
   {
+    id: 1,
     label: "My bookings",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -412,6 +428,7 @@ const tabItems = [
     ),
   },
   {
+    id: 2,
     label: "Spare part request",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -426,6 +443,7 @@ const tabItems = [
     ),
   },
   {
+    id: 3,
     label: "Profile info",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">

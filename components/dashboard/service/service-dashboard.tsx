@@ -12,7 +12,7 @@ export default function ServiceDashboard() {
 
   return (
     <div className={'py-5'}>
-      <ServiceDashboardHeader active={active} setActive={setActive} />
+      <ServiceDashboardHeader />
       {active === 0 && <ServiceBookings />}
       {active === 1 && <ServiceProfile />}
     </div>

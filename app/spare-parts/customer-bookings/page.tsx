@@ -250,10 +250,26 @@ export default function SparePartsRequestPage() {
 
   // if (userId == null) return null; // prevent rendering before auth check
 
+  const handleTopTabsChange = (label: string) => {
+    if (label === "Profile info") {
+      window.location.href = "/profile/user";
+      return;
+    }
+    if (label === "Spare part request") {
+      window.location.href = "/spare-parts/customer-bookings";
+      return;
+    }
+    if (label === "My bookings") {
+      window.location.href = "/services/customer-bookings";
+      return;
+    }
+  };
+
+
   return (
     <div className="bg-gray-50 pb-20">
       <section className="max-w-[1120px] mx-auto px-4 py-8">
-        <NavTabs tabItems={tabItems} defaultActiveTab="Spare part request" />
+        <NavTabs tabItems={tabItems} defaultActiveTab="Spare part request" onChange={handleTopTabsChange} id={2}/>
       </section>
 
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
