@@ -49,24 +49,24 @@ function useToastSafe() {
 async function handle401Unauthorized(closeModal: () => void) {
   console.log("logouttttt");
 
-    try {
-      const res = await fetch("http://localhost:8081/api/auth/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
+  try {
+    const res = await fetch("http://localhost:8081/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
 
-      if (res.ok) {
-        localStorage.clear();
-        toast.success("Logged out successfully");
-        window.location.href = "/"; // redirect to home after logout
-      } else {
-        toast.error("Logout failed");
-      }
-    } catch (err) {
-      console.error("Logout error:", err);
-      toast.error("Logout request failed");
+    if (res.ok) {
+      localStorage.clear();
+      toast.success("Logged out successfully");
+      window.location.href = "/"; // redirect to home after logout
+    } else {
+      toast.error("Logout failed");
     }
+  } catch (err) {
+    console.error("Logout error:", err);
+    toast.error("Logout request failed");
+  }
   closeModal();
   // ADDED: trigger re-login popup
   window.dispatchEvent(new CustomEvent("open-login-modal"));
@@ -183,7 +183,9 @@ function ServiceCardModalCarSelectors({
           triggerClassname={triggerClassname}
         />
         {brandMissing && (
-          <span className="text-red-500 text-xs mt-1">Please select a car brand.</span>
+          <span className="text-red-500 text-xs mt-1">
+            Please select a car brand.
+          </span>
         )}
       </div>
 
@@ -206,7 +208,9 @@ function ServiceCardModalCarSelectors({
           placeholder="Select model"
           triggerClassname={triggerClassname}
         />
-        {modelMissing && <span className="text-red-500 text-xs mt-1">Please select a model.</span>}
+        {modelMissing && (
+          <span className="text-red-500 text-xs mt-1">Please select a model.</span>
+        )}
       </div>
 
       {/* Service */}
@@ -227,7 +231,9 @@ function ServiceCardModalCarSelectors({
           triggerClassname={triggerClassname}
         />
         {serviceMissing && (
-          <span className="text-red-500 text-xs mt-1">Please select a service.</span>
+          <span className="text-red-500 text-xs mt-1">
+            Please select a service.
+          </span>
         )}
       </div>
     </div>
@@ -284,6 +290,14 @@ function ServiceCardModalDateSelector() {
   );
 }
 
+/* ----------------------------- ADDED: Disable time slot type ----------------------------- */
+type DisableTimeSlotRow = {
+  disableTimeSlotId: number;
+  branchId: number;
+  serviceId: number | null;
+  timeSlot: string;
+};
+
 /* ----------------------------- Time Selector ----------------------------- */
 function ServiceCardModalTimeSelector({
   branchId,
@@ -294,6 +308,47 @@ function ServiceCardModalTimeSelector({
 }) {
   const { selections, setSelections } = useSelection();
   const [times, setTimes] = useState<string[]>([]);
+
+  // NEW: store disabled time slots from GET /api/disable-time-slot-service
+  const [disabledSlots, setDisabledSlots] = useState<DisableTimeSlotRow[]>([]);
+
+  // 🔹 Fetch the disable-time-slot-service list once when popup/branch is active
+  const fetchDisabledSlots = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/disable-time-slot-service`, {
+        method: "GET",
+      });
+
+      // 401 handling
+      if (res.status === 401) {
+        await handle401Unauthorized(closeModal);
+        return;
+      }
+
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : [];
+
+      const normalized: DisableTimeSlotRow[] = rows.map((d: any) => ({
+        disableTimeSlotId:
+          typeof d.disableTimeSlotId === "number"
+            ? d.disableTimeSlotId
+            : typeof d.id === "number"
+            ? d.id
+            : 0,
+        branchId: Number(d.branchId),
+        serviceId:
+          d.serviceId === null || d.serviceId === undefined
+            ? null
+            : Number(d.serviceId),
+        timeSlot: String(d.timeSlot),
+      }));
+
+      setDisabledSlots(normalized);
+    } catch (e) {
+      console.error("Failed to fetch disable-time-slot-service:", e);
+      setDisabledSlots([]);
+    }
+  };
 
   const fetchSlots = async () => {
     if (!branchId) return;
@@ -317,24 +372,26 @@ function ServiceCardModalTimeSelector({
       payload.service_id = serviceId;
     }
 
-   try {
-  const authRaw = window.localStorage.getItem("auth_response");
-  const auth = authRaw ? JSON.parse(authRaw) : null;
-  const token = auth?.token ?? null; // use the token string stored in auth_response.token
+    try {
+      const authRaw = window.localStorage.getItem("auth_response");
+      const auth = authRaw ? JSON.parse(authRaw) : null;
+      const token = auth?.token ?? null; // use the token string stored in auth_response.token
 
-  if (!token) {
-    throw new Error("No auth token found in localStorage (auth_response.token)");
-  }
-  console.log("token:::", token);
-  const res = await fetch(`${BASE_URL}/api/reservations/available-slots`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}` // correct header key and value format
-    },
-    body: JSON.stringify(payload),
-  });
+      if (!token) {
+        throw new Error(
+          "No auth token found in localStorage (auth_response.token)"
+        );
+      }
+      console.log("token:::", token);
+      const res = await fetch(`${BASE_URL}/api/reservations/available-slots`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // correct header key and value format
+        },
+        body: JSON.stringify(payload),
+      });
 
       // ADDED: 401 handling
       if (res.status === 401) {
@@ -359,6 +416,39 @@ function ServiceCardModalTimeSelector({
         });
       }
 
+      // 🔹 APPLY YOUR NEW DISABLE RULES (a) and (b)
+      const selectedServiceId =
+        Number((selections as any).selectedService) || null;
+
+      // Consider only disabled rows for this branch
+      const disabledForBranch = disabledSlots.filter(
+        (row) => row.branchId === branchId
+      );
+
+      // Filter slots using both rules:
+      // a) if row.serviceId is null AND timeSlot matches => remove (for ALL services)
+      // b) if row.serviceId not null AND selected service == row.serviceId AND timeSlot matches => remove
+      slots = slots.filter((time) => {
+        const isDisabled = disabledForBranch.some((row) => {
+          if (row.timeSlot !== time) return false;
+
+          // Rule (a): disabled for ANY service
+          if (row.serviceId === null) {
+            return true;
+          }
+
+          // Rule (b): disabled only for specific service
+          if (!selectedServiceId) {
+            // no service selected yet -> rule (b) doesn't apply
+            return false;
+          }
+
+          return row.serviceId === selectedServiceId;
+        });
+
+        return !isDisabled;
+      });
+
       setTimes(slots);
       setSelections((prev: any) => ({
         ...prev,
@@ -368,12 +458,27 @@ function ServiceCardModalTimeSelector({
         try {
           sessionStorage.setItem("reservationTime", slots[0]);
         } catch {}
+      } else {
+        try {
+          sessionStorage.setItem("reservationTime", "");
+        } catch {}
       }
-    } catch {
+    } catch (e) {
+      console.error("Failed to fetch available slots:", e);
       setTimes([]);
       setSelections((prev: any) => ({ ...prev, selectedTime: "" }));
+      try {
+        sessionStorage.setItem("reservationTime", "");
+      } catch {}
     }
   };
+
+  // Fetch disabled slots once per branch (when modal is active)
+  useEffect(() => {
+    if (!branchId) return;
+    fetchDisabledSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId]);
 
   useEffect(() => {
     fetchSlots();
@@ -384,6 +489,7 @@ function ServiceCardModalTimeSelector({
     (selections as any).selectedCar,
     (selections as any).selectedModel,
     (selections as any).selectedService,
+    disabledSlots, // re-filter when disabled rules arrive/change
   ]);
 
   return (
@@ -417,7 +523,6 @@ function ServiceCardModalTimeSelector({
       </div>
     </div>
   );
-  
 }
 
 /* ----------------------------- Step One ----------------------------- */
@@ -492,7 +597,9 @@ function ServiceCardModalStepTwo({ branchInfo }: { branchInfo: any }) {
         <div className="flex gap-1">
           <h5 className="text-base text-charcoal/50">Service location:</h5>
           <span className="font-medium text-base text-charcoal">
-            {`${branchInfo?.address || ""}${branchInfo?.city ? ", " + branchInfo.city : ""}`}
+            {`${branchInfo?.address || ""}${
+              branchInfo?.city ? ", " + branchInfo.city : ""
+            }`}
           </span>
         </div>
       </div>
@@ -558,7 +665,9 @@ function ServiceCardModalStepThree({
         <div className="flex gap-1">
           <h5 className="text-base text-charcoal/50">Service location:</h5>
           <span className="font-medium text-base text-charcoal">
-            {`${branchInfo?.address || ""}${branchInfo?.city ? ", " + branchInfo.city : ""}`}
+            {`${branchInfo?.address || ""}${
+              branchInfo?.city ? ", " + branchInfo.city : ""
+            }`}
           </span>
         </div>
       </div>
@@ -595,12 +704,13 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
   // ADDED: Reset session ids + Check login each time modal opens
   useEffect(() => {
     if (selectedBranchId !== null && typeof window !== "undefined") {
-      sessionStorage.setItem("brand_id", "");  // ADDED
-      sessionStorage.setItem("model_id", "");  // ADDED
+      sessionStorage.setItem("brand_id", ""); // ADDED
+      sessionStorage.setItem("model_id", ""); // ADDED
       sessionStorage.setItem("service_id", ""); // ADDED
       sessionStorage.setItem("reservationTime", "");
       const auth = window.localStorage.getItem("auth_response"); // ADDED
-      if (!auth) { // ADDED
+      if (!auth) {
+        // ADDED
         closeModal(); // ADDED
         window.dispatchEvent(new CustomEvent("open-login-modal")); // ADDED
       }
@@ -633,14 +743,18 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
     const reservationTime = sessionStorage.getItem("reservationTime");
     const ok = !!brandId && !!modelId && !!serviceId;
 
-    if (!ok || reservationTime == "")  {
+    if (!ok || reservationTime == "") {
       setForceValidate(true);
       return;
     }
-    if (reservationTime === null && reservationTime === undefined && reservationTime === '') {
-       setForceValidate(true);
-        return;
-    } 
+    if (
+      reservationTime === null &&
+      reservationTime === undefined &&
+      reservationTime === ""
+    ) {
+      setForceValidate(true);
+      return;
+    }
 
     await fetchBranchInfo(selectedBranchId);
     setStep(2);
@@ -658,7 +772,8 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
       const modelId = Number(sessionStorage.getItem("model_id"));
       const serviceId = Number(sessionStorage.getItem("service_id"));
       const dateISO =
-        sessionStorage.getItem("reservationDate") || format(new Date(), "yyyy-MM-dd");
+        sessionStorage.getItem("reservationDate") ||
+        format(new Date(), "yyyy-MM-dd");
       const time = sessionStorage.getItem("reservationTime") || "";
 
       const res2 = await fetch(`${BASE_URL}/api/reservations`, {
@@ -692,7 +807,8 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
       setResult({ success: true, message: "" });
       setStep(3);
     } catch (e: any) {
-      const msg = e?.message || "Failed to create reservation. Please try again.";
+      const msg =
+        e?.message || "Failed to create reservation. Please try again.";
       setResult({ success: false, message: msg });
       toast({ description: msg });
       setStep(3);
