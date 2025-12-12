@@ -12,17 +12,19 @@ type NavTabsProps = {
   tabItems: TabItem[];
   defaultActiveTab?: string;
   onChange?: (tab: string) => void;
+  id?: number
 };
 
-const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange }) => {
+const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange, id }) => {
   const router = useRouter();
-
-  const [activeTab, setActiveTab] = useState<string>(() => {
+  console.log(defaultActiveTab, "defaultActiveTab")
+  const [activeTab, setActiveTab] = useState<any>(() => {
     return localStorage.getItem("active_tab") || defaultActiveTab || tabItems[0]?.label;
   });
 
   useEffect(() => {
     localStorage.setItem("active_tab", activeTab);
+    setActiveTab(defaultActiveTab)
   }, [activeTab]);
 
   const handleTabClick = (item: TabItem) => {
@@ -37,11 +39,11 @@ const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange 
   return (
     <div className="flex flex-col-reverse md:flex-row md:items-center gap-3 md:justify-between">
       <div className="flex items-center gap-3">
-        {tabItems.map((item) => (
+        {tabItems.map((item, idx) => (
           <button
             key={item.label}
             className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${
-              activeTab === item.label ? "bg-blue-50 !text-[#3F72AF]" : ""
+               id === idx+1 ? "bg-blue-50 !text-[#3F72AF]" : ""
             }`}
             onClick={() => handleTabClick(item)}
           >
@@ -49,7 +51,7 @@ const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange 
               ? React.cloneElement(
                   item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
                   {
-                    stroke: activeTab === item.label ? "#3F72AF" : "#495057",
+                    stroke: id === idx+1 ? "#3F72AF" : "#495057",
                   }
                 )
               : item.icon}

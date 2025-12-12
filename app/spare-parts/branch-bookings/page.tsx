@@ -306,19 +306,19 @@ export default function SparePartsRequestPage() {
 
   // 🔹 handle top nav tab redirects
   const handleTopTabsChange = (label: string) => {
-    if (label === "Profile info") {
-      window.location.href = "/profile/manager";
-      return;
-    }
-    if (label === "Spare part request") {
-      window.location.href = "/spare-parts/branch-bookings";
-      return;
-    }
-    if (label === "My bookings") {
-      window.location.href = "/services/branch-bookings";
-      return;
-    }
-  };
+		if (label === "Profile info") {
+			window.location.href = "/profile/manager";
+			return;
+		}
+		if (label === "Spare part request") {
+			window.location.href = "/spare-parts/branch-bookings";
+			return;
+		}
+		if (label === "My bookings") {
+			window.location.href = "/services/branch-bookings";
+			return;
+		}
+	};
 
   if (branchId == null) return null;
 

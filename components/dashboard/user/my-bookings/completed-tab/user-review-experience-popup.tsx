@@ -57,7 +57,7 @@ export default function UserReviewExperiencePopup(
 
 	return (
 			<Dialog open={!!reviewedRow}>
-				<DialogContent className={cn("overflow-y-auto max-w-[95%] 650:max-w-[650px] lg:max-w-[800px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-8")}>
+				<DialogContent className={cn("overflow-y-auto max-w-[95%] 650:max-w-[600px] lg:max-w-[600px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-8")}>
 					<ScrollArea className={'h-[450px] 650:h-[600px]'}>
 						<DialogHeader className={'w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0'}>
 							<div className={'flex justify-between items-center'}>
@@ -92,7 +92,7 @@ export default function UserReviewExperiencePopup(
 						</DialogHeader>
 
 						<Form {...form}>
-							<form onSubmit={form.handleSubmit(onSubmit)} className={'pt-8 px-8 flex flex-col gap-y-8'}>
+							<form onSubmit={form.handleSubmit(onSubmit)} className={'pt-5 px-8 flex flex-col gap-y-8'}>
 
 								<div className={'flex flex-col gap-y-3'}>
 									<h4 className={'text-dark-gray text-base font-medium'}>In a 5 star rate what was your experience?</h4>
