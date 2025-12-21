@@ -41,7 +41,7 @@ export function CardHeader({ containerClassname, branchName, logoImg, stars }: I
 function CardBookedServices({ services }: { services: string[] }) {
   const safe = Array.isArray(services) ? services : []
   return (
-    <div className="px-4 flex flex-col gap-y-3">
+    <div className="px-4 flex flex-col gap-y-3 pb-3">
       <p className="text-xs font-medium text-muted-gray">Most booked service</p>
       <div className="flex flex-wrap gap-1">
         {safe.map((s) => (
