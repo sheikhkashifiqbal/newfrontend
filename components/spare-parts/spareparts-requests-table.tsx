@@ -59,6 +59,10 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const [modalCarPart, setModalCarPart] = useState<string>("");
   const [modalRequestId, setModalRequestId] = useState<number | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false); // view for Accepted offers; view/edit for Pending
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewRow, setReviewRow] = useState<SparePartRequestUI | null>(null);
+  const [rating, setRating] = useState<number>(0);
+  const [reviewComment, setReviewComment] = useState<string>("");
 
   const { showToast, Toast } = useToast();
 
@@ -119,7 +123,46 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const closeModal = () => setModalOpen(false);
 
   const onReview = (id: number) => {
-    alert(`Review: ${id}`);
+    const row = services.find((r) => r.id === id);
+    if (row) {
+      setReviewRow(row);
+      setReviewModalOpen(true);
+      setRating(0);
+      setReviewComment("");
+    }
+  };
+
+  const closeReviewModal = () => {
+    setReviewModalOpen(false);
+    setReviewRow(null);
+    setRating(0);
+    setReviewComment("");
+  };
+
+  const submitReview = async () => {
+    if (!reviewRow || rating === 0) {
+      showToast("Please provide a rating", "error");
+      return;
+    }
+
+    try {
+      // TODO: Replace with actual API endpoint
+      // await fetch(`${BASE_URL}/api/spare-parts/reviews`, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     sparepartsrequest_id: reviewRow.sparepartsrequest_id,
+      //     rating: rating,
+      //     comment: reviewComment,
+      //   }),
+      // });
+
+      showToast("Review submitted successfully!", "success");
+      closeReviewModal();
+    } catch (e) {
+      console.error("Failed to submit review:", e);
+      showToast("Failed to submit review", "error");
+    }
   };
 
   // ---- API helper: update a single detail row (used by "Accept All")
@@ -295,102 +338,89 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
         <div className="text-center py-10 text-gray-500">No services found.</div>
       ) : (
         <div className="rounded-3xl border border-[#E9ECEF] overflow-hidden">
-          <table className="w-full table-fixed divide-y divide-gray-200">
-            <thead className="bg-[#F8F9FA] text-left text-xs text-[#ADB5BD]">
-              <tr>
-                <th className="px-4 py-3 w-[110px] break-words">Date</th>
-                <th className="px-4 py-3 w-[260px] break-words">
-                  Service & Location
-                </th>
-                <th className="px-4 py-3 w-[210px] break-words">
-                  VIN / Plate
-                </th>
-                <th className="px-4 py-3 w-[140px] break-words">Car part</th>
-                <th className="px-4 py-3 w-[120px] break-words">State</th>
-                <th className="px-4 py-3 w-[180px] break-words">
-                  Spare parts
-                </th>
-                {columns.showAction && (
-                  <th className="px-4 py-3 w-[160px] break-words">Action</th>
-                )}
-                {columns.showReview && (
-                  <th className="px-4 py-3 w-[160px] break-words">Review</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200 text-[#495057] text-base">
-              {services.map((r) => (
-                <tr
-                  key={`${r.id}-${r.vinOrPlate}`}
-                  className="hover:bg-gray-50"
-                >
-                  <td className="px-4 py-4 break-words">{r.date}</td>
-                  <td className="px-4 py-4 font-medium break-words">
-                    <div className="flex items-start gap-3">
-                      <img
-                        src="/request-img.png"
-                        width={24}
-                        className="mt-[2px]"
-                        alt=""
-                      />
-                      <div>
-                        <div className="text-[#212529]">{r.branchName}</div>
-                        <div className="text-sm text-[#6C757D]">
-                          {r.address}
-                        </div>
-                        <div className="text-sm text-[#6C757D]">
-                          {r.city}
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-max w-full table-auto divide-y divide-gray-200">
+              <thead className="bg-[#F8F9FA] text-left text-xs text-[#ADB5BD]">
+                <tr>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Service & Location</th>
+                  <th className="px-4 py-3">VIN / Plate</th>
+                  <th className="px-4 py-3">Car part</th>
+                  <th className="px-4 py-3">State</th>
+                  <th className="px-4 py-3">Spare parts</th>
+
+                  {columns.showAction && <th className="px-4 py-3">Action</th>}
+                  {columns.showReview && <th className="px-4 py-3">Review</th>}
+                </tr>
+              </thead>
+
+              <tbody className="bg-white divide-y divide-gray-200 text-[#495057] text-base">
+                {services.map((r) => (
+                  <tr key={`${r.id}-${r.vinOrPlate}`} className="hover:bg-gray-50">
+                    <td className="px-4 py-4">{r.date}</td>
+
+                    <td className="px-4 py-4 font-medium">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src="/request-img.png"
+                          width={24}
+                          className="mt-[2px]"
+                          alt=""
+                        />
+                        <div>
+                          <div className="text-[#212529]">{r.branchName}</div>
+                          <div className="text-sm text-[#6C757D]">{r.address}</div>
+                          <div className="text-sm text-[#6C757D]">{r.city}</div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 break-words">{r.vinOrPlate}</td>
-                  <td className="px-4 py-4 break-words">{r.carPart}</td>
-                  <td className="px-4 py-4 break-words">{r.state}</td>
-
-                  {/* Spare parts column */}
-                  <td className="px-0 py-4">
-                    <button
-                      className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-                      onClick={() =>
-                        openModal(
-                          r.spareParts,
-                          r.carPart,
-                          columns.canEditSpareParts,
-                          r.sparepartsrequest_id
-                        )
-                      }
-                    >
-                      {columns.sparePartsButtonLabel}
-                    </button>
-                  </td>
-
-                  {/* Visible only for Accepted offers */}
-                  {columns.showAction && (
-                    <td className="px-0 py-0 break-words">
-                      {r.managerMobile}AAA
                     </td>
-                  )}
-                  {columns.showReview && (
-                    <td className="px-4 py-4 break-words">
-                      <div className="flex flex-col items-start justify-between gap-2">
-                        <span className="text-gray-500 text-sm">
-                          Not reviewed yet.
-                        </span>
+
+                    <td className="px-4 py-4">{r.vinOrPlate}</td>
+                    <td className="px-4 py-4">{r.carPart}</td>
+                    <td className="px-4 py-4">{r.state}</td>
+
+                    <td className="px-0 py-4">
+                      <div className="flex justify-center items-center">
                         <button
-                          className="text-[#3F72AF] block text-sm font-semibold"
-                          id={`review-btn-${r.id}`}
-                          onClick={() => onReview(r.id)}
+                          className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+                          onClick={() =>
+                            openModal(
+                              r.spareParts,
+                              r.carPart,
+                              columns.canEditSpareParts,
+                              r.sparepartsrequest_id
+                            )
+                          }
                         >
-                          Review it
+                          {columns.sparePartsButtonLabel}
                         </button>
                       </div>
                     </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+                    {columns.showAction && (
+                      <td className="px-4 py-4">{r.managerMobile}</td>
+                    )}
+
+                    {columns.showReview && (
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col items-start">
+                          <span className="text-gray-500 text-sm">
+                            Not reviewed yet.
+                          </span>
+                          <button
+                            className="text-[#3F72AF] text-sm font-semibold"
+                            onClick={() => onReview(r.id)}
+                          >
+                            Review it
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -400,166 +430,305 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
           {/* backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
 
-          {/* panel: bigger width, taller height (still vertical) */}
-          <div className="relative bg-white rounded-xl shadow-xl max-h-[90vh] overflow-hidden w-[96%] sm:w-[680px] md:w-[740px]">
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h3 className="text-base font-semibold text-[#212529]">
-                Spare parts
-              </h3>
-              <div className="flex items-center gap-3">
-                {/* + Add item removed as per requirement */}
-                <button
-                  onClick={closeModal}
-                  className="text-[#6C757D] text-sm"
-                >
-                  Close
-                </button>
+          {/* modal wrapper optimized for 800px */}
+          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] 
+      overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4">
+              <div className="">
+                <h3 className="text-base font-semibold text-[#212529]">Spare parts</h3>
+                <p className="text-sm">For <span className="text-blue-400">{modalCarPart}</span> of VIN <span className="text-blue-400">{services.find(r => r.sparepartsrequest_id === modalRequestId)?.vinOrPlate || ""}</span></p>
+              </div>
+
+              <button onClick={closeModal} className="text-[#6C757D] text-sm">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M18 6L6 18M6 6L18 18"
+                    stroke="#212529"
+                    strokeOpacity="0.5"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Scroll area */}
+            <div className="overflow-y-auto max-h-[70vh] px-2">
+              {/* horizontal scroll wrapper */}
+              <div className="overflow-x-auto">
+
+                {/* min-width forces mobile scroll instead of squeezing */}
+                <table className="text-base min-w-[650px] md:min-w-full">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="text-[#495057] text-xs md:text-sm">
+                      <th className="text-left px-3 py-3 font-medium w-[20%]">
+                        Parts Type
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[22%]">
+                        Spare Part
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[20%]">
+                        Class Type
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[12%]">
+                        Qty
+                      </th>
+                      <th className="text-left px-3 py-3 font-medium w-[13%]">
+                        Price
+                      </th>
+                      {editMode && (
+                        <th className="text-right px-3 py-3 font-medium w-[10%]">
+                          Actions
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+
+                  <tbody className="">
+                    {modalItems?.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={editMode ? 6 : 5}
+                          className="px-5 py-8 text-center text-[#6C757D]"
+                        >
+                          No items
+                        </td>
+                      </tr>
+                    ) : (
+                      modalItems?.map((it, idx) => (
+                        <tr
+                          key={`${it.id ?? it.spare_part}-${idx}`}
+                          className="text-[#495057] align-middle"
+                        >
+                          {/* Sparepart Type */}
+                          <td className="px-1 py-2">
+                            <input
+                              value={modalCarPart || ""}
+                              className="text-black border p-2.5 rounded-lg w-full"
+                              disabled
+                            />
+                          </td>
+
+                          {/* Spare Part - always read-only */}
+                          <td className="px-1 py-2">
+                            <input
+                              type="text"
+                              className="text-black border p-2.5 rounded-lg w-full"
+                              value={String(it.spare_part ?? "")}
+                              disabled
+                            />
+                          </td>
+
+                          {/* Class Type - always read-only */}
+                          <td className="px-1 py-2">
+                            <input
+                              type="text"
+                              className="text-black border p-2.5 rounded-lg w-full"
+                              value={String(it.class_type ?? "")}
+                              disabled
+                            />
+                          </td>
+
+                          {/* Qty - editable in Pending (editMode true), read-only otherwise */}
+                          <td className="px-1 py-2">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.qty ?? "")}
+                                onChange={(e) =>
+                                  setModalItems((prev) =>
+                                    prev.map((x, i) =>
+                                      i === idx
+                                        ? { ...x, qty: Number(e.target.value) }
+                                        : x
+                                    )
+                                  )
+                                }
+                              />
+                            ) : (
+                              <input
+                                type="number"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.qty ?? "")}
+                                disabled
+                              />
+                            )}
+                          </td>
+
+                          {/* Price */}
+                          <td className="px-1 py-2">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.price ?? "")}
+                                onChange={(e) =>
+                                  setModalItems((prev) =>
+                                    prev.map((x, i) =>
+                                      i === idx
+                                        ? { ...x, price: Number(e.target.value) }
+                                        : x
+                                    )
+                                  )
+                                }
+                              />
+                            ) : (
+                              <input
+                                type="number"
+                                min={0}
+                                className="text-black border p-2.5 rounded-lg w-full"
+                                value={String(it.price ?? "")}
+                                disabled
+                              />
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          {editMode && (
+                            <td className="px-1 py-2 text-right">
+                              <button
+                                className="border p-2.5 rounded-lg text-red-600 font-bold w-12 hover:bg-red-600 hover:text-white"
+                                onClick={() => deleteDetail(it)}
+                              >
+                                ×
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="overflow-y-auto max-h-[80vh]">
-              <table className="min-w-full text-base">
-                <thead className="bg-[#F8F9FA] sticky top-0">
-                  <tr className="text-[#ADB5BD] text-sm">
-                    <th className="text-left px-5 py-3 w-[56px]">No.</th>
-                    <th className="text-left px-5 py-3 w-[180px]">
-                      Spareparts Type
-                    </th>
-                    <th className="text-left px-5 py-3 w-[220px]">
-                      Spare Part
-                    </th>
-                    <th className="text-left px-5 py-3 w-[160px]">
-                      Class Type
-                    </th>
-                    <th className="text-left px-5 py-3 w-[120px]">Qty</th>
-                    <th className="text-left px-5 py-3 w-[140px]">Price</th>
-                    {editMode && (
-                      <th className="text-right px-3 py-3 w-[140px]">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {modalItems.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={editMode ? 7 : 6}
-                        className="px-5 py-8 text-center text-[#6C757D]"
-                      >
-                        No items
-                      </td>
-                    </tr>
-                  ) : (
-                    modalItems.map((it, idx) => (
-                      <tr
-                        key={`${it.id ?? it.spare_part}-${idx}`}
-                        className="text-[#495057] align-middle"
-                      >
-                        <td className="px-5 py-3">{idx + 1}</td>
-                        <td className="px-5 py-3 break-words">
-                          {modalCarPart}
-                        </td>
-
-                        {/* Spare Part - always read-only text field */}
-                        <td className="px-0 py-0 break-words">
-                          <input
-                            className="w-full border rounded px-2 py-1 bg-[#E9ECEF] text-[#495057]"
-                            value={it.spare_part}
-                            readOnly
-                          />
-                        </td>
-
-                        {/* Class Type - always read-only text field */}
-                        <td className="px-0 py-0">
-                          <input
-                            className="w-full border rounded px-2 py-1 bg-[#E9ECEF] text-[#495057]"
-                            value={it.class_type}
-                            readOnly
-                          />
-                        </td>
-
-                        {/* Qty - editable in Pending (editMode true), read-only otherwise */}
-                        <td className="px-0 py-0">
-                          <input
-                            type="number"
-                            min={0}
-                            className={`w-full border rounded px-2 py-1 ${
-                              editMode
-                                ? "bg-white"
-                                : "bg-[#E9ECEF] text-[#495057]"
-                            }`}
-                            value={String(it.qty ?? "")}
-                            readOnly={!editMode}
-                            onChange={
-                              editMode
-                                ? (e) =>
-                                    setModalItems((prev) =>
-                                      prev.map((x, i) =>
-                                        i === idx
-                                          ? {
-                                              ...x,
-                                              qty: Number(e.target.value),
-                                            }
-                                          : x
-                                      )
-                                    )
-                                : undefined
-                            }
-                          />
-                        </td>
-
-                        {/* Price - keep same behavior as old code */}
-                        <td className="px-0 py-0">
-                          {editMode ? (
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="w-full border rounded px-2 py-1"
-                              value={String(it.price ?? "")}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx
-                                      ? {
-                                          ...x,
-                                          price: Number(e.target.value),
-                                        }
-                                      : x
-                                  )
-                                )
-                              }
-                            />
-                          ) : (
-                            it.price
-                          )}
-                        </td>
-
-                        {/* Actions column now intentionally empty in rows (Accept moved to bottom) */}
-                        {editMode && (
-                          <td className="px-3 py-3 text-right whitespace-nowrap">
-                            {/* Accept button moved to the end of table as per requirement */}
-                          </td>
-                        )}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 🔹 NEW: Single centered Accept button at the end of table */}
+            {/* Bottom Accept button */}
             {editMode && modalItems.length > 0 && (
-              <div className="px-5 py-4 border-t flex justify-center">
+              <div className="px-3 pt-4 pb-1 flex justify-center">
                 <button
-                  className="py-2 px-6 bg-[#F8FBFF] border rounded-[8px] text-[#0D6EFD] text-sm font-semibold"
+                  className="py-4 px-6 w-full bg-[#3F72AF] hover:bg-blue-800 text-white rounded-lg"
                   onClick={handleAcceptAll}
                 >
                   Accept
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewModalOpen && reviewRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={closeReviewModal} />
+
+          {/* modal wrapper */}
+          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] 
+      overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b">
+              <h3 className="text-base font-semibold text-[#212529]">
+                How would you rate your experience?
+              </h3>
+              <button onClick={closeReviewModal} className="text-[#6C757D] text-sm">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M18 6L6 18M6 6L18 18"
+                    stroke="#212529"
+                    strokeOpacity="0.5"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[70vh] px-4 py-4">
+              {/* Service & Location Info */}
+              <div className="flex items-center justify-between gap-5 mb-6">
+                <div className="flex flex-col gap-2">
+                  <p className="text-[#6C757D] font-medium text-xs">Service & Location</p>
+                  <h4 className="text-[#212529] text-base font-medium">{reviewRow.branchName}</h4>
+                  <p className="text-sm text-[#6C757D]">{reviewRow.address}, {reviewRow.city}</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[#6C757D] font-medium text-xs">Car Part & VIN</p>
+                  <h4 className="text-[#212529] text-base font-medium">{reviewRow.carPart}</h4>
+                  <p className="text-sm text-[#6C757D]">{reviewRow.vinOrPlate}</p>
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div className="mb-6">
+                <p className="text-[#212529] font-medium text-sm mb-3">Rating</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="focus:outline-none"
+                    >
+                      <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill={star <= rating ? "#FFD700" : "none"}
+                        stroke={star <= rating ? "#FFD700" : "#D1D5DB"}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="cursor-pointer hover:scale-110 transition-transform"
+                      >
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Comment */}
+              <div className="mb-6">
+                <label className="block text-[#212529] font-medium text-sm mb-2">
+                  Your Review (Optional)
+                </label>
+                <textarea
+                  className="w-full border p-3 rounded-lg text-black resize-none"
+                  rows={4}
+                  placeholder="Share your experience..."
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 pt-4 pb-4 border-t flex gap-3">
+              <button
+                className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-[#495057] font-semibold hover:bg-gray-100"
+                onClick={closeReviewModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 py-3 px-6 bg-[#3F72AF] hover:bg-blue-800 text-white rounded-lg font-semibold"
+                onClick={submitReview}
+              >
+                Submit Review
+              </button>
+            </div>
           </div>
         </div>
       )}

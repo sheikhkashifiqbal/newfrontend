@@ -54,6 +54,10 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const [modalCarPart, setModalCarPart] = useState<string>("");
   const [modalRequestId, setModalRequestId] = useState<number | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false); // view for Accepted offers; view/edit for Pending
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewRow, setReviewRow] = useState<SparePartRequestUI | null>(null);
+  const [rating, setRating] = useState<number>(0);
+  const [reviewComment, setReviewComment] = useState<string>("");
 
   const { showToast, Toast } = useToast();
 
@@ -107,8 +111,45 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const closeModal = () => setModalOpen(false);
 
    const onReview = (row: SparePartRequestUI) => {
-    if (onReviewClick) {
-      onReviewClick(row); // ← FIRE POPUP
+    setReviewRow(row);
+    setReviewModalOpen(true);
+    setRating(0);
+    setReviewComment("");
+  };
+
+  const closeReviewModal = () => {
+    setReviewModalOpen(false);
+    setReviewRow(null);
+    setRating(0);
+    setReviewComment("");
+  };
+
+  const submitReview = async () => {
+    if (!reviewRow || rating === 0) {
+      showToast("Please provide a rating", "error");
+      return;
+    }
+
+    try {
+      // TODO: Replace with actual API endpoint
+      // await fetch(`${BASE_URL}/api/spare-parts/reviews`, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     sparepartsrequest_id: reviewRow.sparepartsrequest_id,
+      //     rating: rating,
+      //     comment: reviewComment,
+      //   }),
+      // });
+
+      showToast("Review submitted successfully!", "success");
+      closeReviewModal();
+      if (onReviewClick) {
+        onReviewClick(reviewRow);
+      }
+    } catch (e) {
+      console.error("Failed to submit review:", e);
+      showToast("Failed to submit review", "error");
     }
   };
 
@@ -305,56 +346,58 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
             <td className="px-4 py-4">{r.carPart}</td>
             <td className="px-4 py-4">{r.state}</td>
 
-            <td className="px-0 py-4 flex justify-center">
-              {columns.showAcceptDecline ? (
-                <div className="flex gap-2 items-center">
+            <td className="px-0 py-4">
+              <div className="flex justify-center items-center">
+                {columns.showAcceptDecline ? (
+                  <div className="flex gap-2 items-center">
+                    <button
+                      className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
+                      onClick={() =>
+                        openModal(
+                          r.spareParts,
+                          r.carPart,
+                          false,
+                          r.sparepartsrequest_id
+                        )
+                      }
+                    >
+                      View
+                    </button>
+
+                    <button
+                      className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
+                      onClick={() =>
+                        acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")
+                      }
+                    >
+                      Accept
+                    </button>
+
+                    <button
+                      className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
+                      onClick={() =>
+                        acceptOrDecline(r.sparepartsrequest_id, "canceled")
+                      }
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
                   <button
                     className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
                     onClick={() =>
                       openModal(
                         r.spareParts,
                         r.carPart,
-                        false,
+                        columns.canEditSpareParts,
                         r.sparepartsrequest_id
                       )
                     }
                   >
-                    View
+                    {columns.sparePartsButtonLabel}
                   </button>
-
-                  <button
-                    className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
-                    onClick={() =>
-                      acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")
-                    }
-                  >
-                    Accept
-                  </button>
-
-                  <button
-                    className="py-1.5 px-3 bg-[#FFF3CD] border rounded-[8px] text-[#8A6D3B] font-semibold text-xs"
-                    onClick={() =>
-                      acceptOrDecline(r.sparepartsrequest_id, "canceled")
-                    }
-                  >
-                    Decline
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="py-1.5 px-3 bg-[#F8FBFF] border rounded-[8px] text-[#3F72AF] font-semibold text-xs"
-                  onClick={() =>
-                    openModal(
-                      r.spareParts,
-                      r.carPart,
-                      columns.canEditSpareParts,
-                      r.sparepartsrequest_id
-                    )
-                  }
-                >
-                  {columns.sparePartsButtonLabel}
-                </button>
-              )}
+                )}
+              </div>
             </td>
 
             {columns.showAction && (
@@ -363,7 +406,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 
             {columns.showReview && (
               <td className="px-4 py-4">
-                <div className="flex flex-col items-start gap-2">
+                <div className="flex flex-col items-start">
                   <span className="text-gray-500 text-sm">
                     Not reviewed yet.
                   </span>
@@ -642,6 +685,113 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
         </div>
       )}
 
+      {/* Review Modal */}
+      {reviewModalOpen && reviewRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={closeReviewModal} />
+
+          {/* modal wrapper */}
+          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] 
+      overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b">
+              <h3 className="text-base font-semibold text-[#212529]">
+                How would you rate your experience?
+              </h3>
+              <button onClick={closeReviewModal} className="text-[#6C757D] text-sm">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M18 6L6 18M6 6L18 18"
+                    stroke="#212529"
+                    strokeOpacity="0.5"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[70vh] px-4 py-4">
+              {/* Service & Location Info */}
+              <div className="flex items-center justify-between gap-5 mb-6">
+                <div className="flex flex-col gap-2">
+                  <p className="text-[#6C757D] font-medium text-xs">Service & Location</p>
+                  <h4 className="text-[#212529] text-base font-medium">{reviewRow.branchName}</h4>
+                  <p className="text-sm text-[#6C757D]">{reviewRow.address}, {reviewRow.city}</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[#6C757D] font-medium text-xs">Car Part & VIN</p>
+                  <h4 className="text-[#212529] text-base font-medium">{reviewRow.carPart}</h4>
+                  <p className="text-sm text-[#6C757D]">{reviewRow.vinOrPlate}</p>
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div className="mb-6">
+                <p className="text-[#212529] font-medium text-sm mb-3">Rating</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="focus:outline-none"
+                    >
+                      <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill={star <= rating ? "#FFD700" : "none"}
+                        stroke={star <= rating ? "#FFD700" : "#D1D5DB"}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="cursor-pointer hover:scale-110 transition-transform"
+                      >
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Comment */}
+              <div className="mb-6">
+                <label className="block text-[#212529] font-medium text-sm mb-2">
+                  Your Review (Optional)
+                </label>
+                <textarea
+                  className="w-full border p-3 rounded-lg text-black resize-none"
+                  rows={4}
+                  placeholder="Share your experience..."
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 pt-4 pb-4 border-t flex gap-3">
+              <button
+                className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-[#495057] font-semibold hover:bg-gray-100"
+                onClick={closeReviewModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 py-3 px-6 bg-[#3F72AF] hover:bg-blue-800 text-white rounded-lg font-semibold"
+                onClick={submitReview}
+              >
+                Submit Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
