@@ -22,7 +22,8 @@ import ServiceLogo from "@/assets/icons/services/ServiceLogo.svg";
 import { SelectionProvider, useSelection } from "@/hooks/services/useSelection";
 import { toast } from "sonner";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
 
 /* ----------------------------- Safe Toast ----------------------------- */
 function useToastSafe() {
@@ -47,8 +48,6 @@ function useToastSafe() {
  *  3) Open login popup via global event
  */
 async function handle401Unauthorized(closeModal: () => void) {
-  console.log("logouttttt");
-
   try {
     const res = await fetch("http://localhost:8081/api/auth/logout", {
       method: "POST",
@@ -695,10 +694,12 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
   const [step, setStep] = useState(1);
   const [branchInfo, setBranchInfo] = useState<any>(null);
   const [forceValidate, setForceValidate] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string }>({
-    success: true,
-    message: "",
-  });
+  const [result, setResult] = useState<{ success: boolean; message: string }>(
+    {
+      success: true,
+      message: "",
+    }
+  );
   const { toast } = useToastSafe();
 
   // ADDED: Reset session ids + Check login each time modal opens
@@ -788,6 +789,9 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
           reservationDate: dateISO,
           reservationTime: time,
           reservationStatus: "pending",
+          // 🔹 NEW FIELD ADDED AS PER REQUIREMENT:
+          // keep track of which branch the reservation is booked for
+          branchId: selectedBranchId,
         }),
       });
       // ADDED: 401 handling

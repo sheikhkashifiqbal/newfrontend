@@ -1,4 +1,6 @@
 // components/NavTabs.tsx
+"use client";
+
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -12,27 +14,49 @@ type NavTabsProps = {
   tabItems: TabItem[];
   defaultActiveTab?: string;
   onChange?: (tab: string) => void;
-  id?: number
+  id?: number;
 };
 
-const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange, id }) => {
+const NavTabs: React.FC<NavTabsProps> = ({
+  tabItems,
+  defaultActiveTab,
+  onChange,
+  id,
+}) => {
   const router = useRouter();
-  console.log(defaultActiveTab, "defaultActiveTab")
-  const [activeTab, setActiveTab] = useState<any>(() => {
-    return localStorage.getItem("active_tab") || defaultActiveTab || tabItems[0]?.label;
+  console.log(defaultActiveTab, "defaultActiveTab");
+
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // ✅ Safe access: only read localStorage in the browser
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem("active_tab");
+      return stored || defaultActiveTab || tabItems[0]?.label || "";
+    }
+    // During SSR / build, fall back to props
+    return defaultActiveTab || tabItems[0]?.label || "";
   });
 
+  // ✅ Persist active tab to localStorage whenever it changes (browser only)
   useEffect(() => {
-    localStorage.setItem("active_tab", activeTab);
-    setActiveTab(defaultActiveTab)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("active_tab", activeTab);
+    }
   }, [activeTab]);
 
-  const handleTabClick = (item: TabItem) => {
+  // ✅ When defaultActiveTab prop changes, update state once
+  useEffect(() => {
+    if (defaultActiveTab) {
+      setActiveTab(defaultActiveTab);
+    }
+  }, [defaultActiveTab]);
+
+  const handleTabClick = (item: TabItem, index: number) => {
     setActiveTab(item.label);
     onChange?.(item.label);
 
     if (item.path) {
-      window.location.href = item.path; // full reload required ✔
+      // full reload required ✔
+      window.location.href = item.path;
     }
   };
 
@@ -43,15 +67,15 @@ const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange,
           <button
             key={item.label}
             className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${
-               id === idx+1 ? "bg-blue-50 !text-[#3F72AF]" : ""
+              id === idx + 1 ? "bg-blue-50 !text-[#3F72AF]" : ""
             }`}
-            onClick={() => handleTabClick(item)}
+            onClick={() => handleTabClick(item, idx)}
           >
             {React.isValidElement(item.icon)
               ? React.cloneElement(
                   item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
                   {
-                    stroke: id === idx+1 ? "#3F72AF" : "#495057",
+                    stroke: id === idx + 1 ? "#3F72AF" : "#495057",
                   }
                 )
               : item.icon}

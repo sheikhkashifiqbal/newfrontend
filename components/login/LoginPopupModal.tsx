@@ -174,7 +174,9 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
       setTimeout(() => {
         const event = new CustomEvent("close-login-modal");
         window.dispatchEvent(event);
-        router.push("/services");
+        //router.push("/services");
+        window.location.reload();
+
       }, 300);
     } catch (err: any) {
       toast.error("Login failed: " + err.message);

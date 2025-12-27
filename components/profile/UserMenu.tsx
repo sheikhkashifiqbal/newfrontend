@@ -39,6 +39,28 @@ const UserMenu: React.FC = () => {
     }
   }, []);
 
+  // ✅ Profile Click Handler — NEW REQUIREMENT
+  const handleProfileClick = () => {
+    try {
+      const authData = localStorage.getItem("auth_response");
+      if (authData) {
+        const parsed = JSON.parse(authData);
+
+        // Check for branch_id inside auth_response
+        if (parsed?.branch_id) {
+          window.location.href = "/services/branch-bookings";
+          return;
+        }
+      }
+
+      // If branch_id not found → redirect to user profile
+      window.location.href = "/services/customer-bookings";
+    } catch (err) {
+      console.error("Profile redirect error:", err);
+      window.location.href = "/profile/user";
+    }
+  };
+
   // ✅ Logout handler
   const handleLogout = async () => {
     try {
@@ -83,12 +105,15 @@ const UserMenu: React.FC = () => {
       {open && (
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border z-50">
           <ul className="text-sm text-gray-700">
-            <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-              Profile
+            {/* Updated Profile Menu */}
+            <li
+              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+              onClick={handleProfileClick}
+            >
+              My Bookings
             </li>
-            <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-              Settings
-            </li>
+
+           
             <li
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
               onClick={handleLogout}

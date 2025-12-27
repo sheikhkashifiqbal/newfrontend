@@ -18,17 +18,25 @@ type CompanyResponse = {
 };
 
 const AccountDetails: React.FC = () => {
-  // Ensure we have a company_id in localStorage for now
-  useEffect(() => {
-    if (!localStorage.getItem("company_id")) {
-      localStorage.setItem("company_id", "1");
+  // ✅ FIX: company_id is now read from auth_response, not from "company_id" localStorage key
+  const companyId = useMemo(() => {
+    try {
+      const auth = localStorage.getItem("auth_response");
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        // Try both company_id and companyId just in case backend uses either
+        const rawId = parsed?.company_id ?? parsed?.companyId;
+        if (rawId !== null && rawId !== undefined && rawId !== "") {
+          const num = Number(rawId);
+          if (!Number.isNaN(num)) return num;
+        }
+      }
+    } catch (e) {
+      console.error("Error reading company_id from auth_response:", e);
     }
+    // Fallback value if nothing found / parse failed
+    return 1;
   }, []);
-
-  const companyId = useMemo(
-    () => Number(localStorage.getItem("company_id") || "1"),
-    []
-  );
 
   // Form state (editable fields)
   const [formData, setFormData] = useState({
@@ -53,7 +61,7 @@ const AccountDetails: React.FC = () => {
   // UI
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  
+
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
@@ -63,16 +71,11 @@ const AccountDetails: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        // GET without custom headers to avoid preflight
-       // const resp = await fetch(`${BASE_URL}/api/companies/${companyId}`);
-
         const resp = await fetch(`${BASE_URL}/api/companies/${companyId}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include"
-      });
-
-
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
 
         if (!resp.ok) {
           showToast("error", `Failed to load company (HTTP ${resp.status}).`);
@@ -98,7 +101,7 @@ const AccountDetails: React.FC = () => {
       }
     };
     load();
-  }, [companyId]);
+  }, [companyId, BASE_URL]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.currentTarget;
@@ -113,14 +116,26 @@ const AccountDetails: React.FC = () => {
   // Basic required validation for all fields except website
   const validate = () => {
     const {
-      companyName, brandName, taxId,
-      managerName, managerSurname,
-      managerPhone, managerMobile, managerEmail,
+      companyName,
+      brandName,
+      taxId,
+      managerName,
+      managerSurname,
+      managerPhone,
+      managerMobile,
+      managerEmail,
     } = formData;
 
-    if (!companyName || !brandName || !taxId ||
-        !managerName || !managerSurname ||
-        !managerPhone || !managerMobile || !managerEmail) {
+    if (
+      !companyName ||
+      !brandName ||
+      !taxId ||
+      !managerName ||
+      !managerSurname ||
+      !managerPhone ||
+      !managerMobile ||
+      !managerEmail
+    ) {
       showToast("error", "Please fill all required fields (Website is optional).");
       return false;
     }
@@ -145,7 +160,7 @@ const AccountDetails: React.FC = () => {
     const timestampName = `${base}-${timestamp}${ext}`;
     const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-    // Use FormData so the browser sets multipart boundary (often avoids extra CORS issues)
+    // Use FormData so the browser sets multipart boundary
     const fd = new FormData();
     fd.append("file", tinPhotoFile);
     fd.append("filename", timestampName);
@@ -153,7 +168,7 @@ const AccountDetails: React.FC = () => {
     const up = await fetch(`${BASE_URL}/api/upload`, {
       method: "POST",
       body: fd,
-      credentials: "include"
+      credentials: "include",
       // no Content-Type header on purpose (browser sets it)
     });
 
@@ -187,8 +202,8 @@ const AccountDetails: React.FC = () => {
         managerMobile: formData.managerMobile.trim(),
         managerEmail: formData.managerEmail.trim(),
         website: formData.website.trim(),
-        password: serverPassword,   // from GET response as required
-        tinPhoto: tinPhotoName,     // from upload (or old server value)
+        password: serverPassword, // from GET response as required
+        tinPhoto: tinPhotoName, // from upload (or old server value)
       };
 
       // 3) PUT update
@@ -196,14 +211,14 @@ const AccountDetails: React.FC = () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        credentials: "include"
+        credentials: "include",
       });
 
       if (!put.ok) {
         const txt = await put.text().catch(() => "");
         showToast("error", txt || `Update failed (HTTP ${put.status}).`);
         return;
-        }
+      }
       showToast("success", "Company details updated successfully.");
       // if we uploaded a new file, remember new tinPhoto on client too
       setServerTinPhoto(body.tinPhoto);
@@ -234,7 +249,10 @@ const AccountDetails: React.FC = () => {
         </div>
       )}
 
-      <form className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-8" onSubmit={onSubmit}>
+      <form
+        className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-8"
+        onSubmit={onSubmit}
+      >
         <div>
           <label className={label}>Company name *</label>
           <input
