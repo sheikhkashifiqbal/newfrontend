@@ -39,6 +39,8 @@ type BookingTableProps = {
   onOpenSpareParts: (reservation: ReservationRow) => void;
   onCancel: (reservation: ReservationRow) => void;
   onReschedule?: (reservation: ReservationRow) => void; // reserved
+  onReviewClick?: (reservation: ReservationRow) => void;
+  onCancelReviewClick?: (reservation: ReservationRow) => void;
 };
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -62,6 +64,8 @@ const BookingTable: React.FC<BookingTableProps> = ({
   onOpenSpareParts,
   onCancel,
   onReschedule,
+  onReviewClick,
+  onCancelReviewClick,
 }) => {
   const isUpcoming = activeTab === "Pending";
   const isCompleted = activeTab === "Completed";
@@ -81,8 +85,11 @@ const BookingTable: React.FC<BookingTableProps> = ({
               <th className="px-4 py-3 w-[120px] text-right">Actions</th>
             </>
           )}
-          {(isCompleted || isCancelled) && (
+          {isCompleted && (
             <th className="px-4 py-3 w-[160px]">Review</th>
+          )}
+          {isCancelled && (
+            <th className="px-4 py-3 w-[160px]">Cancel</th>
           )}
         </tr>
       </thead>
@@ -196,14 +203,32 @@ const BookingTable: React.FC<BookingTableProps> = ({
                     </>
                   )}
 
-                  {/* Completed / Cancelled: Review column */}
-                  {(isCompleted || isCancelled) && (
+                  {/* Completed: Review column */}
+                  {isCompleted && (
                     <td className="px-4 py-4 align-top">
                       <div className="text-sm">
                         <div>Not review yet</div>
-                        <a href="#review" className="text-[#3F72AF] underline">
+                        <button
+                          onClick={() => onReviewClick?.(b)}
+                          className="text-[#3F72AF] underline hover:text-[#3F72AF]/80 cursor-pointer"
+                        >
                           Review it
-                        </a>
+                        </button>
+                      </div>
+                    </td>
+                  )}
+
+                  {/* Cancelled: Cancel review column */}
+                  {isCancelled && (
+                    <td className="px-4 py-4 align-top">
+                      <div className="text-sm">
+                        <div className="text-gray-500 mb-1">Write your cancel review</div>
+                        <button
+                          onClick={() => onCancelReviewClick?.(b)}
+                          className="text-[#3F72AF] underline hover:text-[#3F72AF]/80 cursor-pointer"
+                        >
+                          Review it
+                        </button>
                       </div>
                     </td>
                   )}

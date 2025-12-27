@@ -6,6 +6,10 @@ import BookingTable, {
   ReservationSparePart,
 } from "@/components/booking/my-booking-table";
 import NavTabs from "@/components/nav-tabs";
+import UserReviewExperiencePopup from "@/components/dashboard/user/my-bookings/completed-tab/user-review-experience-popup";
+import { UserBookingCompleted } from "@/components/dashboard/user/my-bookings/completed-tab/user-bookings-completed-tab-columns";
+import UserCancelReservationPopup from "@/components/dashboard/user/my-bookings/upcoming-tab/user-cancel-reservation-popup";
+import { UserBookingUpcoming } from "@/components/dashboard/user/my-bookings/upcoming-tab/user-bookings-upcoming-tab-columns";
 
 /** ----- Tabs / Page Layout State ----- */
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -22,6 +26,12 @@ const MyBooking: React.FC = () => {
   const [spModalOpen, setSpModalOpen] = useState(false);
   const [spEditingRows, setSpEditingRows] = useState<ReservationSparePart[]>([]);
   const [currentReservation, setCurrentReservation] = useState<ReservationRow | null>(null);
+
+  /** Review modal state */
+  const [reviewedRow, setReviewedRow] = useState<UserBookingCompleted | null>(null);
+
+  /** Cancel review modal state */
+  const [cancelReviewRow, setCancelReviewRow] = useState<UserBookingUpcoming | null>(null);
 
   // ✅ NEW: User ID access control
   const [userId, setUserId] = useState<string | null>(null);
@@ -242,6 +252,55 @@ const MyBooking: React.FC = () => {
     }
   };
 
+  /** -------- Review Modal Handlers -------- */
+  const handleOpenReview = (reservation: ReservationRow) => {
+    // Map ReservationRow to UserBookingCompleted format
+    const reviewData: UserBookingCompleted = {
+      id: reservation.reservation_id,
+      service: `${reservation.branch_name}, ${reservation.address}, ${reservation.city}`,
+      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(reservation.reservation_time)}`,
+      car: `${reservation.brand_name} ${reservation.model_name}, ${reservation.plate_number}`,
+      serviceType: reservation.service_name,
+      addedBy: "By Service", // Default value, adjust if you have this data
+      review: reservation.stars ?? null,
+    };
+    setReviewedRow(reviewData);
+  };
+
+  const handleCloseReview = () => {
+    setReviewedRow(null);
+  };
+
+  /** -------- Cancel Review Modal Handlers -------- */
+  const handleOpenCancelReview = (reservation: ReservationRow) => {
+    // Map ReservationRow to UserBookingUpcoming format
+    const cancelReviewData: UserBookingUpcoming = {
+      id: reservation.reservation_id,
+      service: `${reservation.branch_name}, ${reservation.address}, ${reservation.city}`,
+      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(reservation.reservation_time)}`,
+      car: `${reservation.brand_name} ${reservation.model_name}, ${reservation.plate_number}`,
+      serviceType: reservation.service_name,
+      askedSpareParts: reservation.reservation_service_sparepart ?? [],
+    };
+    setCancelReviewRow(cancelReviewData);
+  };
+
+  const handleCloseCancelReview = () => {
+    setCancelReviewRow(null);
+  };
+
+  // Helper functions for date/time formatting (matching BookingTable)
+  function formatDateUS(isoDate: string) {
+    const d = new Date(isoDate + "T00:00:00");
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+  }
+
+  function formatTimeHHmm(hms: string) {
+    if (!hms) return "";
+    if (hms.length >= 5) return hms.slice(0, 5);
+    return hms;
+  }
+
   return (
     <div className="bg-gray-50 pb-20">
       <section className="max-w-[1120px] mx-auto px-4 py-8">
@@ -304,6 +363,8 @@ const MyBooking: React.FC = () => {
           onReschedule={(r) =>
             alert(`Reschedule flow for #${r.reservation_id} (to be implemented).`)
           }
+          onReviewClick={handleOpenReview}
+          onCancelReviewClick={handleOpenCancelReview}
         />
       )}
 
@@ -405,6 +466,18 @@ const MyBooking: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Review Modal */}
+      <UserReviewExperiencePopup
+        reviewedRow={reviewedRow}
+        closePopup={handleCloseReview}
+      />
+
+      {/* Cancel Review Modal */}
+      <UserCancelReservationPopup
+        cancelledRow={cancelReviewRow}
+        closePopup={handleCloseCancelReview}
+      />
     </div>
   );
 };
