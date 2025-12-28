@@ -12,9 +12,9 @@ interface SparePartsTableProps {
   onReviewClick: any
 }
 
-// Match backend casing used in your examples ("class A/B/C")
+// Match backend casing used in your examples ("A-class/B-class/C-class")
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-const CLASS_OPTIONS = ["class A", "class B", "class C"] as const;
+const CLASS_OPTIONS = ["A-class", "B-class", "C-class"] as const;
 const API_URL = `${BASE_URL}/api/spare-parts/offers/by-user`;
 
 /* -------------------- Tiny Toast (no dependency) -------------------- */
@@ -53,6 +53,8 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const [modalItems, setModalItems] = useState<ApiSparePartItem[]>([]);
   const [modalCarPart, setModalCarPart] = useState<string>("");
   const [modalRequestId, setModalRequestId] = useState<number | null>(null);
+  const [modalVin, setModalVin] = useState<string>("");
+  const [modalManagerMobile, setModalManagerMobile] = useState<string>("");
   const [editMode, setEditMode] = useState<boolean>(false); // view for Accepted offers; view/edit for Pending
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewRow, setReviewRow] = useState<SparePartRequestUI | null>(null);
@@ -77,6 +79,8 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       const row = list.find((d: any) => d.sparepartsrequest_id === requestId);
       if (row) {
         setModalCarPart(row.spareparts_type);
+        setModalVin(row.viN || "");
+        setModalManagerMobile(row.manager_mobile || "");
         const details: ApiSparePartItem[] = (row.spare_part || []).map((d: any) => ({
           id: d.id,
           sparepartsrequest_id: d.sparepartsrequest_id ?? row.sparepartsrequest_id,
@@ -96,7 +100,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     items: ApiSparePartItem[],
     carPart: string,
     canEdit: boolean,
-    requestId?: number
+    requestId?: number,
+    vin?: string,
+    managerMobile?: string
   ) => {
     setModalOpen(true);
     setEditMode(canEdit);
@@ -104,6 +110,8 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     // immediate visual refresh from props
     setModalCarPart(carPart || "");
     setModalItems([...(items || [])]);
+    setModalVin(vin || "");
+    setModalManagerMobile(managerMobile || "");
     // and fetch latest from server to ensure fresh
     if (requestId) refreshModalFromServer(requestId);
   };
@@ -357,7 +365,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                           r.spareParts,
                           r.carPart,
                           false,
-                          r.sparepartsrequest_id
+                          r.sparepartsrequest_id,
+                          r.vinOrPlate,
+                          r.managerMobile
                         )
                       }
                     >
@@ -390,7 +400,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                         r.spareParts,
                         r.carPart,
                         columns.canEditSpareParts,
-                        r.sparepartsrequest_id
+                        r.sparepartsrequest_id,
+                        r.vinOrPlate,
+                        r.managerMobile
                       )
                     }
                   >
@@ -435,22 +447,23 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
 
           {/* modal wrapper optimized for 800px */}
-          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] 
-      overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
+          <div className="relative bg-light-gray rounded-3xl shadow-xl max-h-[90vh] 
+      overflow-hidden w-[95%] md:max-w-[650px] lg:max-w-[800px]">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4">
-              <div className="">
-                <h3 className="text-base font-semibold text-[#212529]">Spare parts</h3>
-              <p className="text-sm">For <span className="text-blue-400">New Engine Parts</span> of VIN <span className="text-blue-400">27393A7GDB67WOP921</span></p>
+            <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-blue-gray">
+              <div className="flex-1">
+                <h3 className="text-2xl font-medium text-charcoal mb-2">Required spare part</h3>
+                <p className="text-sm text-gray-600">
+                  For <span className="text-[#3F72AF]">{modalCarPart || "New Engine Parts"}</span> of VIN <span className="text-[#3F72AF]">{modalVin || "27393A7GDB67WOP921"}</span>
+                </p>
               </div>
 
-              <button onClick={closeModal} className="text-[#6C757D] text-sm">
+              <button onClick={closeModal} className="text-charcoal/50 ml-4">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M18 6L6 18M6 6L18 18"
-                    stroke="#212529"
-                    strokeOpacity="0.5"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -460,227 +473,180 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
             </div>
 
             {/* Scroll area */}
-            <div className="overflow-y-auto max-h-[70vh] px-2">
-              {/* horizontal scroll wrapper */}
-              <div className="overflow-x-auto">
-
-                {/* min-width forces mobile scroll instead of squeezing */}
-                <table className="text-base min-w-[650px] md:min-w-full">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="text-[#495057] text-xs md:text-sm">
-                      <th className="text-left px-3 py-3 font-medium w-[20%]">
-                        Parts Type
-                      </th>
-                      <th className="text-left px-3 py-3 font-medium w-[22%]">
-                        Spare Part
-                      </th>
-                      <th className="text-left px-3 py-3 font-medium w-[20%]">
-                        Class Type
-                      </th>
-                      <th className="text-left px-3 py-3 font-medium w-[12%]">
-                        Qty
-                      </th>
-                      <th className="text-left px-3 py-3 font-medium w-[13%]">
-                        Price
-                      </th>
-                      {editMode && (
-                        <th className="text-right px-3 py-3 font-medium w-[10%]">
-                          Actions
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-
-                  <tbody className="">
-                    {modalItems?.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={editMode ? 7 : 6}
-                          className="px-5 py-8 text-center text-[#6C757D]"
-                        >
-                          No items
-                        </td>
-                      </tr>
-                    ) : (
-                      modalItems?.map((it, idx) => (
-                        <tr
-                          key={`${it.id ?? it.spare_part}-${idx}`}
-                          className="text-[#495057] align-middle"
-                        >
-                          {/* Sparepart Type */}
-                          <td className="px-1 py-2">
-                            <input
-                              value={modalCarPart || ""}
-                              className="text-black border p-2.5 rounded-lg w-full"
-                              disabled
-                            />
-                          </td>
-
-                          {/* Spare Part */}
-                          <td className="px-1 py-2">
-                            {editMode ? (
-                              <input
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={it.spare_part}
-                                onChange={(e) =>
-                                  setModalItems((prev) =>
-                                    prev.map((x, i) =>
-                                      i === idx ? { ...x, spare_part: e.target.value } : x
-                                    )
-                                  )
-                                }
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                min={0}
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={String(it.spare_part ?? "")}
-                                disabled
-                              />
-                            )}
-                          </td>
-
-                          {/* Class Type */}
-                          <td className="px-1 py-2">
-                            {editMode ? (
-                              <div className="relative w-full">
-                                {/* SELECT BOX */}
-                                <select
-                                  className="text-black border p-2.5 rounded-lg w-full appearance-none pr-10"
-                                  value={it.class_type}
-                                  onChange={(e) =>
-                                    setModalItems((prev) =>
-                                      prev.map((x, i) =>
-                                        i === idx ? { ...x, class_type: e.target.value } : x
-                                      )
-                                    )
-                                  }
-                                >
-                                  {CLASS_OPTIONS.map((opt) => (
-                                    <option key={opt} value={opt}>
-                                      {opt}
-                                    </option>
-                                  ))}
-                                </select>
-
-                                {/* CUSTOM ICON */}
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                  <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="#495057"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  >
-                                    <path d="M6 9l6 6 6-6" />
-                                  </svg>
-                                </span>
-                              </div>
-                            ) : (
-                              <input
-                                type="text"
-                                min={0}
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={String(it.class_type ?? "")}
-                                disabled
-                              />
-                            )}
-                          </td>
-
-
-                          {/* Qty */}
-                          <td className="px-1 py-2">
-                            {editMode ? (
-                              <input
-                                type="number"
-                                min={0}
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={String(it.qty ?? "")}
-                                onChange={(e) =>
-                                  setModalItems((prev) =>
-                                    prev.map((x, i) =>
-                                      i === idx
-                                        ? { ...x, qty: Number(e.target.value) }
-                                        : x
-                                    )
-                                  )
-                                }
-                              />
-                            ) : (
-                              <input
-                                type="number"
-                                min={0}
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={String(it.qty ?? "")}
-                                disabled
-                              />
-                            )}
-                          </td>
-
-                          {/* Price */}
-                          <td className="px-1 py-2">
-                            {editMode ? (
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={String(it.price ?? "")}
-                                onChange={(e) =>
-                                  setModalItems((prev) =>
-                                    prev.map((x, i) =>
-                                      i === idx
-                                        ? { ...x, price: Number(e.target.value) }
-                                        : x
-                                    )
-                                  )
-                                }
-                              />
-                            ) : (
-                              <input
-                                type="number"
-                                min={0}
-                                className="text-black border p-2.5 rounded-lg w-full"
-                                value={String(it.price ?? "")}
-                                disabled
-                              />
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          {editMode && (
-                            <td className="px-1 py-2 text-right">
-                              <button
-                                className="border p-2.5 rounded-lg text-red-600 font-bold w-12 hover:bg-red-600 hover:text-white"
-                                onClick={() => deleteDetail(it)}
-                              >
-                                ×
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Bottom Add/Update */}
-            {editMode && (
-              <div className="px-3 pt-4 pb-1 flex justify-center">
-                <button
-                  className="py-4 px-6 w-full bg-[#3F72AF] hover:bg-blue-800 text-white rounded-lg"
-                  onClick={saveAllRows}
-                >
-                  Add / Update
+            <div className="overflow-y-auto max-h-[60vh] px-8 py-4">
+              {/* Category button */}
+              <div className="mb-4">
+                <button className="text-dark-gray text-sm font-medium rounded-[8px] bg-ice-mist border border-soft-sky py-2 px-4 max-w-fit">
+                  {modalCarPart || "Engine"}
                 </button>
               </div>
-            )}
+
+              {/* Table headers */}
+              <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+                <span className="col-span-4">Part name</span>
+                <span className="col-span-3">Class</span>
+                <span className="col-span-2">Qty</span>
+                <span className="col-span-3">Price</span>
+              </div>
+
+              {/* Table rows */}
+              {modalItems?.length === 0 ? (
+                <div className="text-center py-8 text-[#6C757D]">
+                  No items
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {modalItems?.map((it, idx) => (
+                    <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
+                      {/* Part name */}
+                      <div className="col-span-4">
+                        {editMode ? (
+                          <input
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                            value={it.spare_part}
+                            onChange={(e) =>
+                              setModalItems((prev) =>
+                                prev.map((x, i) =>
+                                  i === idx ? { ...x, spare_part: e.target.value } : x
+                                )
+                              )
+                            }
+                            placeholder="Enter part name"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                            value={String(it.spare_part ?? "")}
+                            disabled
+                          />
+                        )}
+                      </div>
+
+                      {/* Class */}
+                      <div className="col-span-3">
+                        {editMode ? (
+                          <div className="relative w-full">
+                            <select
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm appearance-none pr-10 focus:ring-[#3F72AF]"
+                              value={it.class_type}
+                              onChange={(e) =>
+                                setModalItems((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx ? { ...x, class_type: e.target.value } : x
+                                  )
+                                )
+                              }
+                            >
+                              {CLASS_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#495057"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </span>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                            value={String(it.class_type ?? "")}
+                            disabled
+                          />
+                        )}
+                      </div>
+
+                      {/* Qty */}
+                      <div className="col-span-2">
+                        {editMode ? (
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                            value={String(it.qty ?? "")}
+                            onChange={(e) =>
+                              setModalItems((prev) =>
+                                prev.map((x, i) =>
+                                  i === idx
+                                    ? { ...x, qty: Number(e.target.value) }
+                                    : x
+                                )
+                              )
+                            }
+                            placeholder="1"
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                            value={String(it.qty ?? "")}
+                            disabled
+                          />
+                        )}
+                      </div>
+
+                      {/* Price */}
+                      <div className="col-span-3">
+                        {editMode ? (
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                            value={String(it.price ?? "")}
+                            onChange={(e) =>
+                              setModalItems((prev) =>
+                                prev.map((x, i) =>
+                                  i === idx
+                                    ? { ...x, price: Number(e.target.value) }
+                                    : x
+                                )
+                              )
+                            }
+                            placeholder="0"
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                            value={String(it.price ?? "")}
+                            disabled
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer - Phone Button */}
+            <div className="px-8 pb-8 pt-4">
+              <a
+                href={`tel:${modalManagerMobile || "+994559954765"}`}
+                className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow flex items-center justify-center gap-2"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+                {modalManagerMobile || "+994 55 995 47 65"}
+              </a>
+            </div>
           </div>
         </div>
       )}
