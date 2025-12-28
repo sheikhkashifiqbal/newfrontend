@@ -219,15 +219,24 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   };
 
   const deleteDetail = async (row: ApiSparePartItem) => {
-    if (!row.id) return;
+    // If it's a new row without an ID, just remove it from local state
+    if (!row.id) {
+      setModalItems((prev) => prev.filter((x) => x !== row));
+      return;
+    }
+    
     try {
       await fetch(
         `${BASE_URL}/api/spare-parts/request-details/${row.id}`,
         { method: "DELETE" }
       );
+      // Update local state immediately for better UX
+      setModalItems((prev) => prev.filter((x) => x.id !== row.id));
+      // Refresh from server to ensure consistency
       if (modalRequestId) await refreshModalFromServer(modalRequestId);
     } catch (e) {
       console.error("Failed to delete detail:", e);
+      showToast("Failed to delete item", "error");
     }
   };
 
@@ -257,6 +266,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
         class_type: CLASS_OPTIONS[0],
         qty: 1,
         price: 0,
+        sparepartsrequest_id: modalRequestId ?? 0,
       } as ApiSparePartItem,
     ]);
   };
@@ -453,7 +463,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-blue-gray">
               <div className="flex-1">
-                <h3 className="text-2xl font-medium text-charcoal mb-2">Required spare part</h3>
+                <h3 className="text-2xl font-medium text-charcoal mb-2">
+                  {editMode ? "Required spare parts" : "Required spare part"}
+                </h3>
                 <p className="text-sm text-gray-600">
                   For <span className="text-[#3F72AF]">{modalCarPart || "New Engine Parts"}</span> of VIN <span className="text-[#3F72AF]">{modalVin || "27393A7GDB67WOP921"}</span>
                 </p>
@@ -481,172 +493,182 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                 </button>
               </div>
 
-              {/* Table headers */}
-              <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-                <span className="col-span-4">Part name</span>
-                <span className="col-span-3">Class</span>
-                <span className="col-span-2">Qty</span>
-                <span className="col-span-3">Price</span>
-              </div>
+              {editMode ? (
+                /* Edit Mode Layout (Pending tab) - Part name, Qty, Delete */
+                <>
+                  {/* Table headers */}
+                  <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+                    <span className="col-span-7">Part name</span>
+                    <span className="col-span-3 text-right">Qty.</span>
+                    <span className="col-span-2 text-center">Delete</span>
+                  </div>
 
-              {/* Table rows */}
-              {modalItems?.length === 0 ? (
-                <div className="text-center py-8 text-[#6C757D]">
-                  No items
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {modalItems?.map((it, idx) => (
-                    <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
-                      {/* Part name */}
-                      <div className="col-span-4">
-                        {editMode ? (
-                          <input
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-                            value={it.spare_part}
-                            onChange={(e) =>
-                              setModalItems((prev) =>
-                                prev.map((x, i) =>
-                                  i === idx ? { ...x, spare_part: e.target.value } : x
-                                )
-                              )
-                            }
-                            placeholder="Enter part name"
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                            value={String(it.spare_part ?? "")}
-                            disabled
-                          />
-                        )}
-                      </div>
-
-                      {/* Class */}
-                      <div className="col-span-3">
-                        {editMode ? (
-                          <div className="relative w-full">
-                            <select
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm appearance-none pr-10 focus:ring-[#3F72AF]"
-                              value={it.class_type}
+                  {/* Table rows */}
+                  {modalItems?.length === 0 ? (
+                    <div className="text-center py-8 text-[#6C757D]">
+                      No items
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {modalItems?.map((it, idx) => (
+                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
+                          {/* Part name */}
+                          <div className="col-span-7">
+                            <input
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={it.spare_part}
                               onChange={(e) =>
                                 setModalItems((prev) =>
                                   prev.map((x, i) =>
-                                    i === idx ? { ...x, class_type: e.target.value } : x
+                                    i === idx ? { ...x, spare_part: e.target.value } : x
                                   )
                                 )
                               }
-                            >
-                              {CLASS_OPTIONS.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                              <svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#495057"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M6 9l6 6 6-6" />
-                              </svg>
-                            </span>
+                              placeholder="Enter part name"
+                            />
                           </div>
-                        ) : (
-                          <input
-                            type="text"
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                            value={String(it.class_type ?? "")}
-                            disabled
-                          />
-                        )}
-                      </div>
 
-                      {/* Qty */}
-                      <div className="col-span-2">
-                        {editMode ? (
-                          <input
-                            type="number"
-                            min={0}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-                            value={String(it.qty ?? "")}
-                            onChange={(e) =>
-                              setModalItems((prev) =>
-                                prev.map((x, i) =>
-                                  i === idx
-                                    ? { ...x, qty: Number(e.target.value) }
-                                    : x
+                          {/* Qty */}
+                          <div className="col-span-3">
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={String(it.qty ?? "")}
+                              onChange={(e) =>
+                                setModalItems((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx
+                                      ? { ...x, qty: Number(e.target.value) }
+                                      : x
+                                  )
                                 )
-                              )
-                            }
-                            placeholder="1"
-                          />
-                        ) : (
-                          <input
-                            type="number"
-                            min={0}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                            value={String(it.qty ?? "")}
-                            disabled
-                          />
-                        )}
-                      </div>
+                              }
+                              placeholder="Ex: 100"
+                            />
+                          </div>
 
-                      {/* Price */}
-                      <div className="col-span-3">
-                        {editMode ? (
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-                            value={String(it.price ?? "")}
-                            onChange={(e) =>
-                              setModalItems((prev) =>
-                                prev.map((x, i) =>
-                                  i === idx
-                                    ? { ...x, price: Number(e.target.value) }
-                                    : x
-                                )
-                              )
-                            }
-                            placeholder="0"
-                          />
-                        ) : (
-                          <input
-                            type="number"
-                            min={0}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                            value={String(it.price ?? "")}
-                            disabled
-                          />
-                        )}
-                      </div>
+                          {/* Delete */}
+                          <div className="col-span-2 flex items-center justify-center">
+                            <button
+                              onClick={() => deleteDetail(it)}
+                              className="w-full h-full flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition text-gray-600"
+                            >
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {/* Add spare part button */}
+                  <button
+                    onClick={addNewRow}
+                    className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100 max-w-fit"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add spare part
+                  </button>
+                </>
+              ) : (
+                /* View Mode Layout (Accepted offers/requests) - Part name, Class, Qty, Price */
+                <>
+                  {/* Table headers */}
+                  <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+                    <span className="col-span-4">Part name</span>
+                    <span className="col-span-3">Class</span>
+                    <span className="col-span-2">Qty</span>
+                    <span className="col-span-3">Price</span>
+                  </div>
+
+                  {/* Table rows */}
+                  {modalItems?.length === 0 ? (
+                    <div className="text-center py-8 text-[#6C757D]">
+                      No items
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {modalItems?.map((it, idx) => (
+                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
+                          {/* Part name */}
+                          <div className="col-span-4">
+                            <input
+                              type="text"
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.spare_part ?? "")}
+                              disabled
+                            />
+                          </div>
+
+                          {/* Class */}
+                          <div className="col-span-3">
+                            <input
+                              type="text"
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.class_type ?? "")}
+                              disabled
+                            />
+                          </div>
+
+                          {/* Qty */}
+                          <div className="col-span-2">
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.qty ?? "")}
+                              disabled
+                            />
+                          </div>
+
+                          {/* Price */}
+                          <div className="col-span-3">
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.price ?? "")}
+                              disabled
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Footer - Phone Button */}
-            <div className="px-8 pb-8 pt-4">
-              <a
-                href={`tel:${modalManagerMobile || "+994559954765"}`}
-                className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow flex items-center justify-center gap-2"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-                {modalManagerMobile || "+994 55 995 47 65"}
-              </a>
-            </div>
+            {/* Footer */}
+            {editMode ? (
+              /* Edit Mode Footer - Update Request Button */
+              <div className="px-8 pb-8 pt-4">
+                <button
+                  onClick={saveAllRows}
+                  className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow"
+                >
+                  Update Request
+                </button>
+              </div>
+            ) : (
+              /* View Mode Footer - Phone Button */
+              <div className="px-8 pb-8 pt-4">
+                <a
+                  href={`tel:${modalManagerMobile || "+994559954765"}`}
+                  className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow flex items-center justify-center gap-2"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                  {modalManagerMobile || "+994 55 995 47 65"}
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}
