@@ -488,12 +488,13 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
               </div>
 
               {editMode ? (
-                /* Edit Mode Layout (Pending tab) - Part name, Qty, Delete */
+                /* Edit Mode Layout (Pending tab) - Part name, Qty, Price, Delete */
                 <>
                   {/* Table headers */}
                   <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-                    <span className="col-span-7">Part name</span>
-                    <span className="col-span-3 text-right">Qty.</span>
+                    <span className="col-span-5">Part name</span>
+                    <span className="col-span-2 pl-3">Qty.</span>
+                    <span className="col-span-3 pl-3">Price</span>
                     <span className="col-span-2 text-center">Delete</span>
                   </div>
 
@@ -507,7 +508,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                       {modalItems?.map((it, idx) => (
                         <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
                           {/* Part name */}
-                          <div className="col-span-7">
+                          <div className="col-span-5">
                             <input
                               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                               value={it.spare_part}
@@ -523,7 +524,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                           </div>
 
                           {/* Qty */}
-                          <div className="col-span-3">
+                          <div className="col-span-2">
                             <input
                               type="number"
                               min={0}
@@ -539,6 +540,27 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                                 )
                               }
                               placeholder="Ex: 100"
+                            />
+                          </div>
+
+                          {/* Price */}
+                          <div className="col-span-3">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={String(it.price ?? "")}
+                              onChange={(e) =>
+                                setModalItems((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx
+                                      ? { ...x, price: Number(e.target.value) }
+                                      : x
+                                  )
+                                )
+                              }
+                              placeholder="0"
                             />
                           </div>
 
@@ -575,9 +597,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   {/* Table headers */}
                   <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
                     <span className="col-span-4">Part name</span>
-                    <span className="col-span-3">Class</span>
-                    <span className="col-span-2">Qty</span>
-                    <span className="col-span-3">Price</span>
+                    <span className="col-span-3 pl-3">Class</span>
+                    <span className="col-span-2 pl-3">Qty</span>
+                    <span className="col-span-3 pl-3">Price</span>
                   </div>
 
                   {/* Table rows */}
