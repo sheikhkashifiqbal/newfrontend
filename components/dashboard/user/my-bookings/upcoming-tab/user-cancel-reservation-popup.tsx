@@ -51,7 +51,7 @@ export default function UserCancelReservationPopup(
 			<Dialog open={!!cancelledRow}>
 				<DialogContent className={cn("overflow-y-auto max-w-[95%] 650:max-w-[650px] lg:max-w-[800px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-8")}>
 					<ScrollArea className={'h-full'}>
-						<DialogHeader className={'w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0'}>
+						<DialogHeader className={'w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0 pb-6'}>
 							<div className={'flex justify-between items-center'}>
 								<DialogTitle className={'p-0 m-0 text-2xl text-charcoal font-medium'}>
 									Do you want to cancel your reservation?
