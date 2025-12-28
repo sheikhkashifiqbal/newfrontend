@@ -37,6 +37,7 @@ const MyBooking: React.FC = () => {
 
   /** Cancel review modal state */
   const [cancelReviewRow, setCancelReviewRow] = useState<UserBookingUpcoming | null>(null);
+  const [reservationToCancel, setReservationToCancel] = useState<ReservationRow | null>(null);
 
   // ✅ NEW: User ID access control
   const [userId, setUserId] = useState<string | null>(null);
@@ -221,14 +222,13 @@ const MyBooking: React.FC = () => {
   };
 
   /** -------- Cancel Action -------- */
-  const handleCancel = async (reservation: ReservationRow) => {
-    if (
-      !confirm(
-        `Cancel reservation #${reservation.reservation_id} for ${reservation.brand_name} ${reservation.model_name}?`
-      )
-    ) {
-      return;
-    }
+  const handleCancel = (reservation: ReservationRow) => {
+    // Open the cancel popup instead of directly canceling
+    handleOpenCancelReview(reservation);
+  };
+
+  /** -------- Actual Cancel API Call -------- */
+  const performCancel = async (reservation: ReservationRow, reason?: string, detailedReason?: string) => {
     console.log('reservation::', reservation);
     const reqBody: any = {
       userId: reservation.user_id ?? userId,
@@ -261,6 +261,7 @@ const MyBooking: React.FC = () => {
         )
       );
       alert("Reservation canceled.");
+      handleCloseCancelReview();
     } catch (e: any) {
       alert(e?.message ?? "Cancel failed.");
     }
@@ -315,10 +316,13 @@ const MyBooking: React.FC = () => {
       askedSpareParts: reservation.reservation_service_sparepart ?? [],
     };
     setCancelReviewRow(cancelReviewData);
+    // Store the original reservation for cancellation
+    setReservationToCancel(reservation);
   };
 
   const handleCloseCancelReview = () => {
     setCancelReviewRow(null);
+    setReservationToCancel(null);
   };
 
   // Helper functions for date/time formatting (matching BookingTable)
@@ -496,6 +500,11 @@ const MyBooking: React.FC = () => {
       <UserCancelReservationPopup
         cancelledRow={cancelReviewRow}
         closePopup={handleCloseCancelReview}
+        onConfirmCancel={(reason, detailedReason) => {
+          if (reservationToCancel) {
+            performCancel(reservationToCancel, reason, detailedReason);
+          }
+        }}
       />
     </div>
   );

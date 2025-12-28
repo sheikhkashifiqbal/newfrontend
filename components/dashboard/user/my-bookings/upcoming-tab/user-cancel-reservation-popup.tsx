@@ -23,12 +23,14 @@ import {ScrollArea, ScrollBar} from "@/components/ui/scroll-area";
 interface IUserCancelReservationPopup {
 	cancelledRow: null | UserBookingUpcoming
 	closePopup: () => void
+	onConfirmCancel?: (reason: string, detailedReason?: string) => void
 }
 
 export default function UserCancelReservationPopup(
 		{
 				cancelledRow,
-				closePopup
+				closePopup,
+				onConfirmCancel
 		}: IUserCancelReservationPopup
 ) {
 
@@ -44,6 +46,9 @@ export default function UserCancelReservationPopup(
 
 	function onSubmit(values: z.infer<typeof userCancelReservationPopupFormSchema>) {
 		console.log(values)
+		if (onConfirmCancel) {
+			onConfirmCancel(values.reason, values.detailedReason);
+		}
 	}
 
 
