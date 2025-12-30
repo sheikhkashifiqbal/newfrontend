@@ -6,6 +6,15 @@ import BookingTable, {
   ReservationSparePart,
 } from "@/components/booking/my-booking-table";
 import NavTabs from "@/components/nav-tabs";
+import UserReviewExperiencePopup from "@/components/dashboard/user/my-bookings/completed-tab/user-review-experience-popup";
+import { UserBookingCompleted } from "@/components/dashboard/user/my-bookings/completed-tab/user-bookings-completed-tab-columns";
+import UserCancelReservationPopup from "@/components/dashboard/user/my-bookings/upcoming-tab/user-cancel-reservation-popup";
+import { UserBookingUpcoming } from "@/components/dashboard/user/my-bookings/upcoming-tab/user-bookings-upcoming-tab-columns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { FiPlus } from "react-icons/fi";
+import { cn } from "@/lib/utils";
 
 /** ----- Tabs / Page Layout State ----- */
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -22,6 +31,13 @@ const MyBooking: React.FC = () => {
   const [spModalOpen, setSpModalOpen] = useState(false);
   const [spEditingRows, setSpEditingRows] = useState<ReservationSparePart[]>([]);
   const [currentReservation, setCurrentReservation] = useState<ReservationRow | null>(null);
+
+  /** Review modal state */
+  const [reviewedRow, setReviewedRow] = useState<UserBookingCompleted | null>(null);
+
+  /** Cancel review modal state */
+  const [cancelReviewRow, setCancelReviewRow] = useState<UserBookingUpcoming | null>(null);
+  const [reservationToCancel, setReservationToCancel] = useState<ReservationRow | null>(null);
 
   // ✅ NEW: User ID access control
   const [userId, setUserId] = useState<string | null>(null);
@@ -102,9 +118,22 @@ const MyBooking: React.FC = () => {
   /** -------- Spare Parts Modal Handlers -------- */
   const openSpareParts = (reservation: ReservationRow) => {
     setCurrentReservation(reservation);
-    setSpEditingRows(
-      (reservation.reservation_service_sparepart ?? []).map((s) => ({ ...s }))
-    );
+    const existingParts = reservation.reservation_service_sparepart ?? [];
+    if (existingParts.length > 0) {
+      setSpEditingRows(existingParts.map((s) => ({ ...s })));
+    } else {
+      // Initialize with one empty row
+      setSpEditingRows([
+        {
+          reservation_service_sparepart_id: Date.now(),
+          part_name: "",
+          qty: 1,
+          spareparts_id: 0,
+          spareparts_type: "Engine",
+          reservation_id: reservation.reservation_id,
+        },
+      ]);
+    }
     setSpModalOpen(true);
   };
 
@@ -178,15 +207,28 @@ const MyBooking: React.FC = () => {
     }
   };
 
+  const handleAddSparePart = () => {
+    setSpEditingRows((prev) => [
+      ...prev,
+      {
+        reservation_service_sparepart_id: Date.now(),
+        part_name: "",
+        qty: 1,
+        spareparts_id: 0,
+        spareparts_type: currentReservation?.reservation_service_sparepart?.[0]?.spareparts_type || "Engine",
+        reservation_id: currentReservation?.reservation_id || 0,
+      },
+    ]);
+  };
+
   /** -------- Cancel Action -------- */
-  const handleCancel = async (reservation: ReservationRow) => {
-    if (
-      !confirm(
-        `Cancel reservation #${reservation.reservation_id} for ${reservation.brand_name} ${reservation.model_name}?`
-      )
-    ) {
-      return;
-    }
+  const handleCancel = (reservation: ReservationRow) => {
+    // Open the cancel popup instead of directly canceling
+    handleOpenCancelReview(reservation);
+  };
+
+  /** -------- Actual Cancel API Call -------- */
+  const performCancel = async (reservation: ReservationRow, reason?: string, detailedReason?: string) => {
     console.log('reservation::', reservation);
     const reqBody: any = {
       userId: reservation.user_id ?? userId,
@@ -219,6 +261,7 @@ const MyBooking: React.FC = () => {
         )
       );
       alert("Reservation canceled.");
+      handleCloseCancelReview();
     } catch (e: any) {
       alert(e?.message ?? "Cancel failed.");
     }
@@ -241,6 +284,58 @@ const MyBooking: React.FC = () => {
       return;
     }
   };
+
+  /** -------- Review Modal Handlers -------- */
+  const handleOpenReview = (reservation: ReservationRow) => {
+    // Map ReservationRow to UserBookingCompleted format
+    const reviewData: UserBookingCompleted = {
+      id: reservation.reservation_id,
+      service: `${reservation.branch_name}, ${reservation.address}, ${reservation.city}`,
+      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(reservation.reservation_time)}`,
+      car: `${reservation.brand_name} ${reservation.model_name}, ${reservation.plate_number}`,
+      serviceType: reservation.service_name,
+      addedBy: "By Service", // Default value, adjust if you have this data
+      review: reservation.stars ?? null,
+    };
+    setReviewedRow(reviewData);
+  };
+
+  const handleCloseReview = () => {
+    setReviewedRow(null);
+  };
+
+  /** -------- Cancel Review Modal Handlers -------- */
+  const handleOpenCancelReview = (reservation: ReservationRow) => {
+    // Map ReservationRow to UserBookingUpcoming format
+    const cancelReviewData: UserBookingUpcoming = {
+      id: reservation.reservation_id,
+      service: `${reservation.branch_name}, ${reservation.address}, ${reservation.city}`,
+      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(reservation.reservation_time)}`,
+      car: `${reservation.brand_name} ${reservation.model_name}, ${reservation.plate_number}`,
+      serviceType: reservation.service_name,
+      askedSpareParts: reservation.reservation_service_sparepart ?? [],
+    };
+    setCancelReviewRow(cancelReviewData);
+    // Store the original reservation for cancellation
+    setReservationToCancel(reservation);
+  };
+
+  const handleCloseCancelReview = () => {
+    setCancelReviewRow(null);
+    setReservationToCancel(null);
+  };
+
+  // Helper functions for date/time formatting (matching BookingTable)
+  function formatDateUS(isoDate: string) {
+    const d = new Date(isoDate + "T00:00:00");
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+  }
+
+  function formatTimeHHmm(hms: string) {
+    if (!hms) return "";
+    if (hms.length >= 5) return hms.slice(0, 5);
+    return hms;
+  }
 
   return (
     <div className="bg-gray-50 pb-20">
@@ -304,107 +399,113 @@ const MyBooking: React.FC = () => {
           onReschedule={(r) =>
             alert(`Reschedule flow for #${r.reservation_id} (to be implemented).`)
           }
+          onReviewClick={handleOpenReview}
+          onCancelReviewClick={handleOpenCancelReview}
         />
       )}
 
       {/* Spare Parts Modal */}
-      {spModalOpen && currentReservation && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">
-                Spare parts for reservation #{currentReservation.reservation_id}
-              </h3>
-              <button
-                className="rounded-md w-9 h-9 inline-flex items-center justify-center hover:bg-gray-100"
-                onClick={closeSpareParts}
-              >
-                ✕
-              </button>
+      <Dialog open={spModalOpen} onOpenChange={setSpModalOpen}>
+        <DialogContent className={cn("overflow-y-auto max-w-[95%] md:max-w-[650px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-4")}>
+          <DialogHeader className={"w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0 pb-6"}>
+            <div className={"flex justify-between items-center"}>
+              <DialogTitle className={"p-0 m-0 text-2xl text-charcoal font-medium"}>
+                Required spare part
+              </DialogTitle>
+              <DialogPrimitive.Close onClick={closeSpareParts}>
+                <X className={"size-6 text-charcoal/50"} />
+              </DialogPrimitive.Close>
+            </div>
+          </DialogHeader>
+
+          <div className={"flex flex-col gap-y-2 px-8"}>
+            {/* Category button */}
+            {currentReservation && (
+              <div className={"text-dark-gray text-sm mb-2 font-medium rounded-[8px] bg-ice-mist border border-soft-sky py-2 px-4 max-w-fit"}>
+                {spEditingRows[0]?.spareparts_type || "Engine"}
+              </div>
+            )}
+
+            {/* Table headers */}
+            <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+              <span className="col-span-7">Part name</span>
+              <span className="col-span-3">Qty.</span>
+              <span className="col-span-2 text-center">Delete</span>
             </div>
 
-            <div className="overflow-x-auto border rounded-xl">
-              <table className="w-full table-auto">
-                <thead className="bg-[#F8F9FA] text-xs text-[#ADB5BD] text-left">
-                  <tr>
-                    <th className="px-3 py-2 w-[160px]">Spare parts type</th>
-                    <th className="px-3 py-2 w-[260px]">Part name</th>
-                    <th className="px-3 py-2 w-[100px]">Qty</th>
-                    <th className="px-3 py-2 w-[160px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm text-[#495057] divide-y">
-                  {spEditingRows.map((row, idx) => (
-                    <tr key={row.reservation_service_sparepart_id}>
-                      <td className="px-3 py-2">{row.spareparts_type}</td>
-                      <td className="px-3 py-2">
-                        <input
-                          className="w-full border rounded-md px-2 py-1"
-                          value={row.part_name}
-                          onChange={(e) =>
-                            updateRowLocal(idx, { part_name: e.target.value })
-                          }
-                          placeholder="Part name"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          className="w-24 border rounded-md px-2 py-1"
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={row.qty}
-                          onChange={(e) =>
-                            updateRowLocal(idx, { qty: Number(e.target.value) })
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-2">
-                          <button
-                            className="px-3 py-1.5 text-xs rounded-md border bg-[#F8FBFF] text-[#3F72AF]"
-                            onClick={() => handleUpdateSparePart(row, idx)}
-                          >
-                            Update
-                          </button>
-                          <button
-                            className="px-3 py-1.5 text-xs rounded-md border text-red-600"
-                            onClick={() => handleDeleteSparePart(row)}
-                          >
-                            Del
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {spEditingRows.length === 0 && (
-                    <tr>
-                      <td
-                        className="px-3 py-4 text-center text-gray-500"
-                        colSpan={4}
-                      >
-                        No spare parts for this reservation.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {/* Table rows */}
+            {spEditingRows.map((row, idx) => (
+              <div key={row.reservation_service_sparepart_id} className="grid grid-cols-12 gap-3">
+                <div className="col-span-7">
+                  <input
+                    value={row.part_name}
+                    onChange={(e) =>
+                      updateRowLocal(idx, { part_name: e.target.value })
+                    }
+                    placeholder="Enter part name"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                  />
+                </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              <a
-                href="/spare-parts"
-                className="py-2 px-4 bg-[#F8FBFF] border rounded-lg text-[#3F72AF] font-semibold text-sm"
-              >
-                Search Spare parts
-              </a>
-              <button className="py-2 px-4 rounded-lg border" onClick={closeSpareParts}>
-                Close
-              </button>
-            </div>
+                <div className="col-span-3">
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={row.qty}
+                    onChange={(e) =>
+                      updateRowLocal(idx, { qty: Number(e.target.value) })
+                    }
+                    placeholder="Ex: 100"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                  />
+                </div>
+
+                <button
+                  onClick={() => handleDeleteSparePart(row)}
+                  className="col-span-2 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition"
+                >
+                  <X className="text-gray-600 size-5" />
+                </button>
+              </div>
+            ))}
+
+            {/* Add spare part button */}
+            <button
+              onClick={handleAddSparePart}
+              className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100 max-w-fit"
+            >
+              <FiPlus size={16} />
+              Add spare part
+            </button>
+
+            {/* Search Spare Parts button */}
+            <a
+              href="/spare-parts"
+              className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow mt-4 text-center"
+            >
+              Search Spare Parts
+            </a>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Modal */}
+      <UserReviewExperiencePopup
+        reviewedRow={reviewedRow}
+        closePopup={handleCloseReview}
+      />
+
+      {/* Cancel Review Modal */}
+      <UserCancelReservationPopup
+        cancelledRow={cancelReviewRow}
+        closePopup={handleCloseCancelReview}
+        onConfirmCancel={(reason, detailedReason) => {
+          if (reservationToCancel) {
+            performCancel(reservationToCancel, reason, detailedReason);
+          }
+        }}
+      />
     </div>
   );
 };

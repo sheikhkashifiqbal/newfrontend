@@ -207,7 +207,7 @@ export default function ServiceBookingsAddEditSparePartsPopup({
         )}
       >
         <ScrollArea className={"h-[450px] 650:h-[550px]"}>
-          <DialogHeader className={"w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0"}>
+          <DialogHeader className={"w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0 pb-6"}>
             <div className={"flex justify-between items-center"}>
               <DialogTitle className={"p-0 m-0 text-2xl text-charcoal font-medium"}>
                 Required spare part
