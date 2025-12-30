@@ -7,7 +7,7 @@ import {
 import React from "react";
 import {useFieldArray} from "react-hook-form";
 import CustomFormFieldSelector from "@/components/app-custom/custom-form-field-selector";
-import {ServiceSelector} from "@/components/services/selectors/spare-parts-selector";
+import ServiceSelector from "@/components/services/selectors/spare-parts-selector";
 import CustomFormFieldMultiSelector from "@/components/app-custom/custom-form-field-multi-selector";
 import BrandsMultiSelector from "@/components/register/selectors/brands-multi-selector";
 import BoxQuantitySelector from "@/components/register/selectors/box-quantity-selector";
