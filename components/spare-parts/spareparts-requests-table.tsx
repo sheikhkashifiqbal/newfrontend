@@ -271,6 +271,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   };
 
   // 🔹 NEW: single "Accept" button to update ALL rows with id in one click (Option A)
+  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
   const handleAcceptAll = async () => {
     if (!editMode || modalItems.length === 0) return;
 
@@ -295,7 +296,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       // 2) AFTER all detail rows are updated, call existing request API
       // ⚠️ As per your requirement, DO NOT change this URL or body key.
       await fetch(
-        `http://localhost:8081/api/spareparts-requests/${requestId}`,
+        `${BASE_URL}/api/spareparts-requests/${requestId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

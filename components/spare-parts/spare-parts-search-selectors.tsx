@@ -142,7 +142,7 @@ export default function SparePartsSearchSelectors({ onSearchClick }: ISpareParts
     }
 
     try {
-      const res = await fetch(`http://localhost:8081/api/spare-parts/search-by-vin`, {
+      const res = await fetch(`${BASE_URL}/api/spare-parts/search-by-vin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

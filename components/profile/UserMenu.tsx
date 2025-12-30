@@ -64,7 +64,7 @@ const UserMenu: React.FC = () => {
   // ✅ Logout handler
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://localhost:8081/api/auth/logout", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

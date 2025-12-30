@@ -27,7 +27,7 @@ function cx(...xs: Array<string | false | null | undefined>) {
 }
 
 /* ---------- UI atoms ---------- */
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const Toggle: React.FC<{
   brandId: number;
@@ -107,7 +107,7 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
+  const BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
 
   // Ensure a branch_id exists
@@ -176,7 +176,7 @@ const AddServiceSelector: React.FC<AddServiceSelectorProps> = ({
       let allSuccess = true;
 
       for (const brandId of selectedBrandIds) {
-        const resp = await fetch(`${BASE}/api/branch-brand-services`, {
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/branch-brand-services`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

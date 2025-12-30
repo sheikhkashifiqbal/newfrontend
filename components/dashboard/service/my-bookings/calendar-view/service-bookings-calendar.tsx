@@ -60,15 +60,15 @@ type DayScheduleItem = {
   reservation_list: ReservationItem[];
 };
 
-const DAY_SCHEDULE_URL = "http://localhost:8081/api/branch-reservations/day-schedule";
-const SERVICES_OFFER_URL = "http://localhost:8081/api/services-offer-by-branch";
+const DAY_SCHEDULE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/branch-reservations/day-schedule`;
+const SERVICES_OFFER_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/services-offer-by-branch`;
 
 // NEW: branch services APIs
-const BRANCH_BRAND_SERVICES_URL = "http://localhost:8081/api/branch-brand-services"; // GET list
-const BRANCH_BRAND_SERVICES_DISABLE_URL = "http://localhost:8081/api/branch-brand-services/disable-branch-service"; // POST
+const BRANCH_BRAND_SERVICES_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/branch-brand-services`; // GET list
+const BRANCH_BRAND_SERVICES_DISABLE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/branch-brand-services/disable-branch-service`; // POST
 
 // NEW: disable time-slot service APIs
-const DISABLE_TIME_SLOT_SERVICE_URL = "http://localhost:8081/api/disable-time-slot-service";
+const DISABLE_TIME_SLOT_SERVICE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/disable-time-slot-service`;
 
 const initialData: CalendarData = {
   "09:00": {
