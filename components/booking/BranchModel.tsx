@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useMemo, useState, ChangeEvent } from "react";
 
 // ---- API types (edit response & cities) ----
