@@ -1,6 +1,6 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
-import { MakeAReservation } from "./MakeAReservation";
 import CompanyReviews from "./company-review";
 import { useSearchParams } from "next/navigation";
 import ServiceCardModal from "@/components/services/service-card-modal";
@@ -10,6 +10,23 @@ const tabs = [
   { label: "Company Services", icon: "/icons/tool-02.svg" },
   { label: "Company Reviews", icon: "/icons/star.svg" },
 ];
+
+/**
+ * ✅ REQUIRED for `output: "export"`
+ * List all valid values for the dynamic segment: /services/[profile]
+ *
+ * IMPORTANT: Replace these with the actual profiles you use in your app.
+ * Example: "services", "profile", "manager", etc.
+ */
+const PROFILES = ["user", "manager", "customer"] as const;
+
+export function generateStaticParams() {
+  return PROFILES.map((profile) => ({ profile }));
+}
+
+type PageProps = {
+  params: { profile: string };
+};
 
 type BrandOption = { brand_id: number; brand_name: string };
 type ServiceOption = { service_id: number; service_name: string };
@@ -69,11 +86,17 @@ function mode<T>(arr: T[], key?: (x: T) => any): any {
   return best;
 }
 
-const PerformanceCenterPage = () => {
+const PerformanceCenterPage = ({ params }: PageProps) => {
+  // NOTE: `profile` is the dynamic route segment (/services/[profile])
+  // Keeping it available for your conditional UI/logic if needed.
+  const profile = params?.profile;
+
   const [activeTab, setActiveTab] = useState<any>("Company Services");
-  const params = useSearchParams();
-  const branchId = Number(params?.get("branchId") || 1);
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const paramsSearch = useSearchParams();
+  const branchId = Number(paramsSearch?.get("branchId") || 1);
+
+  // If env is missing, default to empty string to avoid `undefined/api/...` strings
+  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
   // 🔐 Login state (for hiding address/phones + deciding what to open)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -127,6 +150,7 @@ const PerformanceCenterPage = () => {
     let alive = true;
     async function loadBrands() {
       try {
+        if (!BASE_URL) return;
         if (!branchId || activeTab !== "Company Services") return;
         const res = await fetch(`${BASE_URL}/api/branch-catalog/brands`, {
           method: "POST",
@@ -152,6 +176,7 @@ const PerformanceCenterPage = () => {
     let alive = true;
     async function loadServices() {
       try {
+        if (!BASE_URL) return;
         if (!branchId || activeTab !== "Company Services" || !selectedBrandId) {
           setServiceOptions([]);
           return;
@@ -164,11 +189,8 @@ const PerformanceCenterPage = () => {
 
         if (!res.ok) throw new Error("Failed to load services");
         const json = await res.json();
-        console.log("JSONN", json);
         const services: ServiceOption[] = json?.services ?? [];
-        if (alive) {
-          setServiceOptions(services);
-        }
+        if (alive) setServiceOptions(services);
       } catch {
         if (alive) setServiceOptions([]);
       }
@@ -184,6 +206,7 @@ const PerformanceCenterPage = () => {
   useEffect(() => {
     async function loadGlobalServices() {
       try {
+        if (!BASE_URL) return;
         const res = await fetch(`${BASE_URL}/api/services`);
         if (!res.ok) throw new Error("Failed to load global services");
         const json = await res.json();
@@ -201,6 +224,7 @@ const PerformanceCenterPage = () => {
     let alive = true;
     async function loadGrid() {
       try {
+        if (!BASE_URL) return;
         if (!branchId || activeTab !== "Company Services") return;
         setLoadingGrid(true);
         const payload: any = { branch_id: branchId };
@@ -232,6 +256,7 @@ const PerformanceCenterPage = () => {
     let alive = true;
     async function loadHours() {
       try {
+        if (!BASE_URL) return;
         if (!branchId) return;
         const res = await fetch(`${BASE_URL}/api/work-days/search`, {
           method: "POST",
@@ -248,15 +273,13 @@ const PerformanceCenterPage = () => {
         const todayRow = json.find(
           (row: any) => (row.workingDay || "").toLowerCase() === todayName.toLowerCase()
         );
-        if (todayRow) {
-          setHoursToday(`${todayName}: ${todayRow.from}–${todayRow.to}`);
-        } else {
-          setHoursToday("Closed today");
-        }
+        if (todayRow) setHoursToday(`${todayName}: ${todayRow.from}–${todayRow.to}`);
+        else setHoursToday("Closed today");
 
         const days = json
-          .map((r: any) => r.workingDay.toLowerCase())
+          .map((r: any) => String(r.workingDay || "").toLowerCase())
           .filter((x: string) => x in dayIndex);
+
         if (days.length) {
           const indices = days.map((d: string) => dayIndex[d]).sort((a: number, b: number) => a - b);
           const start = indexDay[indices[0]];
@@ -281,6 +304,7 @@ const PerformanceCenterPage = () => {
     let alive = true;
     async function loadBranch() {
       try {
+        if (!BASE_URL) return;
         if (!branchId) return;
         const res = await fetch(`${BASE_URL}/api/branches/${branchId}`, {
           method: "GET",
@@ -290,13 +314,15 @@ const PerformanceCenterPage = () => {
         const branchJson = await res.json();
 
         if (!alive) return;
+
         const city = branchJson?.city ? String(branchJson.city) : "";
         const address = branchJson?.address ? String(branchJson.address) : "";
         const composed = [address, city].filter(Boolean).join(", ");
         setAddressText(composed || "Branch Address");
+
+        // NOTE: Your code sets mapUrl from branchJson?.branchAddress; keeping as-is
         setMapUrl(branchJson?.branchAddress || "#");
 
-        // Company details (manager phones)
         if (branchJson?.companyId) {
           const companyRes = await fetch(`${BASE_URL}/api/companies/${branchJson.companyId}`);
           if (companyRes.ok) {
@@ -316,13 +342,12 @@ const PerformanceCenterPage = () => {
     };
   }, [BASE_URL, branchId]);
 
-  // 🔘 Make a reservation button handler (Option 2 behavior)
+  // 🔘 Make a reservation button handler
   const handleMakeReservationClick = () => {
     if (typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem("auth_response");
       if (!raw) {
-        // Not logged in → open login popup only
         setIsLoginOpen(true);
         window.dispatchEvent(new CustomEvent("open-login-modal"));
         return;
@@ -330,16 +355,12 @@ const PerformanceCenterPage = () => {
       const parsed = JSON.parse(raw);
       const token = parsed?.token as string | undefined;
       if (!token || !isJwtValidLocal(token)) {
-        // Token missing or expired → treat as not logged in
         setIsLoginOpen(true);
         window.dispatchEvent(new CustomEvent("open-login-modal"));
         return;
       }
-
-      // Logged in → open reservation modal for this branch
       setSelectedBranchId(branchId);
     } catch {
-      // Any error → fall back to login popup
       setIsLoginOpen(true);
       window.dispatchEvent(new CustomEvent("open-login-modal"));
     }
@@ -371,11 +392,7 @@ const PerformanceCenterPage = () => {
         {/* Header */}
         <div className="flex justify-center py-8 px-2 max-w-[1224px] mx-auto">
           <div className="relative w-full">
-            <img
-              src="/images/single-service.png"
-              alt=""
-              className="h-[280px] w-full rounded-[24px] object-cover"
-            />
+            <img src="/images/single-service.png" alt="" className="h-[280px] w-full rounded-[24px] object-cover" />
             <div className="bg-gradient-to-r from-[#02020272] to-[#24242414] absolute inset-0 rounded-[24px] p-6 sm:p-10 text-white">
               <ul className="flex items-center gap-2 text-sm text-gray-300">
                 <li>Home</li>
@@ -385,11 +402,7 @@ const PerformanceCenterPage = () => {
                 <li className="text-white">Performance Center</li>
               </ul>
               <div className="mt-6 flex items-center gap-3">
-                <img
-                  src="/images/s-logo.png"
-                  alt="Logo"
-                  className="h-[42px] md:h-[72px] rounded-[24px] object-cover"
-                />
+                <img src="/images/s-logo.png" alt="Logo" className="h-[42px] md:h-[72px] rounded-[24px] object-cover" />
                 <div>
                   <p className="text-2xl md:text-[32px] font-semibold">Performance Center</p>
                   <p className="text-sm">⭐</p>
@@ -402,29 +415,20 @@ const PerformanceCenterPage = () => {
         {/* Company Info */}
         <section className="max-w-[1120px] mx-auto px-4 text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
-            {/* Hide address + map if user not logged in */}
+            {isLoggedIn && <p>📍 {addressText}</p>}
+            <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
+              Google Map
+            </a>
+          </div>
+          <div>
             {isLoggedIn && (
               <>
-
-                <p>📍 {addressText}</p>
+                <p>🕒 {hoursRange}</p>
+                <p>🕒 {hoursToday}</p>
               </>
-               )}
-              <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
-                  Google Map
-                </a>
-              
-           
+            )}
           </div>
           <div>
-            {isLoggedIn && (
-            <>
-             <p>🕒 {hoursRange}</p>
-             <p>🕒 {hoursToday}</p>
-            </>
-             )}
-          </div>
-          <div>
-            {/* Hide manager phones if user not logged in */}
             {isLoggedIn && (
               <>
                 <p>📞 {managerPhone}</p>
@@ -468,9 +472,7 @@ const PerformanceCenterPage = () => {
                       <select
                         className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
                         value={selectedBrandId}
-                        onChange={(e) =>
-                          setSelectedBrandId(e.target.value ? Number(e.target.value) : "")
-                        }
+                        onChange={(e) => setSelectedBrandId(e.target.value ? Number(e.target.value) : "")}
                       >
                         <option value="">Car brand</option>
                         {brandOptions.map((b) => (
@@ -480,26 +482,18 @@ const PerformanceCenterPage = () => {
                         ))}
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                        <svg
-                          className="w-4 h-4 text-gray-500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
                     </div>
 
-                    {/* Services Selector (brand-specific or global) */}
+                    {/* Services Selector */}
                     <div className="relative">
                       <select
                         className="appearance-none bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
                         value={selectedServiceId}
-                        onChange={(e) =>
-                          setSelectedServiceId(e.target.value ? Number(e.target.value) : "")
-                        }
+                        onChange={(e) => setSelectedServiceId(e.target.value ? Number(e.target.value) : "")}
                       >
                         <option value="">Service</option>
                         {(selectedBrandId ? serviceOptions : globalServiceOptions).map((s: any) => (
@@ -512,13 +506,7 @@ const PerformanceCenterPage = () => {
                         ))}
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                        <svg
-                          className="w-4 h-4 text-gray-500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
@@ -526,7 +514,6 @@ const PerformanceCenterPage = () => {
                   </div>
                 </div>
 
-                {/* 🔘 Make a reservation button with login check + branchId usage */}
                 <button
                   onClick={handleMakeReservationClick}
                   className="bg-[#3F72AF] hover:bg-[#2753c3] text-white px-6 py-2 rounded-md text-sm"
@@ -538,24 +525,16 @@ const PerformanceCenterPage = () => {
               {/* Services Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-12">
                 {loadingGrid ? (
-                  <div className="col-span-full py-8 text-center text-gray-500">
-                    Loading services…
-                  </div>
+                  <div className="col-span-full py-8 text-center text-gray-500">Loading services…</div>
                 ) : grid.length === 0 ? (
-                  <div className="col-span-full py-8 text-center text-gray-500">
-                    No services found.
-                  </div>
+                  <div className="col-span-full py-8 text-center text-gray-500">No services found.</div>
                 ) : (
                   grid.map((row, idx) => {
                     const logo = `${BASE_URL}/images/${row.brand_icon}`;
                     return (
                       <div key={idx} className="rounded-2xl bg-white p-6 relative">
                         <div className="flex items-center gap-2 mb-4">
-                          <img
-                            src={logo}
-                            alt={row.brand_name}
-                            className="h-6 w-6 rounded-full object-cover"
-                          />
+                          <img src={logo} alt={row.brand_name} className="h-6 w-6 rounded-full object-cover" />
                           <p className="font-medium">{row.brand_name}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -580,14 +559,9 @@ const PerformanceCenterPage = () => {
         </div>
       </div>
 
-      {/* 🔐 Login popup (opened when user not logged in) */}
       <LoginPopupModal isOpen={isLoginOpen} setIsOpen={setIsLoginOpen} />
 
-      {/* 📅 Reservation modal (service-card-modal.tsx) */}
-      <ServiceCardModal
-        selectedBranchId={selectedBranchId}
-        closeModal={() => setSelectedBranchId(null)}
-      />
+      <ServiceCardModal selectedBranchId={selectedBranchId} closeModal={() => setSelectedBranchId(null)} />
     </>
   );
 };
