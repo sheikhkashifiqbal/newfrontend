@@ -374,8 +374,11 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
               </thead>
 
               <tbody className="bg-white divide-y divide-gray-200 text-[#495057] text-base">
-                {services.map((r) => (
-                  <tr key={`${r.id}-${r.vinOrPlate}`} className="hover:bg-gray-50">
+                {services.map((r, idx) => (
+                  <tr
+                    key={`${r.sparepartsrequest_id ?? r.id}-${String(r.vinOrPlate ?? "")}-${idx}`}
+                    className="hover:bg-gray-50"
+                  >
                     <td className="px-4 py-4">{r.date}</td>
 
                     <td className="px-4 py-4 font-medium">
