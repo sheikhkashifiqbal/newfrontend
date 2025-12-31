@@ -69,7 +69,7 @@ function mode<T>(arr: T[], key?: (x: T) => any): any {
   return best;
 }
 
-const PerformanceCenterPage = () => {
+const PerformanceCenterPageClient = () => {
   const [activeTab, setActiveTab] = useState<any>("Company Services");
   const params = useSearchParams();
   const branchId = Number(params?.get("branchId") || 1);
@@ -405,23 +405,20 @@ const PerformanceCenterPage = () => {
             {/* Hide address + map if user not logged in */}
             {isLoggedIn && (
               <>
-
                 <p>📍 {addressText}</p>
               </>
-               )}
-              <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
-                  Google Map
-                </a>
-              
-           
+            )}
+            <a href={mapUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
+              Google Map
+            </a>
           </div>
           <div>
             {isLoggedIn && (
-            <>
-             <p>🕒 {hoursRange}</p>
-             <p>🕒 {hoursToday}</p>
-            </>
-             )}
+              <>
+                <p>🕒 {hoursRange}</p>
+                <p>🕒 {hoursToday}</p>
+              </>
+            )}
           </div>
           <div>
             {/* Hide manager phones if user not logged in */}
@@ -584,12 +581,9 @@ const PerformanceCenterPage = () => {
       <LoginPopupModal isOpen={isLoginOpen} setIsOpen={setIsLoginOpen} />
 
       {/* 📅 Reservation modal (service-card-modal.tsx) */}
-      <ServiceCardModal
-        selectedBranchId={selectedBranchId}
-        closeModal={() => setSelectedBranchId(null)}
-      />
+      <ServiceCardModal selectedBranchId={selectedBranchId} closeModal={() => setSelectedBranchId(null)} />
     </>
   );
 };
 
-export default PerformanceCenterPage;
+export default PerformanceCenterPageClient;
