@@ -16,6 +16,7 @@ export default function SparePartsPage() {
 	return (
 			<div className={'min-h-screen bg-light-gray'}>
 				<SparePartsSearchSelectors onSearchClick={handleSearch}/>
+				h
 				<section className={'w-full bg-light-gray py-10'}>
 					<Container>
 						{!showResults && <StoresCards />}
