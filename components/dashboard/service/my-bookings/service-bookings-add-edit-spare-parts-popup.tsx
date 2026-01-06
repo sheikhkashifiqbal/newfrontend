@@ -302,7 +302,7 @@ export default function ServiceBookingsAddEditSparePartsPopup({
                 <h6 className={"text-xs font-medium text-dark-gray"}>Add spare part</h6>
               </Button>
 
-              <CustomBlueBtn type={"submit"} text={"Add Spare Parts"} />
+              <CustomBlueBtn type={"submit"} text={"Add / Update Spare Parts"} />
             </form>
           </Form>
         </ScrollArea>

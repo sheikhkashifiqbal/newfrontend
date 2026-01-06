@@ -369,7 +369,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   <th className="px-4 py-3">Spare parts</th>
 
                   {columns.showAction && <th className="px-4 py-3">Action</th>}
-                  {columns.showReview && <th className="px-4 py-3">Review</th>}
+                  
                 </tr>
               </thead>
 
@@ -423,22 +423,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 
                     {columns.showAction && (
                       <td className="px-4 py-4">{r.managerMobile}</td>
-                    )}
-
-                    {columns.showReview && (
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col items-start">
-                          <span className="text-gray-500 text-sm">
-                            Not reviewed yet.
-                          </span>
-                          <button
-                            className="text-[#3F72AF] text-sm font-semibold"
-                            onClick={() => onReview(r.id)}
-                          >
-                            Review it
-                          </button>
-                        </div>
-                      </td>
                     )}
                   </tr>
                 ))}
@@ -677,20 +661,13 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   </button>
                 </div>
               ) : null
-            ) : (
-              /* View Mode Footer - Phone Button */
-              <div className="px-8 pb-8 pt-4">
-                <a
-                  href={`tel:${modalManagerMobile || "+994559954765"}`}
-                  className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow flex items-center justify-center gap-2"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                  </svg>
-                  {modalManagerMobile || "+994 55 995 47 65"}
-                </a>
-              </div>
-            )}
+            ) : ( 
+              null
+            )
+            
+
+            
+            }
           </div>
         </div>
       )}

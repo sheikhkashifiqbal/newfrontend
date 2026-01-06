@@ -17,6 +17,10 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CLASS_OPTIONS = ["A-class", "B-class", "C-class"] as const;
 const API_URL = `${BASE_URL}/api/spare-parts/offers/by-user`;
 
+
+// ✅ Rate sparepart experience API (as per requirement)
+const RATE_API_URL = "http://localhost:8081/api/rate-sparepart-experiences";
+
 /* -------------------- Tiny Toast (no dependency) -------------------- */
 type ToastType = "success" | "error";
 const useToast = () => {
@@ -60,11 +64,25 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const [reviewRow, setReviewRow] = useState<SparePartRequestUI | null>(null);
   const [rating, setRating] = useState<number>(0);
   const [reviewComment, setReviewComment] = useState<string>("");
+  const [ratingError, setRatingError] = useState<string>("");
+  const [descriptionError, setDescriptionError] = useState<string>("");
+  const [reviewedMap, setReviewedMap] = useState<Record<number, boolean>>({});
 
   const { showToast, Toast } = useToast();
 
   const showAction = activeTab === "Accepted offers"; // show manager_mobile column only here
   const showReview = activeTab === "Accepted offers"; // show Review column only here
+
+  // ✅ Per-row key for review status (prevents all rows from changing)
+  // Prefer sparepartsrequest_id (unique per request), fallback to id.
+  const getRowKey = (row: any): number | null => {
+    const reqId = row?.sparepartsrequest_id;
+    if (typeof reqId === "number" && !Number.isNaN(reqId)) return reqId;
+    const idVal = row?.id;
+    if (typeof idVal === "number" && !Number.isNaN(idVal)) return idVal;
+    return null;
+  };
+
 
   // --- Refresh modal data from server whenever popup opens ---
   const refreshModalFromServer = async (requestId: number) => {
@@ -123,35 +141,102 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     setReviewModalOpen(true);
     setRating(0);
     setReviewComment("");
+    setRatingError("");
+    setDescriptionError("");
   };
+
+  // reset validation errors when opening
+  // (keeps UI behavior same, only adds required validations)
+
 
   const closeReviewModal = () => {
     setReviewModalOpen(false);
     setReviewRow(null);
     setRating(0);
     setReviewComment("");
+    setRatingError("");
+    setDescriptionError("");
   };
 
   const submitReview = async () => {
-    if (!reviewRow || rating === 0) {
-      showToast("Please provide a rating", "error");
+    if (!reviewRow) {
+      showToast("Something went wrong. Please try again.", "error");
+      return;
+    }
+
+    const stars = rating; // stars from setRating(star)
+    const description = (reviewComment || "").trim(); // description from textarea
+
+    // ✅ Validation: stars + description must have value
+    let hasError = false;
+
+    if (!stars || stars <= 0) {
+      setRatingError("Stars is required");
+      hasError = true;
+    } else {
+      setRatingError("");
+    }
+
+    if (!description) {
+      setDescriptionError("Description is required");
+      hasError = true;
+    } else {
+      setDescriptionError("");
+    }
+
+    if (hasError) return;
+
+    // ✅ userId from localStorage auth_response.id
+    let userId: number | null = null;
+    try {
+      const authRaw = localStorage.getItem("auth_response");
+      if (authRaw) {
+        const parsed = JSON.parse(authRaw);
+        const id = parsed?.id;
+        if (typeof id === "number") userId = id;
+        else if (typeof id === "string" && id.trim() !== "" && !Number.isNaN(Number(id))) {
+          userId = Number(id);
+        }
+      }
+    } catch {
+      userId = null;
+    }
+
+    if (userId == null) {
+      showToast("User not found. Please login again.", "error");
       return;
     }
 
     try {
-      // TODO: Replace with actual API endpoint
-      // await fetch(`${BASE_URL}/api/spare-parts/reviews`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     sparepartsrequest_id: reviewRow.sparepartsrequest_id,
-      //     rating: rating,
-      //     comment: reviewComment,
-      //   }),
-      // });
+      const res = await fetch(RATE_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branchBrandSparepartId: reviewRow.id, // ✅ from /api/spare-parts/offers/by-user (row-level id)
+          description,
+          stars,
+          userId,
+        }),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+
+      // backend may return JSON or empty body; keep safe
+      await res.json().catch(() => null);
+
+      // ✅ Only mark this specific row as reviewed (do NOT change other rows)
+      const rowKey = getRowKey(reviewRow);
+      if (rowKey !== null) {
+        setReviewedMap((prev) => ({ ...prev, [rowKey]: true }));
+      }
 
       showToast("Review submitted successfully!", "success");
       closeReviewModal();
+
+      // Keep existing behavior (opens UserReviewExperiencePopup in parent)
       if (onReviewClick) {
         onReviewClick(reviewRow);
       }
@@ -429,15 +514,19 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
             {columns.showReview && (
               <td className="px-4 py-4">
                 <div className="flex flex-col items-start">
-                  <span className="text-gray-500 text-sm">
-                    Not reviewed yet.
-                  </span>
-                  <button
-                    className="text-[#3F72AF] text-sm font-semibold"
-                    onClick={() => onReview(r)}
-                  >
-                    Review it
-                  </button>
+                  {(getRowKey(r) !== null && reviewedMap[getRowKey(r)!]) ? (
+                    <span className="text-gray-500 text-sm">Review is sent</span>
+                  ) : (
+                    <>
+                      <span className="text-gray-500 text-sm">Not reviewed yet.</span>
+                      <button
+                        className="text-[#3F72AF] text-sm font-semibold"
+                        onClick={() => onReview(r)}
+                      >
+                        Review it
+                      </button>
+                    </>
+                  )}
                 </div>
               </td>
             )}
@@ -678,18 +767,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                 </button>
               </div>
             ) : (
-              /* View Mode Footer - Phone Button */
-              <div className="px-8 pb-8 pt-4">
-                <a
-                  href={`tel:${modalManagerMobile || "+994559954765"}`}
-                  className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow flex items-center justify-center gap-2"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                  </svg>
-                  {modalManagerMobile || "+994 55 995 47 65"}
-                </a>
-              </div>
+              ''
             )}
           </div>
         </div>
@@ -748,7 +826,10 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                     <button
                       key={star}
                       type="button"
-                      onClick={() => setRating(star)}
+                      onClick={() => {
+                        setRating(star);
+                        if (ratingError) setRatingError("");
+                      }}
                       className="focus:outline-none"
                     >
                       <svg
@@ -767,6 +848,9 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                     </button>
                   ))}
                 </div>
+                {ratingError ? (
+                  <p className="mt-2 text-xs text-red-600">{ratingError}</p>
+                ) : null}
               </div>
 
               {/* Comment */}
@@ -779,8 +863,14 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   rows={4}
                   placeholder="Share your experience..."
                   value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
+                  onChange={(e) => {
+                    setReviewComment(e.target.value);
+                    if (descriptionError) setDescriptionError("");
+                  }}
                 />
+                {descriptionError ? (
+                  <p className="mt-2 text-xs text-red-600">{descriptionError}</p>
+                ) : null}
               </div>
             </div>
 
