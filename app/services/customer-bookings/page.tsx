@@ -296,6 +296,10 @@ const MyBooking: React.FC = () => {
       serviceType: reservation.service_name,
       addedBy: "By Service", // Default value, adjust if you have this data
       review: reservation.stars ?? null,
+      // Needed for rate-experiences request body
+      // (value comes from /api/reservations/by-user response)
+      // @ts-ignore
+      branch_brand_serviceid: reservation.branch_brand_serviceid,
     };
     setReviewedRow(reviewData);
   };
@@ -303,6 +307,15 @@ const MyBooking: React.FC = () => {
   const handleCloseReview = () => {
     setReviewedRow(null);
   };
+  const handleReviewSubmitted = (reservationId: number, stars: number) => {
+    // update only the respective reservation row so UI can show "Review is sent"
+    setData((prev) =>
+      prev.map((r) =>
+        r.reservation_id === reservationId ? { ...r, stars } : r
+      )
+    );
+  };
+
 
   /** -------- Cancel Review Modal Handlers -------- */
   const handleOpenCancelReview = (reservation: ReservationRow) => {
@@ -494,6 +507,7 @@ const MyBooking: React.FC = () => {
       <UserReviewExperiencePopup
         reviewedRow={reviewedRow}
         closePopup={handleCloseReview}
+        onReviewSubmitted={handleReviewSubmitted}
       />
 
       {/* Cancel Review Modal */}
