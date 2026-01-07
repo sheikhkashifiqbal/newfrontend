@@ -111,7 +111,7 @@ export default function UserReviewExperiencePopup(
 				body: JSON.stringify({
 					branchBrandServiceID,
 					stars: values.rate,
-					userId: userId,
+					user_id: userId,
 					description: values.experience,
 				}),
 			});
@@ -119,7 +119,7 @@ export default function UserReviewExperiencePopup(
 			if (!res.ok) throw new Error(`Request failed (HTTP ${res.status})`);
 
 			// Update only the respective row in parent table
-			const reservationId = Number((reviewedRow as any)?.id);
+			const reservationId = Number((reviewedRow as any)?.reservation_id ?? (reviewedRow as any)?.id);
 			if (Number.isFinite(reservationId) && reservationId > 0) {
 				onReviewSubmitted?.(reservationId, values.rate);
 			}

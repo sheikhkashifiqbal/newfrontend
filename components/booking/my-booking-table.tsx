@@ -207,13 +207,19 @@ const BookingTable: React.FC<BookingTableProps> = ({
                   {isCompleted && (
                     <td className="px-4 py-4 align-top">
                       <div className="text-sm">
-                        <div>Not review yet</div>
-                        <button
-                          onClick={() => onReviewClick?.(b)}
-                          className="text-[#3F72AF] underline hover:text-[#3F72AF]/80 cursor-pointer"
-                        >
-                          Review it
-                        </button>
+                        {Number(b.stars ?? 0) > 0 ? (
+                          <div>Review is sent</div>
+                        ) : (
+                          <>
+                            <div>Not Review yet</div>
+                            <button
+                              onClick={() => onReviewClick?.(b)}
+                              className="text-[#3F72AF] underline hover:text-[#3F72AF]/80 cursor-pointer"
+                            >
+                              Review it
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   )}
