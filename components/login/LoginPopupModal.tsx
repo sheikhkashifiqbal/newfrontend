@@ -148,6 +148,7 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", 
         body: JSON.stringify({
           email: values.email,
           password: values.password,
