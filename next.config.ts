@@ -20,15 +20,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-    async redirects() {
-    return [
-      {
-        source: "/",
-        destination: "/services",
-        permanent: false, // true = 308 permanent redirect
-      },
-    ];
-  },
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/i,
