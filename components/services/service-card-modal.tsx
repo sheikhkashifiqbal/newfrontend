@@ -384,7 +384,7 @@ function ServiceCardModalTimeSelector({
       console.log("token:::", token);
       const res = await fetch(`${BASE_URL}/api/reservations/available-slots`, {
         method: "POST",
-        credentials: "include",
+      //  credentials: "include",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`, // correct header key and value format
