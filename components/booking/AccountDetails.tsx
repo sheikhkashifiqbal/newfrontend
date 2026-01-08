@@ -74,7 +74,7 @@ const AccountDetails: React.FC = () => {
         const resp = await fetch(`${BASE_URL}/api/companies/${companyId}`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
+         // credentials: "include",
         });
 
         if (!resp.ok) {
@@ -168,7 +168,7 @@ const AccountDetails: React.FC = () => {
     const up = await fetch(`${BASE_URL}/api/upload`, {
       method: "POST",
       body: fd,
-      credentials: "include",
+     // credentials: "include",
       // no Content-Type header on purpose (browser sets it)
     });
 
@@ -211,7 +211,7 @@ const AccountDetails: React.FC = () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        credentials: "include",
+       // credentials: "include",
       });
 
       if (!put.ok) {

@@ -165,7 +165,7 @@ export default function BranchModel({ branchId, mode = "edit", onSaved, onClose,
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        credentials: "include"
+      //  credentials: "include"
       });
       if (!resp.ok) throw new Error("Failed to update");
 

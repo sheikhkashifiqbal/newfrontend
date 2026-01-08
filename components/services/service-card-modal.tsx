@@ -779,7 +779,7 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
 
       const res2 = await fetch(`${BASE_URL}/api/reservations`, {
         method: "POST",
-        credentials: "include",
+       // credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,

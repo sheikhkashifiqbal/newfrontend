@@ -72,7 +72,7 @@ const MyBooking: React.FC = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId }),
-          credentials: "include",
+         // credentials: "include",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: ReservationRow[] = await res.json();
@@ -175,7 +175,7 @@ const MyBooking: React.FC = () => {
             reservationId: row.spareparts_id,
             sparepartsId: row.reservation_id,
           }),
-          credentials: "include",
+        //  credentials: "include",
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -248,7 +248,7 @@ const MyBooking: React.FC = () => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(reqBody),
-          credentials: "include",
+        //  credentials: "include",
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -208,7 +208,7 @@ export default function SparePartsRequestPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ branch_id: branchId }),
-          credentials: "include",
+        //  credentials: "include",
         });
 
         const json: ApiSparePartsResponse[] = await res.json();
