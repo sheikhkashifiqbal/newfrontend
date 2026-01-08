@@ -91,9 +91,8 @@ export default function UserReviewExperiencePopup(
 
 		const userId = getUserIdFromLocalStorage();
 		const branchBrandServiceID = getBranchBrandServiceIdFromRow();
+		const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 		
-		console.log("id::", userId);
-
 		if (!userId) {
 			alert("User not found in local storage. Please login again.");
 			return;
@@ -105,7 +104,7 @@ export default function UserReviewExperiencePopup(
 
 		setSubmitting(true);
 		try {
-			const res = await fetch("http://localhost:8081/api/rate-experiences", {
+			const res = await fetch(`${BASE_URL}/api/rate-experiences`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({

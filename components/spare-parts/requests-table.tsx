@@ -19,7 +19,7 @@ const API_URL = `${BASE_URL}/api/spare-parts/offers/by-user`;
 
 
 // ✅ Rate sparepart experience API (as per requirement)
-const RATE_API_URL = "http://localhost:8081/api/rate-sparepart-experiences";
+const RATE_API_URL = `${BASE_URL}/api/rate-sparepart-experiences`;
 
 /* -------------------- Tiny Toast (no dependency) -------------------- */
 type ToastType = "success" | "error";
