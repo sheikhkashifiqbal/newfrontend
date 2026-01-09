@@ -206,7 +206,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
                   )}
 
                   {/* Completed: Review column */}
-                  {isCompleted && (
+                  {!isCompleted && (
                     <td className="px-4 py-4 align-top">
                       <div className="text-sm">
                         {Number(b.stars ?? 0) > 0 ? (
