@@ -12,12 +12,12 @@ export type ReservationSparePart = {
 };
 
 export type ReservationRow = {
-  reservation_date: string;     // "YYYY-MM-DD"
-  reservation_time: string;     // "HH:mm:ss"
+  reservation_date: string; // "YYYY-MM-DD"
+  reservation_time: string; // "HH:mm:ss"
   branch_name: string;
   address: string;
   city: string;
-  logo_img: string;             // eg: "logo-1.jpg"
+  logo_img: string; // eg: "logo-1.jpg"
   brand_name: string;
   model_name: string;
   service_name: string;
@@ -48,7 +48,11 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 function formatDateUS(isoDate: string) {
   // -> "Sep 5, 2024"
   const d = new Date(isoDate + "T00:00:00");
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(d);
 }
 
 function formatTimeHHmm(hms: string) {
@@ -77,20 +81,20 @@ const BookingTable: React.FC<BookingTableProps> = ({
         <tr>
           <th className="px-4 py-3 w-[240px]">Service &amp; Location</th>
           <th className="px-4 py-3 w-[150px]">Reservation time</th>
-          <th className="px-4 py-3 w-[240px]">Selected car &amp; Number</th>
+          <th className="px-4 py-3 w-[240px]">
+            Selected car &amp; Number
+          </th>
           <th className="px-4 py-3 w-[160px]">Service type</th>
           {isUpcoming && (
             <>
-              <th className="px-4 py-3 w-[200px]">Spare parts asked by service</th>
+              <th className="px-4 py-3 w-[200px]">
+                Spare parts asked by service
+              </th>
               <th className="px-4 py-3 w-[120px] text-right">Actions</th>
             </>
           )}
-          {isCompleted && (
-            <th className="px-4 py-3 w-[160px]">Review</th>
-          )}
-          {isCancelled && (
-            <th className="px-4 py-3 w-[160px]">Cancel</th>
-          )}
+          {isCompleted && <th className="px-4 py-3 w-[160px]">Review</th>}
+          {isCancelled && <th className="px-4 py-3 w-[160px]">Cancel</th>}
         </tr>
       </thead>
     );
@@ -99,7 +103,9 @@ const BookingTable: React.FC<BookingTableProps> = ({
   if (bookings.length === 0) {
     return (
       <div className="w-full max-w-[1120px] mx-auto px-4 pb-20">
-        <div className="text-center py-10 text-gray-500">No bookings found.</div>
+        <div className="text-center py-10 text-gray-500">
+          No bookings found.
+        </div>
       </div>
     );
   }
@@ -113,7 +119,10 @@ const BookingTable: React.FC<BookingTableProps> = ({
             {bookings.map((b, idx) => {
               const logoUrl = `${BASE_URL}/images/${b.logo_img}`;
               return (
-                <tr key={`${b.reservation_id}-${idx}`} className={idx % 2 === 1 ? "bg-[#F8F9FA]" : ""}>
+                <tr
+                  key={`${b.reservation_id}-${idx}`}
+                  className={idx % 2 === 1 ? "bg-[#F8F9FA]" : ""}
+                >
                   {/* Service & Location */}
                   <td className="px-4 py-4 align-top">
                     <div className="flex items-start gap-3">
@@ -124,11 +133,14 @@ const BookingTable: React.FC<BookingTableProps> = ({
                         height={36}
                         className="rounded-md object-cover shrink-0 border"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/request-img.png";
+                          (e.currentTarget as HTMLImageElement).src =
+                            "/request-img.png";
                         }}
                       />
                       <div className="flex flex-col">
-                        <span className="font-medium break-words">{b.branch_name}</span>
+                        <span className="font-medium break-words">
+                          {b.branch_name}
+                        </span>
                         <span className="text-[#454545] text-xs mt-1 break-words">
                           {b.address}, {b.city}
                         </span>
@@ -171,10 +183,33 @@ const BookingTable: React.FC<BookingTableProps> = ({
                         <div className="relative flex justify-end">
                           <details className="group">
                             <summary className="list-none cursor-pointer inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-gray-100">
-                              <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                                <path d="M12 13c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1Z" stroke="#495057" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M19 13c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1Z" stroke="#495057" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M5 13c.55 0 1-.45 1-1S5.55 11 5 11s-1 .45-1 1 .45 1 1 1Z" stroke="#495057" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              <svg
+                                width="20"
+                                height="20"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  d="M12 13c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1Z"
+                                  stroke="#495057"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M19 13c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1Z"
+                                  stroke="#495057"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M5 13c.55 0 1-.45 1-1S5.55 11 5 11s-1 .45-1 1 .45 1 1 1Z"
+                                  stroke="#495057"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
                               </svg>
                             </summary>
                             <div className="absolute right-0 mt-2 min-w-40 rounded-lg border bg-white shadow-lg z-10">
@@ -206,7 +241,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
                   )}
 
                   {/* Completed: Review column */}
-                  {!isCompleted && (
+                  {isCompleted && (
                     <td className="px-4 py-4 align-top">
                       <div className="text-sm">
                         {Number(b.stars ?? 0) > 0 ? (
@@ -224,13 +259,17 @@ const BookingTable: React.FC<BookingTableProps> = ({
                         )}
                       </div>
                     </td>
-                  )}
+                  )
+                 
+                  }
 
                   {/* Cancelled: Cancel review column */}
                   {isCancelled && (
                     <td className="px-4 py-4 align-top">
                       <div className="text-sm">
-                        <div className="text-gray-500 mb-1">Write your cancel review</div>
+                        <div className="text-gray-500 mb-1">
+                          Write your cancel review
+                        </div>
                         <button
                           onClick={() => onCancelReviewClick?.(b)}
                           className="text-[#3F72AF] underline hover:text-[#3F72AF]/80 cursor-pointer"

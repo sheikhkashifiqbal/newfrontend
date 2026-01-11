@@ -43,7 +43,7 @@ export default function CompanyReviews({ branchId }: { branchId?: number }) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/rate-experiences/branch-summary`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ branch_id: branchId })
+          body: JSON.stringify({ branchId: branchId })
         });
         if (!res.ok) return;
         const json: SummaryResponse = await res.json();
@@ -102,7 +102,7 @@ export default function CompanyReviews({ branchId }: { branchId?: number }) {
             </div>
             <p className="font-medium text-gray-800 text-lg">{overall} out of 5</p>
           </div>
-          <p className="text-sm text-gray-500 mb-4">{total} ratings</p>
+          <p className="text-sm text-gray-500 mb-4">{total} ratings2222</p>
 
           {/* Rating Bars */}
           <div className="flex flex-col gap-2">

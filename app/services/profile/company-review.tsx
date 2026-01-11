@@ -146,7 +146,7 @@ const CompanyReviews: React.FC<{ branchId: number }> = ({ branchId }) => {
             </div>
             <p className="font-medium text-gray-800 text-lg">{bestStar || 0} out of 5</p>
           </div>
-          <p className="text-sm text-gray-500 mb-4">{totalRatings} ratings</p>
+          <p className="text-sm text-gray-500 mb-4">{totalRatings} ratings111</p>
 
           {/* Rating Bars */}
           <div className="flex flex-col gap-2">

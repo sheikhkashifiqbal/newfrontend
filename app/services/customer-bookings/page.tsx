@@ -72,7 +72,7 @@ const MyBooking: React.FC = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId }),
-         // credentials: "include",
+          // credentials: "include",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: ReservationRow[] = await res.json();
@@ -175,7 +175,7 @@ const MyBooking: React.FC = () => {
             reservationId: row.spareparts_id,
             sparepartsId: row.reservation_id,
           }),
-        //  credentials: "include",
+          //  credentials: "include",
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -215,7 +215,9 @@ const MyBooking: React.FC = () => {
         part_name: "",
         qty: 1,
         spareparts_id: 0,
-        spareparts_type: currentReservation?.reservation_service_sparepart?.[0]?.spareparts_type || "Engine",
+        spareparts_type:
+          currentReservation?.reservation_service_sparepart?.[0]?.spareparts_type ||
+          "Engine",
         reservation_id: currentReservation?.reservation_id || 0,
       },
     ]);
@@ -228,8 +230,12 @@ const MyBooking: React.FC = () => {
   };
 
   /** -------- Actual Cancel API Call -------- */
-  const performCancel = async (reservation: ReservationRow, reason?: string, detailedReason?: string) => {
-    console.log('reservation::', reservation);
+  const performCancel = async (
+    reservation: ReservationRow,
+    reason?: string,
+    detailedReason?: string
+  ) => {
+    console.log("reservation::", reservation);
     const reqBody: any = {
       userId: reservation.user_id ?? userId,
       carId: reservation.car_id,
@@ -238,19 +244,16 @@ const MyBooking: React.FC = () => {
       reservationTime: reservation.reservation_time?.slice(0, 5) ?? "",
       reservationStatus: "canceled",
     };
-    
+
     Object.keys(reqBody).forEach((k) => reqBody[k] === undefined && delete reqBody[k]);
 
     try {
-      const res = await fetch(
-        `${BASE_URL}/api/reservations/${reservation.reservation_id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(reqBody),
+      const res = await fetch(`${BASE_URL}/api/reservations/${reservation.reservation_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reqBody),
         //  credentials: "include",
-        }
-      );
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       setData((prev) =>
@@ -266,9 +269,6 @@ const MyBooking: React.FC = () => {
       alert(e?.message ?? "Cancel failed.");
     }
   };
-
-  // 🚫 Prevent rendering until userId verified
-  // if (!userId) return null;
 
   const handleTopTabsChange = (label: string) => {
     if (label === "Profile info") {
@@ -291,7 +291,9 @@ const MyBooking: React.FC = () => {
     const reviewData: UserBookingCompleted = {
       id: reservation.reservation_id,
       service: `${reservation.branch_name}, ${reservation.address}, ${reservation.city}`,
-      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(reservation.reservation_time)}`,
+      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(
+        reservation.reservation_time
+      )}`,
       car: `${reservation.brand_name} ${reservation.model_name}, ${reservation.plate_number}`,
       serviceType: reservation.service_name,
       addedBy: "By Service", // Default value, adjust if you have this data
@@ -307,15 +309,13 @@ const MyBooking: React.FC = () => {
   const handleCloseReview = () => {
     setReviewedRow(null);
   };
+
   const handleReviewSubmitted = (reservationId: number, stars: number) => {
-    // update only the respective reservation row so UI can show "Review is sent"
+    // ✅ update only the respective reservation row so UI can show "Review is sent"
     setData((prev) =>
-      prev.map((r) =>
-        r.reservation_id === reservationId ? { ...r, stars } : r
-      )
+      prev.map((r) => (r.reservation_id === reservationId ? { ...r, stars } : r))
     );
   };
-
 
   /** -------- Cancel Review Modal Handlers -------- */
   const handleOpenCancelReview = (reservation: ReservationRow) => {
@@ -323,7 +323,9 @@ const MyBooking: React.FC = () => {
     const cancelReviewData: UserBookingUpcoming = {
       id: reservation.reservation_id,
       service: `${reservation.branch_name}, ${reservation.address}, ${reservation.city}`,
-      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(reservation.reservation_time)}`,
+      time: `${formatDateUS(reservation.reservation_date)}, ${formatTimeHHmm(
+        reservation.reservation_time
+      )}`,
       car: `${reservation.brand_name} ${reservation.model_name}, ${reservation.plate_number}`,
       serviceType: reservation.service_name,
       askedSpareParts: reservation.reservation_service_sparepart ?? [],
@@ -341,7 +343,11 @@ const MyBooking: React.FC = () => {
   // Helper functions for date/time formatting (matching BookingTable)
   function formatDateUS(isoDate: string) {
     const d = new Date(isoDate + "T00:00:00");
-    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(d);
   }
 
   function formatTimeHHmm(hms: string) {
@@ -353,11 +359,18 @@ const MyBooking: React.FC = () => {
   return (
     <div className="bg-gray-50 pb-20">
       <section className="max-w-[1120px] mx-auto px-4 py-8">
-        <NavTabs tabItems={tabItems} defaultActiveTab="My bookings" id={1} onChange={handleTopTabsChange}/>
+        <NavTabs
+          tabItems={tabItems}
+          defaultActiveTab="My bookings"
+          id={1}
+          onChange={handleTopTabsChange}
+        />
       </section>
 
       <section className="max-w-[1120px] mx-auto px-4 mb-8">
-        <h2 className="text-[#3F72AF] text-2xl md:text-[32px] font-semibold">My Bookings</h2>
+        <h2 className="text-[#3F72AF] text-2xl md:text-[32px] font-semibold">
+          My Bookings
+        </h2>
         <p className="text-[#ADB5BD] text-xl md:text-[20px] mt-2">
           See your scheduled services from your calendar.
         </p>
@@ -390,7 +403,7 @@ const MyBooking: React.FC = () => {
                   height={20}
                   alt=""
                 />
-                <span>{tab == "Pending" ? "UpComing": tab} </span>
+                <span>{tab == "Pending" ? "UpComing" : tab} </span>
                 <span className="px-2 py-[2px] text-xs border border-[#E9ECEF] rounded-2xl">
                   {tabCounts[tab] ?? 0}
                 </span>
@@ -401,8 +414,12 @@ const MyBooking: React.FC = () => {
       </section>
 
       {/* Table */}
-      {loading && <div className="max-w-[1120px] mx-auto px-4">Loading bookings…</div>}
-      {err && <div className="max-w-[1120px] mx-auto px-4 text-red-600">{err}</div>}
+      {loading && (
+        <div className="max-w-[1120px] mx-auto px-4">Loading bookings…</div>
+      )}
+      {err && (
+        <div className="max-w-[1120px] mx-auto px-4 text-red-600">{err}</div>
+      )}
       {!loading && !err && (
         <BookingTable
           bookings={filtered}
@@ -419,8 +436,16 @@ const MyBooking: React.FC = () => {
 
       {/* Spare Parts Modal */}
       <Dialog open={spModalOpen} onOpenChange={setSpModalOpen}>
-        <DialogContent className={cn("overflow-y-auto max-w-[95%] md:max-w-[650px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-4")}>
-          <DialogHeader className={"w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0 pb-6"}>
+        <DialogContent
+          className={cn(
+            "overflow-y-auto max-w-[95%] md:max-w-[650px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-4"
+          )}
+        >
+          <DialogHeader
+            className={
+              "w-full flex flex-col gap-8 border-b-[1px] border-b-blue-gray p-8 pt-0 pb-6"
+            }
+          >
             <div className={"flex justify-between items-center"}>
               <DialogTitle className={"p-0 m-0 text-2xl text-charcoal font-medium"}>
                 Required spare part
@@ -434,7 +459,11 @@ const MyBooking: React.FC = () => {
           <div className={"flex flex-col gap-y-2 px-8"}>
             {/* Category button */}
             {currentReservation && (
-              <div className={"text-dark-gray text-sm mb-2 font-medium rounded-[8px] bg-ice-mist border border-soft-sky py-2 px-4 max-w-fit"}>
+              <div
+                className={
+                  "text-dark-gray text-sm mb-2 font-medium rounded-[8px] bg-ice-mist border border-soft-sky py-2 px-4 max-w-fit"
+                }
+              >
                 {spEditingRows[0]?.spareparts_type || "Engine"}
               </div>
             )}
@@ -452,9 +481,7 @@ const MyBooking: React.FC = () => {
                 <div className="col-span-7">
                   <input
                     value={row.part_name}
-                    onChange={(e) =>
-                      updateRowLocal(idx, { part_name: e.target.value })
-                    }
+                    onChange={(e) => updateRowLocal(idx, { part_name: e.target.value })}
                     placeholder="Enter part name"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                   />
@@ -466,9 +493,7 @@ const MyBooking: React.FC = () => {
                     min={1}
                     step={1}
                     value={row.qty}
-                    onChange={(e) =>
-                      updateRowLocal(idx, { qty: Number(e.target.value) })
-                    }
+                    onChange={(e) => updateRowLocal(idx, { qty: Number(e.target.value) })}
                     placeholder="Ex: 100"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                   />
@@ -547,12 +572,7 @@ const tabItems = [
     label: "Spare part request",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M7 7H17V17H7V7Z"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M7 7H17V17H7V7Z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M3 3L21 21" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),
