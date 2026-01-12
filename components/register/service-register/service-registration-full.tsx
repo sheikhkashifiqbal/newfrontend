@@ -191,8 +191,9 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     const res = await fetch(API_UPLOAD, { method: "POST", body: fd });
     if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
 
-    localStorage.setItem("Error-Upload",`Upload failed: ${res.status} ${await res.text()}`);
+    
     const data = await res.json();
+    localStorage.setItem("Error-Upload",`Upload: ${res.status} ${data.filename as String}`);
     return data.filename as string;
   }
 
