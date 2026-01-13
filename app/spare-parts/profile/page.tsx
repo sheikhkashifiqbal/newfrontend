@@ -37,10 +37,7 @@ const ViewEditModel = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAdd = () => {
-    setParts([
-      ...parts,
-      { id: Date.now(), name: "", qty: "" }
-    ]);
+    setParts([...parts, { id: Date.now(), name: "", qty: "" }]);
   };
 
   const handleRemove = (id: number) => {
@@ -53,11 +50,7 @@ const ViewEditModel = ({
   };
 
   const handleChange = (id: number, field: "name" | "qty", value: string) => {
-    setParts(
-      parts.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
-    );
+    setParts(parts.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
     setErrors((prev) => {
       const copy = { ...prev };
       if (copy[id]) {
@@ -136,11 +129,11 @@ const ViewEditModel = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,                 // from auth_response
-          sparepartsId,           // selected Spare Part Type ID
-          branchId,               // from query string
-          date: dateStr,          // current date
-          vinNumber: vin,         // from VIN field
+          userId, // from auth_response
+          sparepartsId, // selected Spare Part Type ID
+          branchId, // from query string
+          date: dateStr, // current date
+          vinNumber: vin, // from VIN field
           requestStatus: "pending",
         }),
       });
@@ -148,15 +141,15 @@ const ViewEditModel = ({
       if (!mainResp.ok) {
         throw new Error("Failed to create spare parts request.");
       }
-      
-      const mainData = await mainResp.json(); console.log(mainData);
-      const spareRequestId = mainData.sparepartsrequestId;
 
+      const mainData = await mainResp.json();
+      console.log(mainData);
+      const spareRequestId = mainData.sparepartsrequestId;
 
       if (!spareRequestId) {
         throw new Error("Request ID not returned from server.");
       }
-        
+
       // 2️⃣ Second POST (loop): /api/spare-parts/request-details
       for (const p of parts) {
         await fetch(`${BASE_URL}/api/spare-parts/request-details`, {
@@ -183,25 +176,14 @@ const ViewEditModel = ({
   };
 
   return (
-    <ModalBox
-      open={openModal}
-      onOpenChange={setModalOpen}
-      title=""
-      maxWidth="627px"
-      bg="bg-gray-50"
-    >
+    <ModalBox open={openModal} onOpenChange={setModalOpen} title="" maxWidth="627px" bg="bg-gray-50">
       {/* Header */}
       <div className="pb-2">
-        <h2 className="text-[24px] text-gray-900 font-semibold -mt-5">
-          Required spare parts
-        </h2>
+        <h2 className="text-[24px] text-gray-900 font-semibold -mt-5">Required spare parts</h2>
 
         <p className="mt-1 text-gray-600 text-[15px] leading-tight">
-          
-          <span className="text-[#3F72AF] underline cursor-pointer">
-            
-          </span>{" "}
-           VIN{" "}
+          <span className="text-[#3F72AF] underline cursor-pointer"></span>{" "}
+          VIN{" "}
           {/* VIN FIELD (replacing static text 27393A7GDB67WOP921) */}
           <input
             value={vin}
@@ -233,33 +215,21 @@ const ViewEditModel = ({
             <div className="col-span-7">
               <input
                 value={item.name}
-                onChange={(e) =>
-                  handleChange(item.id, "name", e.target.value)
-                }
+                onChange={(e) => handleChange(item.id, "name", e.target.value)}
                 placeholder="Enter part name"
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
               />
-              {errors[item.id]?.name && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors[item.id]?.name}
-                </p>
-              )}
+              {errors[item.id]?.name && <p className="mt-1 text-xs text-red-500">{errors[item.id]?.name}</p>}
             </div>
 
             <div className="col-span-3">
               <input
                 value={item.qty}
-                onChange={(e) =>
-                  handleChange(item.id, "qty", e.target.value)
-                }
+                onChange={(e) => handleChange(item.id, "qty", e.target.value)}
                 placeholder="Enter qty"
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
               />
-              {errors[item.id]?.qty && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors[item.id]?.qty}
-                </p>
-              )}
+              {errors[item.id]?.qty && <p className="mt-1 text-xs text-red-500">{errors[item.id]?.qty}</p>}
             </div>
 
             <button
@@ -298,17 +268,10 @@ export default function SparePartsProfile() {
   const [activeTab, setActiveTab] = useState("Company Spare Parts");
   const [openModal, setOpenModal] = useState(false);
   const searchParams = useSearchParams();
-  const branchId = useMemo(
-    () => Number(searchParams.get("branchId")),
-    [searchParams]
-  );
+  const branchId = useMemo(() => Number(searchParams.get("branchId")), [searchParams]);
 
-  const [carBrands, setCarBrands] = useState<
-    { brand_id: number; brand_name: string }[]
-  >([]);
-  const [services, setServices] = useState<
-    { spareparts_id: number; spareparts_type: string }[]
-  >([]);
+  const [carBrands, setCarBrands] = useState<{ brand_id: number; brand_name: string; status: string }[]>([]);
+  const [services, setServices] = useState<{ spareparts_id: number; spareparts_type: string }[]>([]);
   const [grid, setGrid] = useState<any[]>([]);
   const [selBrand, setSelBrand] = useState<number | "">("");
   const [selService, setSelService] = useState<number | "">("");
@@ -337,13 +300,12 @@ export default function SparePartsProfile() {
   }, [toast]);
 
   // VIN from query string (if exists)
- useEffect(() => {
-  const vinParam = searchParams.get("vin");
-  if (vinParam && !vin) {
-    setVin(vinParam);
-  }
-}, [searchParams, vin]);
-
+  useEffect(() => {
+    const vinParam = searchParams.get("vin");
+    if (vinParam && !vin) {
+      setVin(vinParam);
+    }
+  }, [searchParams, vin]);
 
   const dedupeSpareTypes = (arr: any[]) => {
     const seen = new Set<string>();
@@ -372,13 +334,23 @@ export default function SparePartsProfile() {
   // 1️⃣ a. Load brands
   useEffect(() => {
     if (!branchId || activeTab !== "Company Spare Parts") return;
-    fetch(`${BASE_URL}/api/branch-catalog/brands`, {
+
+    fetch(`${BASE_URL}/api/SparePartBrandsList`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ branch_id: branchId }),
     })
       .then((res) => res.json())
-      .then((json) => setCarBrands(json.brands || []))
+      .then((json) => {
+        // ✅ API returns array like:
+        // [
+        //   { status:"active", brand_id:1, brand_name:"Toyota" }
+        // ]
+        // so the dropdown options must use:
+        // option value = brand_id, option text = brand_name
+        const list = Array.isArray(json) ? json : json?.brands || [];
+        setCarBrands(list);
+      })
       .catch(() => {});
   }, [branchId, activeTab]);
 
@@ -434,45 +406,26 @@ export default function SparePartsProfile() {
       .then((r) => r.json())
       .then((days) => {
         const todayIdx = new Date().getDay();
-        const names = [
-          "sunday",
-          "monday",
-          "tuesday",
-          "wednesday",
-          "thursday",
-          "friday",
-          "saturday",
-        ];
+        const names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
         const today = names[todayIdx];
-        const todayObj = days.find(
-          (d: any) => d.workingDay?.toLowerCase() === today
-        );
-        if (todayObj)
-          setTodayText(
-            `${capitalize(todayObj.workingDay)}: ${todayObj.from}–${todayObj.to}`
-          );
+        const todayObj = days.find((d: any) => d.workingDay?.toLowerCase() === today);
+        if (todayObj) setTodayText(`${capitalize(todayObj.workingDay)}: ${todayObj.from}–${todayObj.to}`);
 
         const actives = days.filter((d: any) => d.status === "active");
         if (actives.length) {
           const idx = (n: string) => names.indexOf(n.toLowerCase());
-          const sorted = actives.sort(
-            (a: any, b: any) => idx(a.workingDay) - idx(b.workingDay)
-          );
+          const sorted = actives.sort((a: any, b: any) => idx(a.workingDay) - idx(b.workingDay));
           const first = sorted[0].workingDay;
           const last = sorted[sorted.length - 1].workingDay;
 
           const mode = (arr: string[]) => {
             const count: any = {};
             arr.forEach((v) => (count[v] = (count[v] || 0) + 1));
-            return Object.keys(count).reduce((a, b) =>
-              count[a] > count[b] ? a : b
-            );
+            return Object.keys(count).reduce((a, b) => (count[a] > count[b] ? a : b));
           };
           const from = mode(actives.map((d: any) => d.from));
           const to = mode(actives.map((d: any) => d.to));
-          setWeekdayText(
-            `${capitalize(first)}–${capitalize(last)}: ${from}–${to}`
-          );
+          setWeekdayText(`${capitalize(first)}–${capitalize(last)}: ${from}–${to}`);
         }
       })
       .catch(() => {});
@@ -513,11 +466,7 @@ export default function SparePartsProfile() {
         {/* Top Banner */}
         <div className="flex justify-center py-8 px-2 max-w-[1224px] mx-auto">
           <div className="relative w-full">
-            <img
-              src="/images/single-service.png"
-              alt=""
-              className="h-[280px] w-full rounded-[24px] object-cover"
-            />
+            <img src="/images/single-service.png" alt="" className="h-[280px] w-full rounded-[24px] object-cover" />
           </div>
         </div>
 
@@ -527,11 +476,7 @@ export default function SparePartsProfile() {
             <p>
               📍 {topAddress.address}, {topAddress.city}
             </p>
-            <a
-              href={topAddress.map || "#"}
-              target="_blank"
-              className="text-blue-500 underline"
-            >
+            <a href={topAddress.map || "#"} target="_blank" className="text-blue-500 underline">
               Google Map
             </a>
           </div>
@@ -553,9 +498,7 @@ export default function SparePartsProfile() {
                 key={label}
                 onClick={() => setActiveTab(label)}
                 className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 ${
-                  activeTab === label
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-400 hover:text-gray-700"
+                  activeTab === label ? "border-blue-600 text-blue-600" : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
               >
                 <img src={icon} alt={label} className="w-5 h-5" />
@@ -575,6 +518,9 @@ export default function SparePartsProfile() {
                   <p className="mb-2">Filter by</p>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
+                      {/* ✅ Car Brand dropdown:
+                          option value = brand_id
+                          option text = brand_name */}
                       <select
                         className="bg-[#E9ECEF] min-w-[184px] py-2.5 px-4 pr-10 rounded-[8px]"
                         value={selBrand}
@@ -604,10 +550,7 @@ export default function SparePartsProfile() {
                       >
                         <option value="">Spare Part Type</option>
                         {services.map((s) => (
-                          <option
-                            key={s.spareparts_id}
-                            value={s.spareparts_id}
-                          >
+                          <option key={s.spareparts_id} value={s.spareparts_id}>
                             {s.spareparts_type}
                           </option>
                         ))}
@@ -616,20 +559,8 @@ export default function SparePartsProfile() {
 
                     {/* Validation messages for selectors */}
                     <div className="flex gap-2">
-                      <div className="min-w-[184px]">
-                        {selBrandError && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {selBrandError}
-                          </p>
-                        )}
-                      </div>
-                      <div className="min-w-[184px]">
-                        {selServiceError && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {selServiceError}
-                          </p>
-                        )}
-                      </div>
+                      <div className="min-w-[184px]">{selBrandError && <p className="text-xs text-red-500 mt-1">{selBrandError}</p>}</div>
+                      <div className="min-w-[184px]">{selServiceError && <p className="text-xs text-red-500 mt-1">{selServiceError}</p>}</div>
                     </div>
                   </div>
                 </div>
@@ -647,16 +578,9 @@ export default function SparePartsProfile() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-12">
                 {grid.flatMap((g, i) =>
                   g.brands?.map((b: any, j: number) => (
-                    <div
-                      key={`${i}-${j}`}
-                      className="rounded-2xl bg-white p-6 relative"
-                    >
+                    <div key={`${i}-${j}`} className="rounded-2xl bg-white p-6 relative">
                       <div className="flex items-center gap-2 mb-4">
-                        <img
-                          src={`${BASE_URL}/images/${b.brand_icon}`}
-                          alt={b.brand_name}
-                          className="h-6 w-6 rounded-full object-cover"
-                        />
+                        <img src={`${BASE_URL}/images/${b.brand_icon}`} alt={b.brand_name} className="h-6 w-6 rounded-full object-cover" />
                         <p className="font-medium">{b.brand_name}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">

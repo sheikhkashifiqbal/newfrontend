@@ -1,6 +1,6 @@
-'use client'
+"use client";
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CardHeader } from "@/components/services/store-center-card";
 import { useRouter } from "next/navigation";
 
@@ -42,6 +42,11 @@ export default function StoresCards() {
     router.push(`/spare-parts/profile?branchId=${branchId}`);
   };
 
+  // ✅ Requirement: If item.brandNames is empty then item will not display.
+  const filteredData = useMemo(() => {
+    return data.filter((item) => Array.isArray(item.brandNames) && item.brandNames.length > 0);
+  }, [data]);
+
   if (loading) return <div className="py-5">Loading...</div>;
 
   return (
@@ -50,11 +55,12 @@ export default function StoresCards() {
         Reliable Car Spare Part Suppliers You Can Trust!
       </h1>
       <p className="text-base text-charcoal max-w-[80ch]">
-        Discover seamless car maintenance with our trusted suppliers. From quality spare parts to performance upgrades, our platform connects you with certified professionals for genuine and reliable components.
+        Discover seamless car maintenance with our trusted suppliers. From quality spare parts to performance upgrades,
+        our platform connects you with certified professionals for genuine and reliable components.
       </p>
 
       <div className="py-5 grid grid-cols-1 600:grid-cols-2 mx-0 xl:grid-cols-3 gap-x-5 gap-y-6">
-        {data.map((item, index) => (
+        {filteredData.map((item, index) => (
           <div
             key={`${item.branch_id}-${index}`}
             className="flex flex-col max-w-[392px] overflow-hidden rounded-3xl bg-white"
