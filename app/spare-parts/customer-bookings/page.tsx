@@ -247,7 +247,6 @@ export default function SparePartsRequestPage() {
     setReviewedRow(null);
   };
 
-
   // if (userId == null) return null; // prevent rendering before auth check
 
   const handleTopTabsChange = (label: string) => {
@@ -264,7 +263,6 @@ export default function SparePartsRequestPage() {
       return;
     }
   };
-
 
   return (
     <div className="bg-gray-50 pb-20">
@@ -404,8 +402,6 @@ export default function SparePartsRequestPage() {
         reviewedRow={reviewedRow}
         closePopup={closePopup}
       />
-
-
     </div>
   );
 }

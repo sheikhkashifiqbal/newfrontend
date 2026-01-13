@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -12,34 +12,37 @@ import { Form } from "@/components/ui/form";
 import CustomFormFieldTextarea from "@/components/app-custom/custom-form-field-textarea";
 import CustomBlueBtn from "@/components/app-custom/CustomBlueBtn";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  UserBookingCompleted
-} from "@/components/dashboard/user/my-bookings/completed-tab/user-bookings-completed-tab-columns";
+import { UserBookingCompleted } from "@/components/dashboard/user/my-bookings/completed-tab/user-bookings-completed-tab-columns";
 import { Rating } from "react-simple-star-rating";
-import {
-  UserSparePartAccepted
-} from "@/components/dashboard/user/spare-part-request/accepted-offers-tab/user-spare-part-accepted-offers-columns";
+import { UserSparePartAccepted } from "@/components/dashboard/user/spare-part-request/accepted-offers-tab/user-spare-part-accepted-offers-columns";
 
 interface IUserReviewExperiencePopup {
   reviewedRow: null | UserBookingCompleted | UserSparePartAccepted;
   closePopup: () => void;
 
   /**
-   * Called after successful submit so parent table can update only the respective row UI.
-   * Pass reservationId and stars (1..5).
+   * ✅ Called after successful submit so parent table can update ONLY the respective row.
+   *
+   * - For Service booking reviews:
+   *   entityId = reservationId
+   *
+   * - For Spare parts reviews:
+   *   entityId = sparepartsrequestId
+   *
+   * IMPORTANT (your corrected requirement):
+   * For spare parts, the UI must display "Review is sent" ONLY when:
+   *   sparepartsrequestId (JSON request) == sparepartsrequest_id (JSON response row)
+   * AND the POST request was submitted successfully.
    */
-  onReviewSubmitted?: (reservationId: number, stars: number) => void;
+  onReviewSubmitted?: (entityId: number, stars: number) => void;
 }
 
-export default function UserReviewExperiencePopup(
-  {
-    reviewedRow,
-    closePopup,
-    onReviewSubmitted,
-  }: IUserReviewExperiencePopup
-) {
+export default function UserReviewExperiencePopup({
+  reviewedRow,
+  closePopup,
+  onReviewSubmitted,
+}: IUserReviewExperiencePopup) {
   const userReviewExperiencePopupFormSchema = z.object({
-    // We store stars as 1..5
     rate: z
       .number({ required_error: "Stars are required" })
       .min(1, "Stars are required")
@@ -73,6 +76,27 @@ export default function UserReviewExperiencePopup(
     }
   }
 
+  // Identify if this popup is opened for spare parts flow
+  function isSparePartsRow(): boolean {
+    const anyRow = reviewedRow as any;
+    return anyRow?.sparepartsrequest_id != null;
+  }
+
+  /**
+   * ✅ For spare parts flow:
+   * The sparepartsrequestId used in JSON request MUST come from
+   * /api/spare-parts/offers/by-user response element "sparepartsrequest_id"
+   * and must match that same row’s "sparepartsrequest_id".
+   */
+  function getSparepartsRequestIdFromRow(): number | null {
+    const anyRow = reviewedRow as any;
+    const v = anyRow?.sparepartsrequest_id ?? anyRow?.sparepartsrequestId;
+    const num = Number(v);
+    if (!Number.isFinite(num) || num <= 0) return null;
+    return num;
+  }
+
+  // Existing service review helpers (kept)
   function getBranchBrandServiceIdFromRow(): number | null {
     const anyRow = reviewedRow as any;
     const v =
@@ -103,25 +127,81 @@ export default function UserReviewExperiencePopup(
     if (!reviewedRow) return;
 
     const userId = getUserIdFromLocalStorage();
-    const branchBrandServiceID = getBranchBrandServiceIdFromRow();
-    const reservationId = getReservationIdFromRow();
     const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     if (!userId) {
       alert("User not found in local storage. Please login again.");
       return;
     }
-    if (!branchBrandServiceID) {
-      alert("branch_brand_serviceid not found for this reservation.");
-      return;
-    }
-    if (!reservationId) {
-      alert("reservation_id not found for this reservation.");
-      return;
-    }
 
     setSubmitting(true);
     try {
+      // ✅ Spare parts review submit
+      if (isSparePartsRow()) {
+        const sparepartsrequestId = getSparepartsRequestIdFromRow();
+        if (!sparepartsrequestId) {
+          alert("sparepartsrequest_id not found for this spare parts request.");
+          return;
+        }
+
+        /**
+         * JSON Request (as per your requirement):
+         * {
+         *   "rateExperienceId": 1,
+         *   "branchBrandSparepartId": 1,
+         *   "sparepartsrequestId": 1,
+         *   "description": "...",
+         *   "userId": 1,
+         *   "stars": 3
+         * }
+         *
+         * IMPORTANT (correct requirement):
+         * We track success by sparepartsrequestId, and the table compares:
+         * sparepartsrequestId (request) == sparepartsrequest_id (response row)
+         * before showing "Review is sent".
+         */
+        const branchBrandSparepartId = sparepartsrequestId; // keep your current mapping convention
+
+        const res = await fetch(`${BASE_URL}/api/rate-sparepart-experiences`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rateExperienceId: 1,
+            branchBrandSparepartId: branchBrandSparepartId,
+            sparepartsrequestId: sparepartsrequestId,
+            description: values.experience,
+            userId: userId,
+            stars: values.rate,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`Request failed (HTTP ${res.status})`);
+
+        // ✅ Mark ONLY this sparepartsrequestId as reviewed in parent
+        onReviewSubmitted?.(sparepartsrequestId, values.rate);
+
+        // ✅ Close popup modal after successful submit
+        closePopup();
+        setTimeout(() => {
+          form.reset({ rate: 0, experience: "" });
+        }, 300);
+
+        return;
+      }
+
+      // ✅ Service booking review submit (kept)
+      const branchBrandServiceID = getBranchBrandServiceIdFromRow();
+      const reservationId = getReservationIdFromRow();
+
+      if (!branchBrandServiceID) {
+        alert("branch_brand_serviceid not found for this reservation.");
+        return;
+      }
+      if (!reservationId) {
+        alert("reservation_id not found for this reservation.");
+        return;
+      }
+
       const res = await fetch(`${BASE_URL}/api/rate-experiences`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,9 +216,10 @@ export default function UserReviewExperiencePopup(
 
       if (!res.ok) throw new Error(`Request failed (HTTP ${res.status})`);
 
-      // Update only the respective row in parent table (same reservation)
+      // ✅ Mark ONLY this reservationId as reviewed in parent
       onReviewSubmitted?.(reservationId, values.rate);
 
+      // ✅ Close popup modal after successful submit
       closePopup();
       setTimeout(() => {
         form.reset({ rate: 0, experience: "" });
