@@ -100,27 +100,14 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   };
 
   /**
-   * ✅ FIXED (as per your requirement):
-   * branchBrandSparepartId MUST come from the TOP-LEVEL "id"
-   * in /api/spare-parts/offers/by-user response (the "id" after manager_mobile).
-   *
-   * Example response:
-   *  ... "manager_mobile": "987...", "id": 1, ...
-   *
-   * So we use row.id (top-level).
+   * ✅ IMPORTANT (per your requirement):
+   * "branchBrandSparepartId" of JSON request and "sparepartsrequest_id" of JSON response are same.
+   * So we set branchBrandSparepartId = sparepartsrequest_id (row-level).
    */
   const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
-    // ✅ Correct source: top-level id
-    const topLevelId = row?.id;
-    const num = Number(topLevelId);
-    if (Number.isFinite(num) && num > 0) return num;
-
-    // Safety fallback (should not be used if your UI mapping includes top-level id)
-    const maybeAlt = row?.branchBrandSparepartId ?? row?.offerId ?? row?.branch_brand_sparepart_id;
-    const num2 = Number(maybeAlt);
-    if (Number.isFinite(num2) && num2 > 0) return num2;
-
-    return null;
+    const sparepartsReqId = getSparepartsRequestIdFromRow(row);
+    if (!sparepartsReqId) return null;
+    return sparepartsReqId;
   };
 
   const getUserIdFromAuthResponse = (): number | null => {
@@ -136,34 +123,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       return null;
     }
   };
-
-  // ✅ Persist reviewedMap per user so refresh doesn't reset
-  const getReviewedStorageKey = () => {
-    const uid = getUserIdFromAuthResponse();
-    return `sparepart_reviewed_map_${uid ?? "anonymous"}`;
-  };
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(getReviewedStorageKey());
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        setReviewedMap(parsed as Record<number, boolean>);
-      }
-    } catch {
-      // ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(getReviewedStorageKey(), JSON.stringify(reviewedMap));
-    } catch {
-      // ignore
-    }
-  }, [reviewedMap]);
 
   // --- Refresh modal data from server whenever popup opens ---
   const refreshModalFromServer = async (requestId: number) => {
@@ -283,10 +242,10 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       return;
     }
 
-    // ✅ FIX: branchBrandSparepartId MUST come from top-level row.id
+    // ✅ branchBrandSparepartId is same as sparepartsrequest_id (as per your requirement)
     const branchBrandSparepartId = getBranchBrandSparepartIdFromRow(reviewRow);
     if (!branchBrandSparepartId) {
-      showToast("branchBrandSparepartId (top-level id) not found for this row.", "error");
+      showToast("branchBrandSparepartId not found for this row.", "error");
       return;
     }
 
@@ -314,18 +273,26 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       await res.json().catch(() => null);
 
       /**
-       * ✅ Update Review column ONLY for the respective row:
-       * After successful submit, mark this request as reviewed in reviewedMap.
+       * ✅ Update Review column only for the respective row:
+       * show "Review is sent" if (branchBrandSparepartId === sparepartsrequest_id)
+       * and request submitted successfully.
        */
-      const rowKey = getRowKey(reviewRow);
-      if (rowKey !== null) {
-        setReviewedMap((prev) => ({ ...prev, [rowKey]: true }));
+      if (branchBrandSparepartId === sparepartsrequestId) {
+        const rowKey = getRowKey(reviewRow);
+        if (rowKey !== null) {
+          setReviewedMap((prev) => ({ ...prev, [rowKey]: true }));
+        }
       }
 
       showToast("Review submitted successfully!", "success");
 
       // ✅ Close the popup after successful submit
       closeReviewModal();
+
+      // Keep existing behavior (opens UserReviewExperiencePopup in parent) - unchanged
+      if (onReviewClick) {
+        onReviewClick(reviewRow);
+      }
     } catch (e) {
       console.error("Failed to submit review:", e);
       showToast("Failed to submit review", "error");
@@ -604,6 +571,249 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Spare parts vertical modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
+
+          {/* modal wrapper optimized for 800px */}
+          <div
+            className="relative bg-light-gray rounded-3xl shadow-xl max-h-[90vh]
+      overflow-hidden w-[95%] md:max-w-[650px] lg:max-w-[800px]"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-blue-gray">
+              <div className="flex-1">
+                <h3 className="text-2xl font-medium text-charcoal mb-2">
+                  {editMode ? "Required spare parts" : "Required spare part"}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  For <span className="text-[#3F72AF]">{modalCarPart || "New Engine Parts"}</span>{" "}
+                  of VIN <span className="text-[#3F72AF]">{modalVin || "27393A7GDB67WOP921"}</span>
+                </p>
+              </div>
+
+              <button onClick={closeModal} className="text-charcoal/50 ml-4">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M18 6L6 18M6 6L18 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Scroll area */}
+            <div className="overflow-y-auto max-h-[60vh] px-8 py-4">
+              {/* Category button */}
+              <div className="mb-4">
+                <button className="text-dark-gray text-sm font-medium rounded-[8px] bg-ice-mist border border-soft-sky py-2 px-4 max-w-fit">
+                  {modalCarPart || "Engine"}
+                </button>
+              </div>
+
+              {editMode ? (
+                <>
+                  {/* Table headers */}
+                  <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+                    <span className="col-span-5">Part name</span>
+                    <span className="col-span-2 pl-3 text-left">Qty.</span>
+                    <span className="col-span-3 pl-3 text-left">Price</span>
+                    <span className="col-span-2 text-center">Delete</span>
+                  </div>
+
+                  {/* Table rows */}
+                  {modalItems?.length === 0 ? (
+                    <div className="text-center py-8 text-[#6C757D]">No items</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {modalItems?.map((it, idx) => (
+                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
+                          {/* Part name */}
+                          <div className="col-span-5">
+                            <input
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={it.spare_part}
+                              onChange={(e) =>
+                                setModalItems((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx ? { ...x, spare_part: e.target.value } : x
+                                  )
+                                )
+                              }
+                              placeholder="Enter part name"
+                            />
+                          </div>
+
+                          {/* Qty */}
+                          <div className="col-span-2">
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={String(it.qty ?? "")}
+                              onChange={(e) =>
+                                setModalItems((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx ? { ...x, qty: Number(e.target.value) } : x
+                                  )
+                                )
+                              }
+                              placeholder="Ex: 100"
+                            />
+                          </div>
+
+                          {/* Price */}
+                          <div className="col-span-3">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={String(it.price ?? "")}
+                              onChange={(e) =>
+                                setModalItems((prev) =>
+                                  prev.map((x, i) =>
+                                    i === idx ? { ...x, price: Number(e.target.value) } : x
+                                  )
+                                )
+                              }
+                              placeholder="0"
+                            />
+                          </div>
+
+                          {/* Delete */}
+                          <div className="col-span-2 flex items-center justify-center">
+                            <button
+                              onClick={() => deleteDetail(it)}
+                              className="w-full h-full flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition text-gray-600"
+                            >
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M18 6L6 18M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add spare part button */}
+                  <button
+                    onClick={addNewRow}
+                    className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100 max-w-fit"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add spare part
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Table headers */}
+                  <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
+                    <span className="col-span-4">Part name</span>
+                    <span className="col-span-3 pl-3">Class</span>
+                    <span className="col-span-2 pl-3">Qty</span>
+                    <span className="col-span-3 pl-3">Price</span>
+                  </div>
+
+                  {/* Table rows */}
+                  {modalItems?.length === 0 ? (
+                    <div className="text-center py-8 text-[#6C757D]">No items</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {modalItems?.map((it, idx) => (
+                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
+                          {/* Part name */}
+                          <div className="col-span-4">
+                            <input
+                              type="text"
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.spare_part ?? "")}
+                              disabled
+                            />
+                          </div>
+
+                          {/* Class */}
+                          <div className="col-span-3">
+                            <input
+                              type="text"
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.class_type ?? "")}
+                              disabled
+                            />
+                          </div>
+
+                          {/* Qty */}
+                          <div className="col-span-2">
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.qty ?? "")}
+                              disabled
+                            />
+                          </div>
+
+                          {/* Price */}
+                          <div className="col-span-3">
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
+                              value={String(it.price ?? "")}
+                              disabled
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            {editMode ? (
+              <div className="px-8 pb-8 pt-4">
+                <button
+                  onClick={saveAllRows}
+                  className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow"
+                >
+                  Update Request
+                </button>
+              </div>
+            ) : (
+              ""
+            )}
           </div>
         </div>
       )}
