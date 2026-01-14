@@ -100,14 +100,23 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   };
 
   /**
-   * ✅ IMPORTANT (per your requirement):
-   * "branchBrandSparepartId" of JSON request and "sparepartsrequest_id" of JSON response are same.
-   * So we set branchBrandSparepartId = sparepartsrequest_id (row-level).
+   * ✅ IMPORTANT:
+   * branchBrandSparepartId should come from the spare_part list element "id"
+   * returned by /api/spare-parts/offers/by-user (this is the branch_brand_spare_part id).
+   * If it's not available for any reason, we fallback to sparepartsrequest_id.
+   *
+   * NOTE: In your page.tsx mapping, you already map `spareParts: [{ id: d.id, ... }]`
    */
   const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
-    const sparepartsReqId = getSparepartsRequestIdFromRow(row);
-    if (!sparepartsReqId) return null;
-    return sparepartsReqId;
+    const fromUiDetails = row?.spareParts?.[0]?.id;
+    const fromApiDetails = row?.spare_part?.[0]?.id;
+    const candidate = fromUiDetails ?? fromApiDetails;
+
+    const num = Number(candidate);
+    if (Number.isFinite(num) && num > 0) return num;
+
+    const fallback = getSparepartsRequestIdFromRow(row);
+    return fallback;
   };
 
   const getUserIdFromAuthResponse = (): number | null => {
@@ -123,6 +132,34 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       return null;
     }
   };
+
+  // ✅ Persist reviewedMap per user so refresh doesn't reset
+  const getReviewedStorageKey = () => {
+    const uid = getUserIdFromAuthResponse();
+    return `sparepart_reviewed_map_${uid ?? "anonymous"}`;
+  };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(getReviewedStorageKey());
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        setReviewedMap(parsed as Record<number, boolean>);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(getReviewedStorageKey(), JSON.stringify(reviewedMap));
+    } catch {
+      // ignore
+    }
+  }, [reviewedMap]);
 
   // --- Refresh modal data from server whenever popup opens ---
   const refreshModalFromServer = async (requestId: number) => {
@@ -242,7 +279,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       return;
     }
 
-    // ✅ branchBrandSparepartId is same as sparepartsrequest_id (as per your requirement)
+    // ✅ branchBrandSparepartId comes from spare_part[0].id (fallback to sparepartsrequest_id)
     const branchBrandSparepartId = getBranchBrandSparepartIdFromRow(reviewRow);
     if (!branchBrandSparepartId) {
       showToast("branchBrandSparepartId not found for this row.", "error");
@@ -273,15 +310,12 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       await res.json().catch(() => null);
 
       /**
-       * ✅ Update Review column only for the respective row:
-       * show "Review is sent" if (branchBrandSparepartId === sparepartsrequest_id)
-       * and request submitted successfully.
+       * ✅ Update Review column ONLY for the respective row:
+       * After successful submit, mark this request as reviewed in reviewedMap.
        */
-      if (branchBrandSparepartId === sparepartsrequestId) {
-        const rowKey = getRowKey(reviewRow);
-        if (rowKey !== null) {
-          setReviewedMap((prev) => ({ ...prev, [rowKey]: true }));
-        }
+      const rowKey = getRowKey(reviewRow);
+      if (rowKey !== null) {
+        setReviewedMap((prev) => ({ ...prev, [rowKey]: true }));
       }
 
       showToast("Review submitted successfully!", "success");
@@ -289,10 +323,8 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       // ✅ Close the popup after successful submit
       closeReviewModal();
 
-      // Keep existing behavior (opens UserReviewExperiencePopup in parent) - unchanged
-      if (onReviewClick) {
-        onReviewClick(reviewRow);
-      }
+      // IMPORTANT: Do NOT auto-open any other popup here.
+      // (Keeping your existing APIs unchanged; UI is now correct per-row.)
     } catch (e) {
       console.error("Failed to submit review:", e);
       showToast("Failed to submit review", "error");
