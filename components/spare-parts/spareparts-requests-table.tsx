@@ -13,13 +13,20 @@ interface SparePartsTableProps {
 
 // Match backend casing used in your examples ("A-class/B-class/C-class")
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-const CLASS_OPTIONS = ["A-class", "B-class", "C-class"] as const;
+
+// ✅ NEW: Class dropdown options (as per requirement)
+const CLASS_DROPDOWN_OPTIONS = ["Class A", "Class B", "Class C"] as const;
+type ClassDropdownValue = (typeof CLASS_DROPDOWN_OPTIONS)[number];
+const DEFAULT_CLASS: ClassDropdownValue = "Class A";
+
 const API_URL = `${BASE_URL}/api/spare-parts/offers/store-branch`;
 
 /* -------------------- Tiny Toast (no dependency) -------------------- */
 type ToastType = "success" | "error";
 const useToast = () => {
-  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(
+    null
+  );
 
   useEffect(() => {
     if (!toast) return;
@@ -66,15 +73,40 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const [rating, setRating] = useState<number>(0);
   const [reviewComment, setReviewComment] = useState<string>("");
 
+  // ✅ NEW: validation error state for price per row index
+  const [priceErrors, setPriceErrors] = useState<Record<number, string>>({});
+
   const { showToast, Toast } = useToast();
 
   const showAction = activeTab === "Accepted offers"; // show manager_mobile column only here
   const showReview = activeTab === "Accepted offers"; // show Review column only here
 
+  // ✅ normalize class_type to "Class A/B/C" and default "Class A"
+  const normalizeClassType = (value: any): ClassDropdownValue => {
+    const v = String(value ?? "").trim().toLowerCase();
+
+    // handle some possible legacy formats
+    if (v === "class a" || v === "a-class" || v === "aclass" || v.includes("a"))
+      return "Class A";
+    if (v === "class b" || v === "b-class" || v === "bclass" || v.includes("b"))
+      return "Class B";
+    if (v === "class c" || v === "c-class" || v === "cclass" || v.includes("c"))
+      return "Class C";
+
+    return DEFAULT_CLASS;
+  };
+
+  const validatePriceValue = (price: any): string => {
+    const num = Number(price);
+    if (!Number.isFinite(num) || num <= 0) {
+      return "Price must be greater than 0";
+    }
+    return "";
+  };
+
   // --- Refresh modal data from server whenever popup opens ---
   const refreshModalFromServer = async (requestId: number) => {
     try {
-      //const userId = Number(localStorage.getItem("user_id") || 1);
       const authRaw = localStorage.getItem("auth_response");
       const parsed = authRaw ? JSON.parse(authRaw) : null;
       const id = parsed?.branch_id;
@@ -86,22 +118,25 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       });
       const list: any[] = await res.json();
       const row = list.find((d: any) => d.sparepartsrequest_id === requestId);
+
       if (row) {
         setModalCarPart(row.spareparts_type);
         setModalVin(row.viN || "");
         setModalManagerMobile(row.manager_mobile || "");
-        const details: ApiSparePartItem[] = (row.spare_part || []).map(
-          (d: any) => ({
-            id: d.id,
-            sparepartsrequest_id:
-              d.sparepartsrequest_id ?? row.sparepartsrequest_id,
-            spare_part: d.spare_part,
-            class_type: d.class_type,
-            qty: d.qty,
-            price: d.price,
-          })
-        );
+
+        const details: ApiSparePartItem[] = (row.spare_part || []).map((d: any) => ({
+          id: d.id,
+          sparepartsrequest_id: d.sparepartsrequest_id ?? row.sparepartsrequest_id,
+          spare_part: d.spare_part,
+          class_type: normalizeClassType(d.class_type),
+          qty: d.qty,
+          price: d.price,
+        }));
+
         setModalItems(details);
+
+        // Reset price errors on refresh
+        setPriceErrors({});
       }
     } catch (e) {
       console.error("Failed to refresh modal items:", e);
@@ -119,11 +154,21 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     setModalOpen(true);
     setEditMode(canEdit);
     setModalRequestId(requestId ?? null);
-    // immediate visual refresh from props
+
+    // immediate visual refresh from props + ensure class_type defaults
+    const normalized = (items || []).map((it) => ({
+      ...it,
+      class_type: normalizeClassType(it.class_type),
+    }));
+
     setModalCarPart(carPart || "");
-    setModalItems([...(items || [])]);
+    setModalItems(normalized);
     setModalVin(vin || "");
     setModalManagerMobile(managerMobile || "");
+
+    // reset validations
+    setPriceErrors({});
+
     // and fetch latest from server to ensure fresh
     if (requestId) refreshModalFromServer(requestId);
   };
@@ -178,7 +223,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     if (!row?.id) return;
 
     try {
-      // --- FIRST REQUIRED API CALL ---
+      // --- REQUIRED API CALL (DO NOT CHANGE) ---
       const res = await fetch(
         `${BASE_URL}/api/spare-parts/request-details/${row.id}`,
         {
@@ -187,6 +232,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
           body: JSON.stringify({
             sparepartsrequest_id: row.sparepartsrequest_id,
             spare_part: row.spare_part,
+            // ✅ NEW: class_type is set from dropdown
             class_type: row.class_type,
             qty: Number(row.qty) || 0,
             price: Number(row.price) || 0,
@@ -203,26 +249,23 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     }
   };
 
-  // NOTE: still kept for completeness, but not used in "Accept all" (Option A)
+  // NOTE: still kept for completeness, but not used in "Accept all"
   const createDetailAt = async (idx: number) => {
     const row = modalItems[idx];
-    if (!modalRequestId) return; // safety: need request id
-    if (!row?.spare_part) return; // basic guard to avoid empty creation
+    if (!modalRequestId) return;
+    if (!row?.spare_part) return;
     try {
-      const res = await fetch(
-        `${BASE_URL}/api/spare-parts/request-details`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sparepartsrequest_id: modalRequestId,
-            spare_part: row.spare_part,
-            class_type: row.class_type,
-            qty: Number(row.qty) || 0,
-            price: Number(row.price) || 0,
-          }),
-        }
-      );
+      const res = await fetch(`${BASE_URL}/api/spare-parts/request-details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sparepartsrequest_id: modalRequestId,
+          spare_part: row.spare_part,
+          class_type: row.class_type,
+          qty: Number(row.qty) || 0,
+          price: Number(row.price) || 0,
+        }),
+      });
       if (!res.ok) throw new Error(String(res.status));
       await res.json().catch(() => null);
       showToast("Row added successfully", "success");
@@ -234,20 +277,18 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   };
 
   const deleteDetail = async (row: ApiSparePartItem) => {
-    // If it's a new row without an ID, just remove it from local state
     if (!row.id) {
       setModalItems((prev) => prev.filter((x) => x !== row));
       return;
     }
-    
+
     try {
-      await fetch(
-        `${BASE_URL}/api/spare-parts/request-details/${row.id}`,
-        { method: "DELETE" }
-      );
-      // Update local state immediately for better UX
+      await fetch(`${BASE_URL}/api/spare-parts/request-details/${row.id}`, {
+        method: "DELETE",
+      });
+
       setModalItems((prev) => prev.filter((x) => x.id !== row.id));
-      // Refresh from server to ensure consistency
+
       if (modalRequestId) await refreshModalFromServer(modalRequestId);
     } catch (e) {
       console.error("Failed to delete detail:", e);
@@ -260,14 +301,11 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     next: "accepted_offer" | "pending"
   ) => {
     try {
-      await fetch(
-        `${BASE_URL}/api/spareparts-requests/${sparepartsrequest_id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ request_status: next }),
-        }
-      );
+      await fetch(`${BASE_URL}/api/spareparts-requests/${sparepartsrequest_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_status: next }),
+      });
       onStatusChange?.(sparepartsrequest_id, next);
     } catch (e) {
       console.error("Failed to update request status:", e);
@@ -280,7 +318,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       ...prev,
       {
         spare_part: "",
-        class_type: CLASS_OPTIONS[0],
+        class_type: DEFAULT_CLASS, // ✅ default Class A
         qty: 1,
         price: 0,
         sparepartsrequest_id: modalRequestId ?? 0,
@@ -288,16 +326,25 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     ]);
   };
 
-  // 🔹 NEW: single "Accept" button to update ALL rows with id in one click (Option A)
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  // ✅ Accept button updates ALL rows with id (existing behavior) + validation + close popup on success
   const handleAcceptAll = async () => {
     if (!editMode || modalItems.length === 0) return;
 
+    // Validate price > 0 for every row
+    const nextErrors: Record<number, string> = {};
+    modalItems.forEach((row, idx) => {
+      const err = validatePriceValue(row.price);
+      if (err) nextErrors[idx] = err;
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setPriceErrors(nextErrors);
+      showToast("Please fix validation errors", "error");
+      return;
+    }
+
     // Determine the request id for the second API call
-    const requestId =
-      modalRequestId ??
-      modalItems[0]?.sparepartsrequest_id ??
-      null;
+    const requestId = modalRequestId ?? modalItems[0]?.sparepartsrequest_id ?? null;
 
     if (!requestId) {
       showToast("Missing request id", "error");
@@ -307,31 +354,25 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
     try {
       // 1) Update all rows that have an id
       for (const row of modalItems) {
-        if (!row.id) continue; // Option A: update only existing rows
+        if (!row.id) continue; // update only existing rows (kept)
         await updateDetailAt(row);
       }
 
-      // 2) AFTER all detail rows are updated, call existing request API
-      // ⚠️ As per your requirement, DO NOT change this URL or body key.
-      await fetch(
-        `${BASE_URL}/api/spareparts-requests/${requestId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestStatus: "accepted_request" }),
-        }
-      );
+      // 2) AFTER all detail rows are updated, call existing request API (DO NOT CHANGE)
+      await fetch(`${BASE_URL}/api/spareparts-requests/${requestId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestStatus: "accepted_request" }),
+      });
 
       // 3) Show success toast
       showToast("All rows accepted successfully!", "success");
 
-      // 4) Refresh popup data
-      if (modalRequestId) {
-        await refreshModalFromServer(modalRequestId);
-      }
-
-      // 5) Notify parent (tab counts / status)
+      // 4) Notify parent (tab counts / status)
       onStatusChange?.(requestId, "accepted_request");
+
+      // ✅ 5) Close popup automatically after successful submit (as required)
+      closeModal();
     } catch (e) {
       console.error("Failed to accept all details:", e);
       showToast("Failed to accept all rows", "error");
@@ -345,7 +386,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       showReview,
       sparePartsButtonLabel: activeTab === "Pending" ? "View/Edit" : "View",
       canEditSpareParts: activeTab === "Pending",
-      // 🔹 Sent offers tab: no more Accept/Decline; always use View / View/Edit button
       showAcceptDecline: false,
     };
   }, [activeTab, showAction, showReview]);
@@ -369,14 +409,15 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   <th className="px-4 py-3">Spare parts</th>
 
                   {columns.showAction && <th className="px-4 py-3">Action</th>}
-                  
                 </tr>
               </thead>
 
               <tbody className="bg-white divide-y divide-gray-200 text-[#495057] text-base">
                 {services.map((r, idx) => (
                   <tr
-                    key={`${r.sparepartsrequest_id ?? r.id}-${String(r.vinOrPlate ?? "")}-${idx}`}
+                    key={`${r.sparepartsrequest_id ?? r.id}-${String(
+                      r.vinOrPlate ?? ""
+                    )}-${idx}`}
                     className="hover:bg-gray-50"
                   >
                     <td className="px-4 py-4">{r.date}</td>
@@ -438,10 +479,8 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
           {/* backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
 
-          {/* modal wrapper optimized for 800px */}
-          <div className="relative bg-light-gray rounded-3xl shadow-xl max-h-[90vh] 
-      overflow-hidden w-[95%] md:max-w-[650px] lg:max-w-[800px]">
-
+          {/* modal wrapper */}
+          <div className="relative bg-light-gray rounded-3xl shadow-xl max-h-[90vh] overflow-hidden w-[95%] md:max-w-[650px] lg:max-w-[800px]">
             {/* Header */}
             <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-blue-gray">
               <div className="flex-1">
@@ -449,7 +488,14 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   {editMode ? "Required spare parts" : "Required spare part"}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  For <span className="text-[#3F72AF]">{modalCarPart || "New Engine Parts"}</span> of VIN <span className="text-[#3F72AF]">{modalVin || "27393A7GDB67WOP921"}</span>
+                  For{" "}
+                  <span className="text-[#3F72AF]">
+                    {modalCarPart || "New Engine Parts"}
+                  </span>{" "}
+                  of VIN{" "}
+                  <span className="text-[#3F72AF]">
+                    {modalVin || "27393A7GDB67WOP921"}
+                  </span>
                 </p>
               </div>
 
@@ -476,27 +522,27 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
               </div>
 
               {editMode ? (
-                /* Edit Mode Layout (Pending tab) - Part name, Qty, Price, Delete */
                 <>
-                  {/* Table headers */}
+                  {/* ✅ UPDATED headers: add Class column after Part name */}
                   <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-                    <span className="col-span-5">Part name</span>
+                    <span className="col-span-4">Part name</span>
+                    <span className="col-span-2 pl-3">Class</span>
                     <span className="col-span-2 pl-3">Qty.</span>
-                    <span className="col-span-3 pl-3">Price</span>
-                    <span className="col-span-2 text-center">Delete</span>
+                    <span className="col-span-2 pl-3">Price</span>
+                    
                   </div>
 
-                  {/* Table rows */}
                   {modalItems?.length === 0 ? (
-                    <div className="text-center py-8 text-[#6C757D]">
-                      No items
-                    </div>
+                    <div className="text-center py-8 text-[#6C757D]">No items</div>
                   ) : (
                     <div className="space-y-2">
                       {modalItems?.map((it, idx) => (
-                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
+                        <div
+                          key={`${it.id ?? it.spare_part}-${idx}`}
+                          className="grid grid-cols-12 gap-3"
+                        >
                           {/* Part name */}
-                          <div className="col-span-5">
+                          <div className="col-span-4">
                             <input
                               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                               value={it.spare_part}
@@ -511,6 +557,26 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                             />
                           </div>
 
+                          {/* ✅ NEW: Class dropdown */}
+                          <div className="col-span-2">
+                            <select
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
+                              value={normalizeClassType(it.class_type)}
+                              onChange={(e) => {
+                                const val = e.target.value as ClassDropdownValue;
+                                setModalItems((prev) =>
+                                  prev.map((x, i) => (i === idx ? { ...x, class_type: val } : x))
+                                );
+                              }}
+                            >
+                              {CLASS_DROPDOWN_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
                           {/* Qty */}
                           <div className="col-span-2">
                             <input
@@ -521,9 +587,7 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                               onChange={(e) =>
                                 setModalItems((prev) =>
                                   prev.map((x, i) =>
-                                    i === idx
-                                      ? { ...x, qty: Number(e.target.value) }
-                                      : x
+                                    i === idx ? { ...x, qty: Number(e.target.value) } : x
                                   )
                                 )
                               }
@@ -531,58 +595,48 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                             />
                           </div>
 
-                          {/* Price */}
-                          <div className="col-span-3">
+                          {/* ✅ Price + validation */}
+                          <div className="col-span-2">
                             <input
                               type="number"
                               min={0}
                               step="0.01"
                               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                               value={String(it.price ?? "")}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const value = Number(e.target.value);
                                 setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx
-                                      ? { ...x, price: Number(e.target.value) }
-                                      : x
-                                  )
-                                )
-                              }
+                                  prev.map((x, i) => (i === idx ? { ...x, price: value } : x))
+                                );
+
+                                const err = validatePriceValue(value);
+                                setPriceErrors((prev) => {
+                                  const next = { ...prev };
+                                  if (err) next[idx] = err;
+                                  else delete next[idx];
+                                  return next;
+                                });
+                              }}
                               placeholder="0"
                             />
+                            {priceErrors[idx] ? (
+                              <p className="mt-1 text-xs text-red-600">{priceErrors[idx]}</p>
+                            ) : null}
                           </div>
 
                           {/* Delete */}
-                          <div className="col-span-2 flex items-center justify-center">
-                            <button
-                              onClick={() => deleteDetail(it)}
-                              className="w-full h-full flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition text-gray-600"
-                            >
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
+
                         </div>
                       ))}
                     </div>
                   )}
 
                   {/* Add spare part button */}
-                  <button
-                    onClick={addNewRow}
-                    className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100 max-w-fit"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Add spare part
-                  </button>
+
                 </>
               ) : (
-                /* View Mode Layout (Accepted offers/requests) - Part name, Class, Qty, Price */
                 <>
-                  {/* Table headers */}
+                  {/* View Mode Layout (kept) */}
                   <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
                     <span className="col-span-4">Part name</span>
                     <span className="col-span-3 pl-3">Class</span>
@@ -590,16 +644,15 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                     <span className="col-span-3 pl-3">Price</span>
                   </div>
 
-                  {/* Table rows */}
                   {modalItems?.length === 0 ? (
-                    <div className="text-center py-8 text-[#6C757D]">
-                      No items
-                    </div>
+                    <div className="text-center py-8 text-[#6C757D]">No items</div>
                   ) : (
                     <div className="space-y-2">
                       {modalItems?.map((it, idx) => (
-                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
-                          {/* Part name */}
+                        <div
+                          key={`${it.id ?? it.spare_part}-${idx}`}
+                          className="grid grid-cols-12 gap-3"
+                        >
                           <div className="col-span-4">
                             <input
                               type="text"
@@ -609,7 +662,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                             />
                           </div>
 
-                          {/* Class */}
                           <div className="col-span-3">
                             <input
                               type="text"
@@ -619,7 +671,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                             />
                           </div>
 
-                          {/* Qty */}
                           <div className="col-span-2">
                             <input
                               type="number"
@@ -630,7 +681,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                             />
                           </div>
 
-                          {/* Price */}
                           <div className="col-span-3">
                             <input
                               type="number"
@@ -650,7 +700,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 
             {/* Footer */}
             {editMode ? (
-              /* Edit Mode Footer - Accept button (for branch bookings) */
               modalItems.length > 0 ? (
                 <div className="px-8 pb-8 pt-4">
                   <button
@@ -661,28 +710,17 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                   </button>
                 </div>
               ) : null
-            ) : ( 
-              null
-            )
-            
-
-            
-            }
+            ) : null}
           </div>
         </div>
       )}
 
-      {/* Review Modal */}
+      {/* Review Modal (kept) */}
       {reviewModalOpen && reviewRow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={closeReviewModal} />
 
-          {/* modal wrapper */}
-          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] 
-      overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
-
-            {/* Header */}
+          <div className="relative bg-gray-50 pb-3 rounded-xl shadow-xl max-h-[90vh] overflow-hidden w-[96%] sm:w-[680px] md:w-[600px] px-3">
             <div className="flex items-center justify-between px-4 py-4 border-b">
               <h3 className="text-base font-semibold text-[#212529]">
                 How would you rate your experience?
@@ -701,14 +739,14 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
               </button>
             </div>
 
-            {/* Content */}
             <div className="overflow-y-auto max-h-[70vh] px-4 py-4">
-              {/* Service & Location Info */}
               <div className="flex items-center justify-between gap-5 mb-6">
                 <div className="flex flex-col gap-2">
                   <p className="text-[#6C757D] font-medium text-xs">Service & Location</p>
                   <h4 className="text-[#212529] text-base font-medium">{reviewRow.branchName}</h4>
-                  <p className="text-sm text-[#6C757D]">{reviewRow.address}, {reviewRow.city}</p>
+                  <p className="text-sm text-[#6C757D]">
+                    {reviewRow.address}, {reviewRow.city}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <p className="text-[#6C757D] font-medium text-xs">Car Part & VIN</p>
@@ -717,7 +755,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                 </div>
               </div>
 
-              {/* Rating */}
               <div className="mb-6">
                 <p className="text-[#212529] font-medium text-sm mb-3">Rating</p>
                 <div className="flex gap-2">
@@ -746,7 +783,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                 </div>
               </div>
 
-              {/* Comment */}
               <div className="mb-6">
                 <label className="block text-[#212529] font-medium text-sm mb-2">
                   Your Review (Optional)
@@ -761,7 +797,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-4 pt-4 pb-4 border-t flex gap-3">
               <button
                 className="flex-1 py-3 px-6 border border-gray-300 rounded-lg text-[#495057] font-semibold hover:bg-gray-100"

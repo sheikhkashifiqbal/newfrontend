@@ -208,7 +208,7 @@ export default function SparePartsRequestPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ branch_id: branchId }),
-        //  credentials: "include",
+          //  credentials: "include",
         });
 
         const json: ApiSparePartsResponse[] = await res.json();
@@ -284,10 +284,7 @@ export default function SparePartsRequestPage() {
     };
   }, [selectedBrand, selectedPart, sparePartRequests]);
 
-  const handleLocalStatusChange = (
-    sparepartsrequestId: number,
-    nextStatus: string
-  ) => {
+  const handleLocalStatusChange = (sparepartsrequestId: number, nextStatus: string) => {
     setSparePartRequests((prev) =>
       prev.map((r) =>
         r.sparepartsrequest_id === sparepartsrequestId
@@ -306,19 +303,19 @@ export default function SparePartsRequestPage() {
 
   // 🔹 handle top nav tab redirects
   const handleTopTabsChange = (label: string) => {
-		if (label === "Profile info") {
-			window.location.href = "/profile/manager";
-			return;
-		}
-		if (label === "Spare part request") {
-			window.location.href = "/spare-parts/branch-bookings";
-			return;
-		}
-		if (label === "My bookings") {
-			window.location.href = "/services/branch-bookings";
-			return;
-		}
-	};
+    if (label === "Profile info") {
+      window.location.href = "/profile/manager";
+      return;
+    }
+    if (label === "Spare part request") {
+      window.location.href = "/spare-parts/branch-bookings";
+      return;
+    }
+    if (label === "My bookings") {
+      window.location.href = "/services/branch-bookings";
+      return;
+    }
+  };
 
   if (branchId == null) return null;
 
@@ -343,9 +340,7 @@ export default function SparePartsRequestPage() {
         {/* ✅ NEW: Select Branch dropdown (from auth_response.branch_list) */}
         {branchOptions.length > 0 && (
           <div className="mt-6">
-            <label className="block text-sm text-[#495057] mb-2">
-              Select Branch
-            </label>
+            <label className="block text-sm text-[#495057] mb-2">Select Branch</label>
             <div className="relative inline-block">
               <select
                 className="appearance-none bg-[#E9ECEF] min-w-[240px] py-2.5 px-4 pr-10 rounded-[8px] text-gray-700"
@@ -356,11 +351,8 @@ export default function SparePartsRequestPage() {
                   const numeric = Number(val);
                   if (Number.isNaN(numeric)) return;
 
-                  // update state and localStorage 'branch_id' as requested
                   setBranchId(numeric);
                   localStorage.setItem("branch_id", String(numeric));
-
-                  // keep compatibility key if used elsewhere
                   localStorage.setItem("branchId", String(numeric));
                 }}
               >
@@ -445,9 +437,7 @@ export default function SparePartsRequestPage() {
       {/* Tabs Section */}
       <section className="border-b border-gray-200 mb-8">
         <div className="flex gap-3 sm:gap-10 max-w-[1120px] mx-auto px-4">
-          {(
-            ["Pending", "Accepted offers", "Accepted requests"] as TabStatus[]
-          ).map((tab) => {
+          {(["Pending", "Accepted offers", "Accepted requests"] as TabStatus[]).map((tab) => {
             const isActive = activeTab === tab;
             const borderColor =
               tab === "Accepted offers"
