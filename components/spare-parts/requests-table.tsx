@@ -100,23 +100,27 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   };
 
   /**
-   * ✅ IMPORTANT:
-   * branchBrandSparepartId should come from the spare_part list element "id"
-   * returned by /api/spare-parts/offers/by-user (this is the branch_brand_spare_part id).
-   * If it's not available for any reason, we fallback to sparepartsrequest_id.
+   * ✅ FIXED (as per your requirement):
+   * branchBrandSparepartId MUST come from the TOP-LEVEL "id"
+   * in /api/spare-parts/offers/by-user response (the "id" after manager_mobile).
    *
-   * NOTE: In your page.tsx mapping, you already map `spareParts: [{ id: d.id, ... }]`
+   * Example response:
+   *  ... "manager_mobile": "987...", "id": 1, ...
+   *
+   * So we use row.id (top-level).
    */
   const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
-    const fromUiDetails = row?.spareParts?.[0]?.id;
-    const fromApiDetails = row?.spare_part?.[0]?.id;
-    const candidate = fromUiDetails ?? fromApiDetails;
-
-    const num = Number(candidate);
+    // ✅ Correct source: top-level id
+    const topLevelId = row?.id;
+    const num = Number(topLevelId);
     if (Number.isFinite(num) && num > 0) return num;
 
-    const fallback = getSparepartsRequestIdFromRow(row);
-    return fallback;
+    // Safety fallback (should not be used if your UI mapping includes top-level id)
+    const maybeAlt = row?.branchBrandSparepartId ?? row?.offerId ?? row?.branch_brand_sparepart_id;
+    const num2 = Number(maybeAlt);
+    if (Number.isFinite(num2) && num2 > 0) return num2;
+
+    return null;
   };
 
   const getUserIdFromAuthResponse = (): number | null => {
@@ -279,10 +283,10 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
       return;
     }
 
-    // ✅ branchBrandSparepartId comes from spare_part[0].id (fallback to sparepartsrequest_id)
+    // ✅ FIX: branchBrandSparepartId MUST come from top-level row.id
     const branchBrandSparepartId = getBranchBrandSparepartIdFromRow(reviewRow);
     if (!branchBrandSparepartId) {
-      showToast("branchBrandSparepartId not found for this row.", "error");
+      showToast("branchBrandSparepartId (top-level id) not found for this row.", "error");
       return;
     }
 
@@ -322,9 +326,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
 
       // ✅ Close the popup after successful submit
       closeReviewModal();
-
-      // IMPORTANT: Do NOT auto-open any other popup here.
-      // (Keeping your existing APIs unchanged; UI is now correct per-row.)
     } catch (e) {
       console.error("Failed to submit review:", e);
       showToast("Failed to submit review", "error");
@@ -603,249 +604,6 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Spare parts vertical modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* backdrop */}
-          <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
-
-          {/* modal wrapper optimized for 800px */}
-          <div
-            className="relative bg-light-gray rounded-3xl shadow-xl max-h-[90vh]
-      overflow-hidden w-[95%] md:max-w-[650px] lg:max-w-[800px]"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-blue-gray">
-              <div className="flex-1">
-                <h3 className="text-2xl font-medium text-charcoal mb-2">
-                  {editMode ? "Required spare parts" : "Required spare part"}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  For <span className="text-[#3F72AF]">{modalCarPart || "New Engine Parts"}</span>{" "}
-                  of VIN <span className="text-[#3F72AF]">{modalVin || "27393A7GDB67WOP921"}</span>
-                </p>
-              </div>
-
-              <button onClick={closeModal} className="text-charcoal/50 ml-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M18 6L6 18M6 6L18 18"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Scroll area */}
-            <div className="overflow-y-auto max-h-[60vh] px-8 py-4">
-              {/* Category button */}
-              <div className="mb-4">
-                <button className="text-dark-gray text-sm font-medium rounded-[8px] bg-ice-mist border border-soft-sky py-2 px-4 max-w-fit">
-                  {modalCarPart || "Engine"}
-                </button>
-              </div>
-
-              {editMode ? (
-                <>
-                  {/* Table headers */}
-                  <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-                    <span className="col-span-5">Part name</span>
-                    <span className="col-span-2 pl-3 text-left">Qty.</span>
-                    <span className="col-span-3 pl-3 text-left">Price</span>
-                    <span className="col-span-2 text-center">Delete</span>
-                  </div>
-
-                  {/* Table rows */}
-                  {modalItems?.length === 0 ? (
-                    <div className="text-center py-8 text-[#6C757D]">No items</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {modalItems?.map((it, idx) => (
-                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
-                          {/* Part name */}
-                          <div className="col-span-5">
-                            <input
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-                              value={it.spare_part}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx ? { ...x, spare_part: e.target.value } : x
-                                  )
-                                )
-                              }
-                              placeholder="Enter part name"
-                            />
-                          </div>
-
-                          {/* Qty */}
-                          <div className="col-span-2">
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-                              value={String(it.qty ?? "")}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx ? { ...x, qty: Number(e.target.value) } : x
-                                  )
-                                )
-                              }
-                              placeholder="Ex: 100"
-                            />
-                          </div>
-
-                          {/* Price */}
-                          <div className="col-span-3">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
-                              value={String(it.price ?? "")}
-                              onChange={(e) =>
-                                setModalItems((prev) =>
-                                  prev.map((x, i) =>
-                                    i === idx ? { ...x, price: Number(e.target.value) } : x
-                                  )
-                                )
-                              }
-                              placeholder="0"
-                            />
-                          </div>
-
-                          {/* Delete */}
-                          <div className="col-span-2 flex items-center justify-center">
-                            <button
-                              onClick={() => deleteDetail(it)}
-                              className="w-full h-full flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition text-gray-600"
-                            >
-                              <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M18 6L6 18M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Add spare part button */}
-                  <button
-                    onClick={addNewRow}
-                    className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100 max-w-fit"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Add spare part
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Table headers */}
-                  <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-                    <span className="col-span-4">Part name</span>
-                    <span className="col-span-3 pl-3">Class</span>
-                    <span className="col-span-2 pl-3">Qty</span>
-                    <span className="col-span-3 pl-3">Price</span>
-                  </div>
-
-                  {/* Table rows */}
-                  {modalItems?.length === 0 ? (
-                    <div className="text-center py-8 text-[#6C757D]">No items</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {modalItems?.map((it, idx) => (
-                        <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
-                          {/* Part name */}
-                          <div className="col-span-4">
-                            <input
-                              type="text"
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                              value={String(it.spare_part ?? "")}
-                              disabled
-                            />
-                          </div>
-
-                          {/* Class */}
-                          <div className="col-span-3">
-                            <input
-                              type="text"
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                              value={String(it.class_type ?? "")}
-                              disabled
-                            />
-                          </div>
-
-                          {/* Qty */}
-                          <div className="col-span-2">
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                              value={String(it.qty ?? "")}
-                              disabled
-                            />
-                          </div>
-
-                          {/* Price */}
-                          <div className="col-span-3">
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
-                              value={String(it.price ?? "")}
-                              disabled
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Footer */}
-            {editMode ? (
-              <div className="px-8 pb-8 pt-4">
-                <button
-                  onClick={saveAllRows}
-                  className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[16px] font-semibold py-4 rounded-xl shadow"
-                >
-                  Update Request
-                </button>
-              </div>
-            ) : (
-              ""
-            )}
           </div>
         </div>
       )}
