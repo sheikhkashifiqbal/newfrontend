@@ -107,17 +107,37 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
    *
    * NOTE: In your page.tsx mapping, you already map `spareParts: [{ id: d.id, ... }]`
    */
-  const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
-    const fromUiDetails = row?.spareParts?.[0]?.id;
-    const fromApiDetails = row?.spare_part?.[0]?.id;
-    const candidate = fromUiDetails ?? fromApiDetails;
+/**
+ * ✅ FIX (per your requirement):
+ * branchBrandSparepartId MUST come from /api/spare-parts/offers/by-user response
+ * row-level element "id" (the one after "manager_mobile").
+ *
+ * Example:
+ *  {
+ *    ...,
+ *    "manager_mobile": "9876543210",
+ *    "id": 1,
+ *    ...
+ *  }
+ *
+ * In your page.tsx mapping, you already map: id: item.id
+ */
+const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
+  // ✅ Correct source: row-level "id" (after manager_mobile)
+  const topLevelId = row?.id;
+  const num = Number(topLevelId);
+  if (Number.isFinite(num) && num > 0) return num;
 
-    const num = Number(candidate);
-    if (Number.isFinite(num) && num > 0) return num;
+  // Fallbacks (only if row.id is missing for some reason)
+  const fromUiDetails = row?.spareParts?.[0]?.id;
+  const fromApiDetails = row?.spare_part?.[0]?.id;
+  const candidate = fromUiDetails ?? fromApiDetails;
+  const num2 = Number(candidate);
+  if (Number.isFinite(num2) && num2 > 0) return num2;
 
-    const fallback = getSparepartsRequestIdFromRow(row);
-    return fallback;
-  };
+  return getSparepartsRequestIdFromRow(row);
+};
+
 
   const getUserIdFromAuthResponse = (): number | null => {
     try {

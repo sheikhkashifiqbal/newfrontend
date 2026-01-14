@@ -29,8 +29,8 @@ interface IUserReviewExperiencePopup {
    * - For Spare parts reviews:
    *   entityId = sparepartsrequestId
    *
-   * IMPORTANT (your corrected requirement):
-   * For spare parts, the UI must display "Review is sent" ONLY when:
+   * IMPORTANT:
+   * For spare parts, the UI must display "Review is sent" only when:
    *   sparepartsrequestId (JSON request) == sparepartsrequest_id (JSON response row)
    * AND the POST request was submitted successfully.
    */
@@ -84,9 +84,7 @@ export default function UserReviewExperiencePopup({
 
   /**
    * ✅ For spare parts flow:
-   * The sparepartsrequestId used in JSON request MUST come from
-   * /api/spare-parts/offers/by-user response element "sparepartsrequest_id"
-   * and must match that same row’s "sparepartsrequest_id".
+   * sparepartsrequestId MUST come from /api/spare-parts/offers/by-user -> "sparepartsrequest_id"
    */
   function getSparepartsRequestIdFromRow(): number | null {
     const anyRow = reviewedRow as any;
@@ -94,6 +92,27 @@ export default function UserReviewExperiencePopup({
     const num = Number(v);
     if (!Number.isFinite(num) || num <= 0) return null;
     return num;
+  }
+
+  /**
+   * ✅ FIXED (per your requirement):
+   * branchBrandSparepartId MUST come from /api/spare-parts/offers/by-user response
+   * row-level element "id" (the one after "manager_mobile").
+   */
+  function getBranchBrandSparepartIdFromRow(): number | null {
+    const anyRow = reviewedRow as any;
+
+    // ✅ Correct value: row-level "id"
+    const candidate = anyRow?.id;
+    const num = Number(candidate);
+    if (Number.isFinite(num) && num > 0) return num;
+
+    // fallback (if for any reason row.id not present)
+    const fallback = anyRow?.spare_part?.[0]?.id ?? anyRow?.spareParts?.[0]?.id;
+    const fallbackNum = Number(fallback);
+    if (Number.isFinite(fallbackNum) && fallbackNum > 0) return fallbackNum;
+
+    return null;
   }
 
   // Existing service review helpers (kept)
@@ -144,23 +163,12 @@ export default function UserReviewExperiencePopup({
           return;
         }
 
-        /**
-         * JSON Request (as per your requirement):
-         * {
-         *   "rateExperienceId": 1,
-         *   "branchBrandSparepartId": 1,
-         *   "sparepartsrequestId": 1,
-         *   "description": "...",
-         *   "userId": 1,
-         *   "stars": 3
-         * }
-         *
-         * IMPORTANT (correct requirement):
-         * We track success by sparepartsrequestId, and the table compares:
-         * sparepartsrequestId (request) == sparepartsrequest_id (response row)
-         * before showing "Review is sent".
-         */
-        const branchBrandSparepartId = sparepartsrequestId; // keep your current mapping convention
+        // ✅ FIXED: branchBrandSparepartId from row-level "id"
+        const branchBrandSparepartId = getBranchBrandSparepartIdFromRow();
+        if (!branchBrandSparepartId) {
+          alert('branchBrandSparepartId not found (expected row-level "id").');
+          return;
+        }
 
         const res = await fetch(`${BASE_URL}/api/rate-sparepart-experiences`, {
           method: "POST",
