@@ -69,51 +69,83 @@ export function CustomDataTable<TData, TValue>({
 	const rowsLength = table.getRowModel().rows.length;
 	// divClassname={'scrollbar scrollbar-thumb-sky-700 scrollbar-track-sky-300'}
 	return (
-			<div className="!rounded-3xl border overflow-hidden">
-				<Table className={'!rounded-3xl overflow-hidden w-[1160px]'} divClassname={'scrollbar scrollbar-thin scrollbar-thumb-border scrollbar-track-gray-200 scrollbar-thumb-rounded-full'}>
-					<TableHeader className={'bg-light-gray !rounded-t-3xl '}>
-						{table.getHeaderGroups().map((headerGroup) => (
-								<TableRow className={'bg-light-gray hover:bg-light-gray !rounded-t-3xl'} key={headerGroup.id}>
-									{headerGroup.headers.map((header, index) => {
-										return (
-												<TableHead className={cn('py-2 px-6 text-misty-gray text-xs font-medium', index === 0 && 'rounded-tl-3xl' , index === headerGroup.headers.length - 1 && 'rounded-tr-3xl')} key={header.id}>
-													{header.isPlaceholder
-															? null
-															: flexRender(
-																	header.column.columnDef.header,
-																	header.getContext()
-															)}
-												</TableHead>
-										)
-									})}
-								</TableRow>
-						))}
-					</TableHeader>
-					<TableBody className={'!rounded-b-3xl'}>
-						{table.getRowModel().rows?.length ? (
-								table.getRowModel().rows.map((row, i) => (
-										<TableRow
-												className={cn('bg-white hover:bg-steel-blue/5', i === rowsLength - 1 && '!rounded-b-3xl')}
-												key={row.id}
-												data-state={row.getIsSelected() && "selected"}
-										>
-											{row.getVisibleCells().map((cell, j) => (
-													<TableCell className={cn('p-6 max-w-[15ch]', i === rowsLength - 1 && j === 0 && 'rounded-bl-3xl' , i === rowsLength - 1 && j === row.getVisibleCells().length - 1 && 'rounded-br-3xl')} key={cell.id}>
-														{flexRender(cell.column.columnDef.cell, cell.getContext())}
-													</TableCell>
-											))}
-										</TableRow>
-								))
-						) : (
-								<TableRow>
-									<TableCell colSpan={columns.length} className="h-24 text-center">
-										No results.
-									</TableCell>
-								</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
+  <div className="rounded-3xl border overflow-hidden">
+    <div className="overflow-x-auto md:overflow-visible">
+  <Table className="min-w-[1160px] md:min-w-full rounded-3xl overflow-hidden">
 
-	)
+        <TableHeader className="bg-light-gray">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow
+              className="bg-light-gray hover:bg-light-gray"
+              key={headerGroup.id}
+            >
+              {headerGroup.headers.map((header, index) => (
+                <TableHead
+                  key={header.id}
+                  className={cn(
+                    "py-2 px-6 text-misty-gray text-xs font-medium",
+                    index === 0 && "rounded-tl-3xl",
+                    index === headerGroup.headers.length - 1 &&
+                      "rounded-tr-3xl"
+                  )}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+
+        <TableBody>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row, i) => (
+              <TableRow
+                key={row.id}
+                className={cn(
+                  "bg-white hover:bg-steel-blue/5",
+                  i === rowsLength - 1 && "rounded-b-3xl"
+                )}
+              >
+                {row.getVisibleCells().map((cell, j) => (
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      "p-6 max-w-[15ch]",
+                      i === rowsLength - 1 &&
+                        j === 0 &&
+                        "rounded-bl-3xl",
+                      i === rowsLength - 1 &&
+                        j === row.getVisibleCells().length - 1 &&
+                        "rounded-br-3xl"
+                    )}
+                  >
+                    {flexRender(
+                      cell.column.columnDef.cell,
+                      cell.getContext()
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center"
+              >
+                No results.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  </div>
+)
+
 }
