@@ -65,7 +65,6 @@ export function CustomDataTable<TData, TValue>({
 		getCoreRowModel: getCoreRowModel(),
 	})
 
-
 	const rowsLength = table.getRowModel().rows.length;
 	// divClassname={'scrollbar scrollbar-thumb-sky-700 scrollbar-track-sky-300'}
 	return (

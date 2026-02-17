@@ -1,8 +1,8 @@
 'use client';
 
-import {useState} from "react";
+import { useState } from "react";
 import DashboardContainer from "@/components/dashboard/DashboardContainer";
-import {CustomDataTable} from "@/components/app-custom/custom-data-table";
+import { CustomDataTable } from "@/components/app-custom/custom-data-table";
 import {
 	IReservationServiceSparepart,
 	IServiceBookingReservationRow,
@@ -45,7 +45,7 @@ export default function ServiceBookingsUpcomingTab({
 		try {
 			const res = await fetch(`${BASE_URL}/api/reservations/${row.reservation_id}`, {
 				method: "PUT",
-				headers: {"Content-Type": "application/json"},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					userId: String(row.user_id),
 					reservationDate: row.reservation_date,
@@ -66,28 +66,28 @@ export default function ServiceBookingsUpcomingTab({
 	}
 
 	function touchToast(status: "cancelled" | "completed") {
-		toast.message( "status",
+		toast.message("status",
 			{
-			description:
-				status === "cancelled" ? "Reservation cancelled successfully." : "Reservation completed successfully."
-		});
-	
-	}
-/*
-	function touchToastError() {
-		toast.message(
-			variant: "destructive",
-			{
-			description: "Failed to update reservation status."
-		});
+				description:
+					status === "cancelled" ? "Reservation cancelled successfully." : "Reservation completed successfully."
+			});
 
-		toast.message( "status",
-			{
-			description:
-				status === "cancelled" ? "Reservation cancelled successfully." : "Reservation completed successfully."
-		});
 	}
-*/
+	/*
+		function touchToastError() {
+			toast.message(
+				variant: "destructive",
+				{
+				description: "Failed to update reservation status."
+			});
+	
+			toast.message( "status",
+				{
+				description:
+					status === "cancelled" ? "Reservation cancelled successfully." : "Reservation completed successfully."
+			});
+		}
+	*/
 	const columns = ServiceBookingsUpcomingTabColumns({
 		tab,
 		onView: (row) => {
@@ -96,7 +96,9 @@ export default function ServiceBookingsUpcomingTab({
 			}
 		},
 		onUpdateStatus: handleUpdateStatus
-	});
+	}).filter((col:any) => col?.accessorKey !== "review");
+;
+
 
 	const hasData = data && data.length > 0;
 
@@ -109,7 +111,7 @@ export default function ServiceBookingsUpcomingTab({
 			)}
 
 			{hasData && (
-				<CustomDataTable columns={columns} data={data}/>
+				<CustomDataTable columns={columns} data={data} />
 			)}
 
 			{/* Popup only for Upcoming tab */}
