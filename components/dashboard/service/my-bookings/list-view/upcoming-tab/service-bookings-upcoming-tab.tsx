@@ -96,8 +96,8 @@ export default function ServiceBookingsUpcomingTab({
 			}
 		},
 		onUpdateStatus: handleUpdateStatus
-	}).filter((col:any) => col?.accessorKey !== "review");
-;
+	}).filter((col: any) => col?.accessorKey !== "review");
+	;
 
 
 	const hasData = data && data.length > 0;
