@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
+import { format, startOfToday } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -21,6 +21,7 @@ interface IDatePicker {
 	buttonClassname?: string
 	placeholderClassname?: string
 	isItalicPlaceholder?: boolean
+	maxDate?: Date
 }
 
 export function DatePicker({
@@ -29,7 +30,8 @@ export function DatePicker({
 		placeholder = 'Date selection',
 		buttonClassname,
 		placeholderClassname,
-		isItalicPlaceholder = false
+		isItalicPlaceholder = false,
+		maxDate
 													 }: IDatePicker) {
 
 	return (
@@ -51,6 +53,13 @@ export function DatePicker({
 							mode="single"
 							selected={date}
 							onSelect={(date) => setDate && setDate(date)}
+							disabled={(date) => {
+								if (!maxDate) return false;
+								// Compare dates at start of day to ignore time
+								const maxDateStart = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+								const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+								return dateStart > maxDateStart;
+							}}
 							initialFocus
 					/>
 				</PopoverContent>

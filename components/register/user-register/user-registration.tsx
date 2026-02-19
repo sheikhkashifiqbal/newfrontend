@@ -3,6 +3,7 @@ import { useEffect, useState, memo } from "react";
 import { z } from "zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { startOfToday } from "date-fns";
 import { Form } from "@/components/ui/form";
 import CustomFormField from "@/components/app-custom/CustomFormField";
 import CustomFormFieldDatePicker from "@/components/app-custom/custom-form-field-date-picker";
@@ -252,6 +253,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               control={form.control}
               placeholder={'Enter your birthday'}
               label={'Birthday *'}
+              maxDate={startOfToday()}
             />
           </div>
 
