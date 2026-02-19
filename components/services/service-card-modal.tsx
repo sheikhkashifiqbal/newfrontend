@@ -777,10 +777,19 @@ function ServiceCardModal({ selectedBranchId, closeModal }: IServiceCardModal) {
         format(new Date(), "yyyy-MM-dd");
       const time = sessionStorage.getItem("reservationTime") || "";
 
+      // Get auth token from localStorage
+      const token = auth?.token ?? null;
+      if (!token) {
+        throw new Error("No auth token found. Please login again.");
+      }
+
       const res2 = await fetch(`${BASE_URL}/api/reservations`, {
         method: "POST",
        // credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           userId,
           serviceId,
