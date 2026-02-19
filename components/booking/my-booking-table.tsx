@@ -31,6 +31,8 @@ export type ReservationRow = {
   car_id?: number;
   service_id?: number;
   user_id?: number;
+  price?: number;
+  currency: string;
 };
 
 type BookingTableProps = {
@@ -85,6 +87,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
             Selected car &amp; Number
           </th>
           <th className="px-4 py-3 w-[160px]">Service type</th>
+          <th className="px-4 py-3 w-[160px]">Price</th>
           {isUpcoming && (
             <>
               <th className="px-4 py-3 w-[200px]">
@@ -139,7 +142,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
                       />
                       <div className="flex flex-col">
                         <span className="font-medium break-words">
-                          {b.branch_name}
+                          {b.branch_name} KK
                         </span>
                         <span className="text-[#454545] text-xs mt-1 break-words">
                           {b.address}, {b.city}
@@ -164,6 +167,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
 
                   {/* Service type */}
                   <td className="px-4 py-4 align-top">{b.service_name}</td>
+                  <td className="px-4 py-4 align-top">{b.price} {b.currency}</td>
 
                   {/* Upcoming-only: Spare parts column */}
                   {isUpcoming && (
