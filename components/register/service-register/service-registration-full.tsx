@@ -10,7 +10,7 @@ import ServiceRegistrationHeader from "@/components/register/service-register/se
 import ServiceRegistrationBottomButtons
   from "@/components/register/service-register/service-registration-bottom-buttons";
 import ServiceRegistrationStep2 from "@/components/register/service-register/service-registration-step-2";
-//import ServiceRegistrationStep3 from "@/components/register/service-register/service-registration-step-3";
+import ServiceRegistrationStep3 from "@/components/register/service-register/service-registration-step-3";
 import {fileSchema} from "@/lib/utils";
 
 // API endpoints
@@ -27,7 +27,7 @@ interface IServiceRegistration {
 }
 
 function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegistration) {
-  const [step,setStep] = useState<1 | 2 >(1);
+  const [step,setStep] = useState<1 | 2 | 3 >(1);
 
   // Load lists (services)
   const [services, setServices] = useState<
@@ -360,7 +360,7 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
         <form className={'flex flex-col gap-y-5'} onSubmit={form.handleSubmit(onSubmit)}>
           {step === 1 && <ServiceRegistrationStep1 form={form} />}
           {step === 2 && <ServiceRegistrationStep2 form={form} services={services} brands={brands} loadingLists={loadingLists} />}
-
+          	{step === 3 && <ServiceRegistrationStep3 form={form} /> }
           <div className="pt-6">
             <button type="submit" className="reg-company hidden">Register Company & Branches</button>
           </div>
