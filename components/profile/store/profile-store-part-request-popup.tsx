@@ -30,7 +30,10 @@ export default function ProfileStorePartRequestPopup(
 ) {
 
 	const sparePartRequestFormSchema = z.object({
-		vin: z.number({required_error: 'vin number is required'}).min(5, {message: 'vin should be at least 5 characters'}),
+		vin: z.string({required_error: 'VIN number is required'})
+			.min(17, {message: 'VIN must be exactly 17 characters'})
+			.max(17, {message: 'VIN must be exactly 17 characters'})
+			.regex(/^[A-HJ-NPR-Z0-9]{17}$/i, {message: 'VIN must contain only alphanumeric characters (excluding I, O, Q)'}),
 		category: z.string({required_error: 'part category is required'}),
 		state: z.string({required_error: 'part state is required'}),
 		parts: z.array(z.object({
