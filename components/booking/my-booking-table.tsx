@@ -142,7 +142,7 @@ const BookingTable: React.FC<BookingTableProps> = ({
                       />
                       <div className="flex flex-col">
                         <span className="font-medium break-words">
-                          {b.branch_name} KK
+                          {b.branch_name}
                         </span>
                         <span className="text-[#454545] text-xs mt-1 break-words">
                           {b.address}, {b.city}

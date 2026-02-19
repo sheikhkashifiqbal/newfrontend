@@ -32,6 +32,8 @@ export interface IServiceBookingReservationRow {
 	branch_brand_serviceid: number;
 	plate_number: string;
 	stars: number;
+	price: number;
+	currency: string;
 	reservation_service_sparepart: IReservationServiceSparepart[];
 }
 
@@ -124,6 +126,19 @@ export const ServiceBookingsUpcomingTabColumns = (
 				return (
 					<div className="text-sm text-[#495057]">
 						{data.service_name}
+					</div>
+				);
+			}
+		},
+
+		{
+			accessorKey: "price",
+			header: "Price",
+			cell: ({row}) => {
+				const data = row.original;
+				return (
+					<div className="text-sm text-[#495057]">
+						{data.price} {data.currency}
 					</div>
 				);
 			}
