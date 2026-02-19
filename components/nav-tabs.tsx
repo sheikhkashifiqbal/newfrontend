@@ -36,6 +36,8 @@ const NavTabs: React.FC<NavTabsProps> = ({
     return defaultActiveTab || tabItems[0]?.label || "";
   });
 
+  console.log(activeTab, "activeTab");
+
   // ✅ Persist active tab to localStorage whenever it changes (browser only)
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -63,26 +65,29 @@ const NavTabs: React.FC<NavTabsProps> = ({
   return (
     <div className="flex flex-col-reverse md:flex-row md:items-center gap-3 md:justify-between">
       <div className="flex items-center gap-3">
-        {tabItems.map((item, idx) => (
-          <button
-            key={item.label}
-            className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${
-              id === idx + 1 ? "bg-blue-50 !text-[#3F72AF]" : ""
-            }`}
-            onClick={() => handleTabClick(item, idx)}
-          >
-            {React.isValidElement(item.icon)
-              ? React.cloneElement(
-                  item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
-                  {
-                    stroke: id === idx + 1 ? "#3F72AF" : "#495057",
-                  }
-                )
-              : item.icon}
+        {tabItems.map((item, idx) => {
+          const isActive = activeTab === item.label || id === idx + 1;
+          return (
+            <button
+              key={item.label}
+              className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${
+                isActive ? "bg-blue-50 !text-[#3F72AF]" : ""
+              }`}
+              onClick={() => handleTabClick(item, idx)}
+            >
+              {React.isValidElement(item.icon)
+                ? React.cloneElement(
+                    item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
+                    {
+                      stroke: isActive ? "#3F72AF" : "#495057",
+                    }
+                  )
+                : item.icon}
 
-            {item.label}
-          </button>
-        ))}
+              {item.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
