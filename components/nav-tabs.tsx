@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 type TabItem = {
   label: string;
@@ -24,19 +24,23 @@ const NavTabs: React.FC<NavTabsProps> = ({
   id,
 }) => {
   const router = useRouter();
-  console.log(defaultActiveTab, "defaultActiveTab");
+  const pathname = usePathname();
 
   const [activeTab, setActiveTab] = useState<string>(() => {
     // ✅ Safe access: only read localStorage in the browser
     if (typeof window !== "undefined") {
+      // First, try to match current pathname with tab items
+      const matchingTab = tabItems.find((item) => item.path === pathname);
+      if (matchingTab) {
+        return matchingTab.label;
+      }
+      // Then check localStorage
       const stored = window.localStorage.getItem("active_tab");
       return stored || defaultActiveTab || tabItems[0]?.label || "";
     }
     // During SSR / build, fall back to props
     return defaultActiveTab || tabItems[0]?.label || "";
   });
-
-  console.log(activeTab, "activeTab");
 
   // ✅ Persist active tab to localStorage whenever it changes (browser only)
   useEffect(() => {
@@ -45,20 +49,23 @@ const NavTabs: React.FC<NavTabsProps> = ({
     }
   }, [activeTab]);
 
-  // ✅ When defaultActiveTab prop changes, update state once
+  // ✅ Sync active tab with current pathname
   useEffect(() => {
-    if (defaultActiveTab) {
+    const matchingTab = tabItems.find((item) => item.path === pathname);
+    if (matchingTab) {
+      setActiveTab(matchingTab.label);
+    } else if (defaultActiveTab) {
       setActiveTab(defaultActiveTab);
     }
-  }, [defaultActiveTab]);
+  }, [pathname, defaultActiveTab, tabItems]);
 
   const handleTabClick = (item: TabItem, index: number) => {
     setActiveTab(item.label);
     onChange?.(item.label);
 
     if (item.path) {
-      // full reload required ✔
-      window.location.href = item.path;
+      // Use Next.js router for client-side navigation (no page reload)
+      router.push(item.path);
     }
   };
 

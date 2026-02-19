@@ -10,6 +10,7 @@ import DashboardContainer from "@/components/dashboard/DashboardContainer";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import NavTabs from "@/components/nav-tabs";
 import React from "react";
+import { useRouter } from "next/navigation";
 
 
 interface IServiceDashboardHeader {
@@ -62,18 +63,19 @@ const tabItems = [
 
 
 export default function ServiceDashboardHeader() {
+	const router = useRouter();
 
 	const handleTopTabsChange = (label: string) => {
 		if (label === "Profile info") {
-			window.location.href = "/profile/manager";
+			router.push("/profile/manager");
 			return;
 		}
 		if (label === "Spare part request") {
-			window.location.href = "/spare-parts/branch-bookings";
+			router.push("/spare-parts/branch-bookings");
 			return;
 		}
 		if (label === "My bookings") {
-			window.location.href = "/services/branch-bookings";
+			router.push("/services/branch-bookings");
 			return;
 		}
 	};
