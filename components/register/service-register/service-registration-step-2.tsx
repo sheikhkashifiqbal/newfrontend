@@ -10,6 +10,10 @@ import CustomFormFieldSelector from "@/components/app-custom/custom-form-field-s
 import {Button} from "@/components/ui/button";
 import React from "react";
 import {ServiceSelector} from "@/components/services/selectors/service-selector";
+import CustomSelect, { CustomSelectItem } from "@/components/app-custom/custom-select";
+import { SelectGroup } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { grayTriggerClassname } from "@/components/shadcn-extended/SelectExt";
 
 export interface IServiceRegistrationStep2 {
   form: any
@@ -118,44 +122,44 @@ export default function ServiceRegistrationStep2({form, services, brands, loadin
                         // Get services selected in other rows
                         const selectedServices = getSelectedServices(infoIndex);
                         
+                        // Filter services: keep current selection, remove others that are selected in different rows
+                        const availableServices = services && services.length
+                          ? services.filter((s) => {
+                              const serviceIdStr = String(s.serviceId);
+                              return value === serviceIdStr || !selectedServices.includes(serviceIdStr);
+                            })
+                          : [];
+                        
                         return (services && services.length)
                           ? (
-                            <select
-                              className={`h-14 w-full border rounded p-2 ${hasError ? 'border-red-500' : 'border-gray-300'}`}
-                              value={value ?? ""}
-                              onChange={(e) => onChange(e.target.value)}
-                              disabled={loadingLists}
+                            <CustomSelect
+                              value={value}
+                              onChange={(val) => onChange && onChange(val)}
+                              triggerClassname={cn('h-14', grayTriggerClassname, hasError && '!border-vibrant-red')}
+                              placeholder="Select a service"
                             >
-                              <option value="" disabled>Select a service</option>
-                                {services
-                                  .filter((s) => {
-                                    const serviceIdStr = String(s.serviceId);
-                                    // Keep current selection, remove others that are selected in different rows
-                                    return value === serviceIdStr || !selectedServices.includes(serviceIdStr);
-                                  })
-                                  .map((s) => {
+                              <div className={'p-5 flex flex-col gap-y-3'}>
+                                <SelectGroup>
+                                  {availableServices.map((s) => {
                                     const label = s.serviceType
                                       ? `${s.serviceName} (${s.serviceType})`
                                       : s.serviceName;
-                                    
                                     const serviceIdStr = String(s.serviceId);
-
+                                    
                                     return (
-                                      <option 
-                                        key={serviceIdStr} 
-                                        value={serviceIdStr}
-                                      >
+                                      <CustomSelectItem key={serviceIdStr} value={serviceIdStr}>
                                         {label}
-                                      </option>
+                                      </CustomSelectItem>
                                     );
                                   })}
-
-                            </select>
+                                </SelectGroup>
+                              </div>
+                            </CustomSelect>
                           )
                           : (
                             <ServiceSelector
                               value={value}
-                              triggerClassname={'h-14'}
+                              triggerClassname={cn('h-14', hasError && '!border-vibrant-red')}
                               onChange={onChange}
                             />
                           )
