@@ -27,8 +27,6 @@ const ViewEditModel = ({
 }: any) => {
   const [parts, setParts] = useState([
     { id: 1, name: "", qty: "" },
-    { id: 2, name: "", qty: "" },
-    { id: 3, name: "", qty: "" },
   ]);
 
   const [errors, setErrors] = useState<{
