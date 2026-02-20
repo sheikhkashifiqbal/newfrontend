@@ -52,6 +52,13 @@ export default function ServiceRegistrationStep2({form, services, brands, loadin
           return null;
         }
 
+        // Get all selected services from other rows (to disable them)
+        const getSelectedServices = (currentInfoIndex: number) => {
+          return infoArr
+            .map((info, idx) => idx !== currentInfoIndex ? form.getValues(`branches.${index}.info.${idx}.service`) : null)
+            .filter((serviceId): serviceId is string => serviceId != null && serviceId !== "");
+        };
+
         return (
           <div className={'bg-white/80 border border-black/5 p-8 rounded-3xl flex flex-col gap-8'} key={index}>
             <h4 className={'text-base font-medium text-steel-blue'}>Shamakhi Central Branch *</h4>
@@ -107,8 +114,11 @@ export default function ServiceRegistrationStep2({form, services, brands, loadin
                       control={form.control}
                       name={`branches.${index}.info.${infoIndex}.service`}
                       label={'Select the services *'}
-                      Children={(onChange, hasError, value) =>
-                        (services && services.length)
+                      Children={(onChange, hasError, value) => {
+                        // Get services selected in other rows
+                        const selectedServices = getSelectedServices(infoIndex);
+                        
+                        return (services && services.length)
                           ? (
                             <select
                               className={`h-14 w-full border rounded p-2 ${hasError ? 'border-red-500' : 'border-gray-300'}`}
@@ -117,17 +127,28 @@ export default function ServiceRegistrationStep2({form, services, brands, loadin
                               disabled={loadingLists}
                             >
                               <option value="" disabled>Select a service</option>
-                                {services.map((s) => {
-                                  const label = s.serviceType
-                                    ? `${s.serviceName} (${s.serviceType})`
-                                    : s.serviceName;
+                                {services
+                                  .filter((s) => {
+                                    const serviceIdStr = String(s.serviceId);
+                                    // Keep current selection, remove others that are selected in different rows
+                                    return value === serviceIdStr || !selectedServices.includes(serviceIdStr);
+                                  })
+                                  .map((s) => {
+                                    const label = s.serviceType
+                                      ? `${s.serviceName} (${s.serviceType})`
+                                      : s.serviceName;
+                                    
+                                    const serviceIdStr = String(s.serviceId);
 
-                                  return (
-                                    <option key={String(s.serviceId)} value={String(s.serviceId)}>
-                                      {label}
-                                    </option>
-                                  );
-                                })}
+                                    return (
+                                      <option 
+                                        key={serviceIdStr} 
+                                        value={serviceIdStr}
+                                      >
+                                        {label}
+                                      </option>
+                                    );
+                                  })}
 
                             </select>
                           )
@@ -138,7 +159,7 @@ export default function ServiceRegistrationStep2({form, services, brands, loadin
                               onChange={onChange}
                             />
                           )
-                      }
+                      }}
                     />
 
                     <CustomFormFieldMultiSelector
