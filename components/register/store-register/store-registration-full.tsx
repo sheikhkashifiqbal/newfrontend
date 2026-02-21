@@ -9,7 +9,7 @@ import ServiceRegistrationStep1 from "@/components/register/service-register/ser
 import ServiceRegistrationHeader from "@/components/register/service-register/service-registration-header";
 import ServiceRegistrationBottomButtons from "@/components/register/service-register/service-registration-bottom-buttons";
 import ServiceRegistrationStep2 from "@/components/register/service-register/service-registration-step-2";
-//import ServiceRegistrationStep3 from "@/components/register/service-register/service-registration-step-3";
+import ServiceRegistrationStep3 from "@/components/register/service-register/service-registration-step-3";
 import StoreRegistrationStep2 from "@/components/register/store-register/store-registration-step-2";
 
 // ⬅️ ADDED: API endpoints
@@ -26,7 +26,7 @@ interface IStoreRegistrationFull {
 
 function StoreRegistrationFull({closeFormAndGoBack, openPopup}: IStoreRegistrationFull) {
 
-  const [step,setStep] = useState<1 | 2 >(1);
+  const [step,setStep] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -311,6 +311,7 @@ function toId(value: unknown): number | null {
         <form className={'flex flex-col gap-y-5'} onSubmit={form.handleSubmit(onSubmit)}>
           {step === 1 && <ServiceRegistrationStep1 type={"store"} form={form} />}
           {step === 2 && <StoreRegistrationStep2 form={form} />}
+          {step === 3 && <ServiceRegistrationStep3 form={form} /> }
          
           {/* ⬅️ ADDED: hidden submit so Enter works */}
           

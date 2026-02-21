@@ -256,7 +256,7 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
               <input
                 data-card-error={touched.name && !!fieldErrors.name}
                 className={elementBaseClass}
-                placeholder={"e.g. Kashif Iqbal"}
+                placeholder={"Full Name"}
                 value={cardholderName}
                 onChange={(e) => setCardholderName(e.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, name: true }))}
