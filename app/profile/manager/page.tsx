@@ -124,7 +124,7 @@ const ProfileInfoPage = () => {
               "Account details",
               "Security details",
               "My Branches",
-              "My plans",
+              
             ] as TabStatus[]
           ).map((tab) => {
             const isActive = activeTab === tab;

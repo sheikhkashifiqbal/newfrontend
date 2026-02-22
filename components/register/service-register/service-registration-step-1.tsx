@@ -389,7 +389,7 @@ export default function ServiceRegistrationStep1({
               city: ""
             })
           }}
-          className={'mt-8 max-w-fit bg-soft-gray py-3 px-4 rounded-[12px] text-dark-gray text-base font-medium'}>
+          className={'mt-8 max-w-fit bg-soft-gray py-3 px-4 rounded-[12px] text-dark-gray text-base font-medium hidden'}>
           + Add new branch
         </Button>
       </div>

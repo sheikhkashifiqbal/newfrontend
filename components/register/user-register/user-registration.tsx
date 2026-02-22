@@ -3,6 +3,7 @@ import { useEffect, useState, memo } from "react";
 import { z } from "zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { startOfToday } from "date-fns";
 import { Form } from "@/components/ui/form";
 import CustomFormField from "@/components/app-custom/CustomFormField";
 import CustomFormFieldDatePicker from "@/components/app-custom/custom-form-field-date-picker";
@@ -28,7 +29,10 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
   const carSchema = z.object({
     carBrand: z.string({ required_error: 'car brand is required' }),
     carModel: z.string({ required_error: 'car model is required' }),
-    vinNumber: z.string({ required_error: 'vin number is required' }).min(5, 'vin number must be at least 5 characters'),
+    vinNumber: z.string({ required_error: 'VIN number is required' })
+      .min(17, 'VIN number must be exactly 17 characters')
+      .max(17, 'VIN number must be exactly 17 characters')
+      .regex(/^[A-HJ-NPR-Z0-9]{17}$/i, 'VIN number must contain only alphanumeric characters (excluding I, O, Q)'),
     plateNumber: z.string({ required_error: 'plate number is required' }).min(5, 'plate number must be at least 5 characters')
   })
 
@@ -252,6 +256,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               control={form.control}
               placeholder={'Enter your birthday'}
               label={'Birthday *'}
+              maxDate={startOfToday()}
             />
           </div>
 

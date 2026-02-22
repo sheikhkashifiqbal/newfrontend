@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import NavTabs from "@/components/spareparts-nav-tabs";
 import SparePartsTable from "@/components/spare-parts/spareparts-requests-table";
 
@@ -113,6 +114,7 @@ type BranchOption = {
 };
 
 export default function SparePartsRequestPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabStatus>("Accepted offers");
   const [selectedPart, setSelectedPart] = useState<string>("All");
   const [selectedBrand, setSelectedBrand] = useState<string>("All");
@@ -304,15 +306,15 @@ export default function SparePartsRequestPage() {
   // 🔹 handle top nav tab redirects
   const handleTopTabsChange = (label: string) => {
     if (label === "Profile info") {
-      window.location.href = "/profile/manager";
+      router.push("/profile/manager");
       return;
     }
     if (label === "Spare part request") {
-      window.location.href = "/spare-parts/branch-bookings";
+      router.push("/spare-parts/branch-bookings");
       return;
     }
     if (label === "My bookings") {
-      window.location.href = "/services/branch-bookings";
+      router.push("/services/branch-bookings");
       return;
     }
   };

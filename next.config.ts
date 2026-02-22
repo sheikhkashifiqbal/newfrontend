@@ -34,6 +34,16 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/services',
+        permanent: true,
+      }
+    ];
+  },
+
   // ⚠️ Redirects are server features; for static export they won't behave like SSR.
   // Keep them commented for now.
   // async redirects() {

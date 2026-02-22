@@ -6,7 +6,9 @@ import CustomInput from "@/components/app-custom/custom-input";
 import {ICustomFormField} from "@/components/app-custom/CustomFormField";
 import {DatePicker} from "@/components/app-custom/date-picker";
 
-type CustomFormFieldDatePickerT = Omit<ICustomFormField, 'inputType'>
+type CustomFormFieldDatePickerT = Omit<ICustomFormField, 'inputType'> & {
+	maxDate?: Date
+}
 
 function CustomFormFieldDatePicker(
 		{
@@ -18,6 +20,7 @@ function CustomFormFieldDatePicker(
 			description,
 			labelClassname,
 			isItalicPlaceholder = false,
+			maxDate,
 		}: CustomFormFieldDatePickerT
 ) {
 	return (
@@ -41,6 +44,7 @@ function CustomFormFieldDatePicker(
 											setDate={(date) => field.onChange(date)}
 											placeholder={placeholder}
 											isItalicPlaceholder={isItalicPlaceholder}
+											maxDate={maxDate}
 									/>
 								</FormControl>
 								{description && (

@@ -470,19 +470,20 @@ const MyBooking: React.FC = () => {
 
             {/* Table headers */}
             <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-              <span className="col-span-7">Part name</span>
+              <span className="col-span-9">Part name</span>
               <span className="col-span-3">Qty.</span>
-              <span className="col-span-2 text-center">Delete</span>
+              {/* <span className="col-span-2 text-center">Delete</span> */}
             </div>
 
             {/* Table rows */}
             {spEditingRows.map((row, idx) => (
               <div key={row.reservation_service_sparepart_id} className="grid grid-cols-12 gap-3">
-                <div className="col-span-7">
+                <div className="col-span-9">
                   <input
                     value={row.part_name}
                     onChange={(e) => updateRowLocal(idx, { part_name: e.target.value })}
                     placeholder="Enter part name"
+                    readOnly
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                   />
                 </div>
@@ -492,6 +493,7 @@ const MyBooking: React.FC = () => {
                     type="number"
                     min={1}
                     step={1}
+                    readOnly
                     value={row.qty}
                     onChange={(e) => updateRowLocal(idx, { qty: Number(e.target.value) })}
                     placeholder="Ex: 100"
@@ -499,23 +501,23 @@ const MyBooking: React.FC = () => {
                   />
                 </div>
 
-                <button
+                {/* <button
                   onClick={() => handleDeleteSparePart(row)}
                   className="col-span-2 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition"
                 >
                   <X className="text-gray-600 size-5" />
-                </button>
+                </button> */}
               </div>
             ))}
 
             {/* Add spare part button */}
-            <button
+            {/* <button
               onClick={handleAddSparePart}
               className="mt-3 flex items-center gap-2 bg-[#E9ECEF] px-5 py-3 rounded-lg text-gray-700 font-medium text-[12px] hover:bg-gray-100 max-w-fit"
             >
               <FiPlus size={16} />
               Add spare part
-            </button>
+            </button> */}
 
             {/* Search Spare Parts button */}
             <a
