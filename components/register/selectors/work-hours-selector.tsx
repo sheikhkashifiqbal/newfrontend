@@ -31,8 +31,7 @@ function WorkHoursPopup({
   form
 }: IWorkHoursPopup) {
   const [vState, setVState] = useState(value);
-  console.log("Work Hours:::", vState);
-
+  
   return (
     <Dialog open={isOpen}>
       <DialogContent className={"overflow-y-auto max-w-[95%] 650:max-w-[650px] lg:max-w-[800px] max-h-[450px] 650:max-h-[600px] bg-light-gray rounded-3xl py-8 flex flex-col gap-y-8"}>

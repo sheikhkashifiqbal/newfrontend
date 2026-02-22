@@ -1,10 +1,9 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Separator } from "@/components/ui/separator";
-import CustomCheckbox from "@/components/app-custom/custom-checkbox";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ServiceRegistrationTip } from "@/components/register/service-register/service-registration-step-2";
-
+import CustomCheckbox from "@/components/app-custom/custom-checkbox";
+import { Separator } from "@/components/ui/separator";
 
 import {
   CardNumberElement,
@@ -24,9 +23,8 @@ type StripeElementChangeEvent = {
   error?: { message?: string };
 };
 
-const elementBaseClass =
-  "w-full bg-white rounded-[12px] border border-steel-blue/20 px-4 py-3 text-sm text-charcoal outline-none focus:border-royal-blue/60";
-
+const fieldBase =
+  "w-full bg-white rounded-[12px] border border-steel-blue/20 px-4 py-3 text-sm text-charcoal placeholder:text-charcoal/40 outline-none focus:border-royal-blue/60";
 const labelBase = "text-sm font-semibold text-steel-blue";
 const helpBase = "text-xs text-charcoal/50";
 const errorBase = "text-xs text-red-500 font-medium mt-1";
@@ -51,9 +49,8 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
   const stripe = useStripe();
   const elements = useElements();
 
-  const [addCardLater, setAddCardLater] = useState(false);
-
-  const [cardholderName, setCardholderName] = useState("");
+  const [addCardLater, setAddCardLater] = useState<boolean>(!!form?.getValues?.("addDebitCardLater"));
+  const [cardholderName, setCardholderName] = useState<string>(form?.getValues?.("cardholderName") ?? "");
   const [pmError, setPmError] = useState<string>("");
 
   const [touched, setTouched] = useState({
@@ -76,7 +73,11 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
     cvc?: string;
   }>({});
 
-  // Keep values in RHF (optional but useful)
+  // Prevent infinite requestSubmit loops
+  const allowNextSubmitRef = useRef(false);
+
+  const canUseStripe = useMemo(() => !!stripe && !!elements, [stripe, elements]);
+
   useEffect(() => {
     try {
       form?.setValue?.("addDebitCardLater", addCardLater, { shouldDirty: true });
@@ -96,8 +97,7 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
         // ignore
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addCardLater]);
+  }, [addCardLater, form]);
 
   function validateLocalFields() {
     if (addCardLater) {
@@ -106,10 +106,7 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
     }
 
     const next: typeof fieldErrors = {};
-
     if (!cardholderName.trim()) next.name = "Cardholder name is required.";
-
-    // Stripe Elements provide their own validation; we ensure completion
     if (!complete.number) next.number = "Card number is incomplete or invalid.";
     if (!complete.expiry) next.expiry = "Expiry date is incomplete or invalid.";
     if (!complete.cvc) next.cvc = "Security code is incomplete or invalid.";
@@ -118,22 +115,22 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
     return Object.keys(next).length === 0;
   }
 
-  const canUseStripe = useMemo(() => !!stripe && !!elements, [stripe, elements]);
-
-  async function validateWithStripePaymentMethod(): Promise<boolean> {
+  async function createPaymentMethodIfNeeded(): Promise<boolean> {
     if (addCardLater) return true;
 
-    // local checks first (name + completeness)
     const okLocal = validateLocalFields();
     if (!okLocal) return false;
 
     if (!stripe || !elements) {
-      setPmError("Stripe is not ready. Please refresh the page and try again.");
+      setPmError("Stripe is not ready. Please refresh and try again.");
       return false;
     }
 
-    const cardNumber = elements.getElement(CardNumberElement);
-    if (!cardNumber) {
+    const existingPm = form?.getValues?.("stripePaymentMethodId");
+    if (existingPm) return true; // already created
+
+    const cardNumberEl = elements.getElement(CardNumberElement);
+    if (!cardNumberEl) {
       setPmError("Card input is not available. Please refresh and try again.");
       return false;
     }
@@ -142,7 +139,7 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
 
     const result = await stripe.createPaymentMethod({
       type: "card",
-      card: cardNumber,
+      card: cardNumberEl,
       billing_details: {
         name: cardholderName.trim(),
       },
@@ -153,11 +150,14 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
       return false;
     }
 
-    // ✅ Valid card details (Stripe verified format and created PM)
-    const paymentMethodId = result.paymentMethod?.id || "";
+    const pmId = result.paymentMethod?.id || "";
+    if (!pmId) {
+      setPmError("Could not create payment method. Please try again.");
+      return false;
+    }
 
     try {
-      form?.setValue?.("stripePaymentMethodId", paymentMethodId, { shouldDirty: true });
+      form?.setValue?.("stripePaymentMethodId", pmId, { shouldDirty: true });
     } catch {
       // ignore
     }
@@ -165,33 +165,29 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
     return true;
   }
 
-  /**
-   * IMPORTANT:
-   * Your “Register Company & Branches” button likely submits the main <form>.
-   * This intercepts submit, runs Stripe validation, and only then allows submit.
-   */
+  // Intercept submit: ensure PM is created BEFORE ServiceRegistrationFull onSubmit runs
   useEffect(() => {
     const formEl = document.querySelector("form");
     if (!formEl) return;
 
     const onSubmitCapture = async (e: Event) => {
-      // If add-later, do nothing
+      // If we already validated and re-triggered submit, allow it to pass
+      if (allowNextSubmitRef.current) {
+        allowNextSubmitRef.current = false;
+        return;
+      }
+
+      // If skipping card, allow submit normally
       if (addCardLater) return;
 
-      // block by default while we validate
+      // We are on step-3; create PaymentMethod first
       e.preventDefault();
       e.stopPropagation();
 
-      setTouched({
-        name: true,
-        number: true,
-        expiry: true,
-        cvc: true,
-      });
+      setTouched({ name: true, number: true, expiry: true, cvc: true });
 
-      const ok = await validateWithStripePaymentMethod();
+      const ok = await createPaymentMethodIfNeeded();
       if (!ok) {
-        // scroll to first error
         try {
           const first = document.querySelector("[data-card-error='true']");
           first?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -201,22 +197,20 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
         return;
       }
 
-      // If valid, submit the form programmatically
-      // NOTE: requestSubmit preserves native validation & submit handlers
+      // Allow the next submit to go through to the main onSubmit handler
+      allowNextSubmitRef.current = true;
       try {
         // @ts-ignore
         formEl.requestSubmit?.();
       } catch {
-        // fallback
         // @ts-ignore
         formEl.submit?.();
       }
     };
 
-    // capture phase to intercept before other handlers
     formEl.addEventListener("submit", onSubmitCapture, true);
     return () => formEl.removeEventListener("submit", onSubmitCapture, true);
-  }, [addCardLater, stripe, elements, cardholderName, complete]);
+  }, [addCardLater, stripe, elements, cardholderName, complete, form]);
 
   return (
     <>
@@ -227,7 +221,7 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
           <div className={"flex flex-col gap-1"}>
             <h3 className={"text-steel-blue font-semibold text-base"}>Debit / Credit Card</h3>
             <p className={helpBase}>
-              Secure card registration via Stripe. You can skip and add it later.
+              Add a card for subscription billing (Stripe). You can skip and add it later.
             </p>
           </div>
 
@@ -246,8 +240,8 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
           <div className={"bg-white/60 rounded-3xl p-6 flex flex-col gap-y-5"}>
             {!canUseStripe && (
               <div className="text-sm text-red-500 font-medium">
-                Stripe Elements is not available on this page. Make sure your registration page is wrapped
-                with <code>Elements</code> and a valid publishable key.
+                Stripe Elements is not available on this page. Make sure your register page is wrapped with{" "}
+                <code>Elements</code> and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is set.
               </div>
             )}
 
@@ -255,8 +249,8 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
               <label className={labelBase}>Cardholder name</label>
               <input
                 data-card-error={touched.name && !!fieldErrors.name}
-                className={elementBaseClass}
-                placeholder={"Full Name"}
+                className={fieldBase}
+                placeholder={"e.g. Kashif Iqbal"}
                 value={cardholderName}
                 onChange={(e) => setCardholderName(e.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, name: true }))}
@@ -267,22 +261,13 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
 
             <div>
               <label className={labelBase}>Card number</label>
-              <div
-                data-card-error={touched.number && !!fieldErrors.number}
-                className={elementBaseClass}
-              >
+              <div data-card-error={touched.number && !!fieldErrors.number} className={fieldBase}>
                 <CardNumberElement
-                    options={{
-    					...stripeElementOptions,
-    					disableLink: true, // ⚠️ only if you really want
-  						}}
+                  options={stripeElementOptions}
                   onChange={(e: StripeElementChangeEvent) => {
                     setComplete((c) => ({ ...c, number: e.complete }));
-                    if (e.error?.message) {
-                      setFieldErrors((prev) => ({ ...prev, number: e.error?.message }));
-                    } else {
-                      setFieldErrors((prev) => ({ ...prev, number: undefined }));
-                    }
+                    if (e.error?.message) setFieldErrors((p) => ({ ...p, number: e.error?.message }));
+                    else setFieldErrors((p) => ({ ...p, number: undefined }));
                   }}
                   onBlur={() => setTouched((t) => ({ ...t, number: true }))}
                 />
@@ -293,19 +278,13 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
             <div className={"grid grid-cols-1 sm:grid-cols-2 gap-4"}>
               <div>
                 <label className={labelBase}>Expiry</label>
-                <div
-                  data-card-error={touched.expiry && !!fieldErrors.expiry}
-                  className={elementBaseClass}
-                >
+                <div data-card-error={touched.expiry && !!fieldErrors.expiry} className={fieldBase}>
                   <CardExpiryElement
                     options={stripeElementOptions}
                     onChange={(e: StripeElementChangeEvent) => {
                       setComplete((c) => ({ ...c, expiry: e.complete }));
-                      if (e.error?.message) {
-                        setFieldErrors((prev) => ({ ...prev, expiry: e.error?.message }));
-                      } else {
-                        setFieldErrors((prev) => ({ ...prev, expiry: undefined }));
-                      }
+                      if (e.error?.message) setFieldErrors((p) => ({ ...p, expiry: e.error?.message }));
+                      else setFieldErrors((p) => ({ ...p, expiry: undefined }));
                     }}
                     onBlur={() => setTouched((t) => ({ ...t, expiry: true }))}
                   />
@@ -315,19 +294,13 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
 
               <div>
                 <label className={labelBase}>Security code (CVC)</label>
-                <div
-                  data-card-error={touched.cvc && !!fieldErrors.cvc}
-                  className={elementBaseClass}
-                >
+                <div data-card-error={touched.cvc && !!fieldErrors.cvc} className={fieldBase}>
                   <CardCvcElement
                     options={stripeElementOptions}
                     onChange={(e: StripeElementChangeEvent) => {
                       setComplete((c) => ({ ...c, cvc: e.complete }));
-                      if (e.error?.message) {
-                        setFieldErrors((prev) => ({ ...prev, cvc: e.error?.message }));
-                      } else {
-                        setFieldErrors((prev) => ({ ...prev, cvc: undefined }));
-                      }
+                      if (e.error?.message) setFieldErrors((p) => ({ ...p, cvc: e.error?.message }));
+                      else setFieldErrors((p) => ({ ...p, cvc: undefined }));
                     }}
                     onBlur={() => setTouched((t) => ({ ...t, cvc: true }))}
                   />
@@ -350,13 +323,11 @@ export default function ServiceRegistrationStep3({ form }: IServiceRegistrationS
 
         <Separator className={"bg-steel-blue/20"} />
 
-        {/* Keep your existing terms checkbox 
         <CustomCheckbox
           labelClassname={"text-sm"}
           label={"I accept the terms & conditions"}
           id={"service-register-terms-checkbox"}
         />
-		*/}
       </div>
     </>
   );

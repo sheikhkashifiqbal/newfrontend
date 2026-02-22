@@ -55,7 +55,7 @@ export default function ServiceRegistrationBottomButtons({
 							}
 
 							const regBtn : any = document.querySelector<HTMLButtonElement>('button.reg-company');
-							console.log("Step", step);
+							
 							if (step == 3) {
 								regBtn.click();
 							} else {

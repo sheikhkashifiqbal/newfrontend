@@ -247,14 +247,14 @@ function toId(value: unknown): number | null {
         for (const info of infos) {
           // spare part id (your Step-2 "category"/service selection)
           const sparepartsId = toId(info?.category);
-          console.log("sparepartsId:::", sparepartsId);
+         
           if (!sparepartsId) continue;
 
           // brand ids (multi-select)
           const brandIds: number[] = Array.isArray(info?.carBrands)
             ? info.carBrands.map(toId).filter((x: number | null): x is number => x !== null)
             : [];
-            console.log("Brands:::", brandIds);
+            
           if (brandIds.length === 0) continue;
 
           // states (multi-select: allow "new" and/or "used")
