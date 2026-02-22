@@ -47,13 +47,13 @@ export default function BrandsMultiSelector(
         // Accepts shapes like [{ brandName: "Toyota" }] or [{ name: "Toyota" }] or ["Toyota", ...]
         const mapped: { value: string; label: string }[] = Array.isArray(json)
           ? json.map((item: any) => {
-			console.log("item:::", item);
+			
               const label = (item?.brandName ?? item?.name ?? item) as string;
               const safeLabel = String(label);
               return { value: toValue(item.brandId), label: safeLabel };
             })
           : [];
-			console.log("Mapped:::", mapped);
+			
         if (alive && mapped.length) setApiBrands(mapped);
       } catch (err: any) {
         if (alive) setLoadError(err?.message || "Failed to load brands");

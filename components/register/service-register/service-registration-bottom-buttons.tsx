@@ -9,8 +9,8 @@ import ArrowRight from "@/assets/icons/register/arrow-narrow-right.svg";
 
 interface IServiceRegistrationBottomButtons {
 	form: any
-	step: 1 | 2 
-	setStep: (step: 1 | 2 ) => void
+	step: 1 | 2 | 3
+	setStep: (step: 1 | 2 | 3 ) => void
 	closeFormAndGoBack: () => void
 	openPopup: () => void
 }
@@ -37,10 +37,12 @@ export default function ServiceRegistrationBottomButtons({
 					Back
 					{/*</Link>*/}
 				</Button>
-				<CustomBlueBtn 
-						type={step === 1 ? 'button' : 'submit'}
-						onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-							if(step < 2) {
+				
+					
+				
+				<CustomBlueBtn
+						onClick={async () => {
+							if(step < 3) {
 								// @ts-ignore
 								setStep(step + 1)
 								// const isValid = await form.trigger()
@@ -50,22 +52,26 @@ export default function ServiceRegistrationBottomButtons({
 								// } else {
 								//
 								// }
-								
 							}
+
 							const regBtn : any = document.querySelector<HTMLButtonElement>('button.reg-company');
-							console.log("Step", step);
-							if (step == 2) {
+							
+							if (step == 3) {
 								regBtn.click();
 							} else {
 								// optional fallback: submit the current form if the target button isn't found
 								//e.currentTarget.form?.requestSubmit?.();
 							}
+							
+	
 						}}
-						
 						className={'rounded-[12px] justify-center flex items-center gap-x-4 py-3 px-6'} show={"children"}>
-					{step < 2 ? "Next" : "Register Company & Branches"}
+					{step < 3 ? "Next" : "Register Company & Branches"}
+
 					<ArrowRight className={'!size-6'}/>
 				</CustomBlueBtn>
 			</div>
+			
 	)
+	
 }

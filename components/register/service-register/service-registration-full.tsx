@@ -10,7 +10,7 @@ import ServiceRegistrationHeader from "@/components/register/service-register/se
 import ServiceRegistrationBottomButtons
   from "@/components/register/service-register/service-registration-bottom-buttons";
 import ServiceRegistrationStep2 from "@/components/register/service-register/service-registration-step-2";
-//import ServiceRegistrationStep3 from "@/components/register/service-register/service-registration-step-3";
+import ServiceRegistrationStep3 from "@/components/register/service-register/service-registration-step-3";
 import {fileSchema} from "@/lib/utils";
 
 // API endpoints
@@ -21,13 +21,17 @@ const API_BRANCHES  = `${BASE_URL}/api/branches`;
 const API_SERVICES  = `${BASE_URL}/api/service-entities`;
 const API_BRANCH_BRAND_SERVICES = `${BASE_URL}/api/branch-brand-services`;
 
+// Stripe endpoints (Spring Boot)
+const API_STRIPE_VERIFY_CARD = `${BASE_URL}/api/stripe/verify-card`;
+const API_STRIPE_COMPANY_SUBS = `${BASE_URL}/api/stripe-company-subs`;
+
 interface IServiceRegistration {
   closeFormAndGoBack: () => void
   openPopup: () => void
 }
 
 function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegistration) {
-  const [step,setStep] = useState<1 | 2 >(1);
+  const [step,setStep] = useState<1 | 2 | 3 >(1);
 
   // Load lists (services)
   const [services, setServices] = useState<
@@ -138,6 +142,10 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     managerMobileNumber: z.string({required_error: 'mobile number is required'}).min(3, "mobile number must be at least 3 characters"),
     email: z.string({required_error: 'email is required'}).email('provide a valid email address'),
     website: optionalUrl,
+    // Stripe (Step-3)
+    addDebitCardLater: z.boolean().optional(),
+    stripePaymentMethodId: z.string().optional(),
+    cardholderName: z.string().optional(),
     password: z.string({required_error: 'password is required'}).min(8, 'password must be at least 8 characters'),
     repeatPassword: z.string({required_error: 'repeat password is required'}),
     tinPhoto: fileSchema,
@@ -161,6 +169,11 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     },
     mode: "onChange"
   });
+
+  async function toastError(message: string) {
+    if (typeof window !== "undefined") window.alert(message);
+    console.error(message);
+  }
 
   // helpers
   function ts() {
@@ -247,6 +260,61 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     if (dupErrors.length) {
       dupErrors.forEach(({ path, message }) => form.setError(path as any, { type: "server", message }));
       return; // ⛔ stop submit (no company/branch POST)
+    }
+
+
+    // ---- STRIPE: VERIFY CARD FIRST (before /api/upload, /api/companies, /api/branches, etc.) ----
+    // If user selected "Add debit card later", skip verification and skip saving /api/stripe-company-subs.
+    const addDebitCardLater = !!(values as any).addDebitCardLater;
+    const stripePaymentMethodId = (values as any).stripePaymentMethodId as string | undefined;
+    const cardholderName =
+      (values as any).cardholderName as string | undefined
+        ?? `${values.managerName} ${values.managerSurname}`;
+
+    let stripeVerifiedPayload: any = null;
+
+    if (!addDebitCardLater) {
+      if (!stripePaymentMethodId) {
+        await toastError("Please enter card details.");
+        return;
+      }
+
+      const verifyRes = await fetch(API_STRIPE_VERIFY_CARD, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentMethodId: stripePaymentMethodId,
+          cardholderName,
+          email: values.email,
+        }),
+      });
+
+      if (!verifyRes.ok) {
+        let msg = "Card is not validated successfully. Please enter valid card details and try again.";
+        try {
+          const txt = await verifyRes.text();
+          if (txt) msg = `${msg}
+${txt}`;
+        } catch {
+          // ignore
+        }
+        await toastError(msg);
+        return; // ⛔ stop: do not call upload/companies/branches/... 
+      }
+
+      stripeVerifiedPayload = await verifyRes.json().catch(() => ({}));
+
+      // Support both shapes:
+      // A) { verified:true, stripeCustomerId,... }
+      // B) { stripeCustomerId,... }
+      if (stripeVerifiedPayload?.verified === false) {
+        await toastError(
+          stripeVerifiedPayload?.message
+            ? `Card is not validated successfully. ${stripeVerifiedPayload.message}`
+            : "Card is not validated successfully."
+        );
+        return;
+      }
     }
 
     // ---- CONTINUE normal flow: upload & POST ----
@@ -348,6 +416,27 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
       }
     }
 
+    // ---- FINAL STEP: save stripe_company_subs ONLY if card was verified ----
+    if (stripeVerifiedPayload) {
+      const stripeCompanySubsPayload = {
+        companyId,
+        stripeCustomerId: stripeVerifiedPayload.stripeCustomerId ?? stripeVerifiedPayload.stripe_customer_id,
+        stripeSubscriptionId: stripeVerifiedPayload.stripeSubscriptionId ?? stripeVerifiedPayload.stripe_subscription_id,
+        paymentMethodId: stripeVerifiedPayload.paymentMethodId ?? stripeVerifiedPayload.payment_method_id,
+        status: stripeVerifiedPayload.status ?? stripeVerifiedPayload.subscription_status ?? "active",
+      };
+
+      const subsRes = await fetch(API_STRIPE_COMPANY_SUBS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(stripeCompanySubsPayload),
+      });
+
+      if (!subsRes.ok) {
+        throw new Error(`stripe-company-subs failed: ${subsRes.status} ${await subsRes.text()}`);
+      }
+    }
+
     // Success
     openPopup?.();
   }
@@ -360,7 +449,7 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
         <form className={'flex flex-col gap-y-5'} onSubmit={form.handleSubmit(onSubmit)}>
           {step === 1 && <ServiceRegistrationStep1 form={form} />}
           {step === 2 && <ServiceRegistrationStep2 form={form} services={services} brands={brands} loadingLists={loadingLists} />}
-
+          	{step === 3 && <ServiceRegistrationStep3 form={form} /> }
           <div className="pt-6">
             <button type="submit" className="reg-company hidden">Register Company & Branches</button>
           </div>

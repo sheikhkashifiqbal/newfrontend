@@ -41,6 +41,10 @@ export const UserBookingUpcomingTabColumns = (onCancel: (row: UserBookingUpcomin
 		header: "Service type"
 	},
 	{
+		accessorKey: "price",
+		header: "Price"
+	},
+	{
 		accessorKey: "askedSpareParts",
 		header: "Spare parts asked by service",
 		cell: ({row}) => {

@@ -17,6 +17,11 @@ import RegisterFinishPopup from "@/components/register/register-finish-popup";
 import ServiceRegistration from "@/components/register/service-register/service-registration-full";
 import StoreRegistrationFull from "@/components/register/store-register/store-registration-full";
 
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+
 export default function RegisterPage() {
 	const router = useRouter();
 	const [selectedChoice,setSelectedChoice] = useState(0);
@@ -82,8 +87,12 @@ export default function RegisterPage() {
 							</div>
 					)}
 					{showForm && selectedChoice === 0 && <UserRegistration openPopup={() => setIsPopupOpen(true)} closeFormAndGoBack={closeFormAndComeBack} />}
-					{showForm && selectedChoice === 1 && <ServiceRegistration openPopup={() => setIsPopupOpen(true)} closeFormAndGoBack={closeFormAndComeBack} />}
-					{showForm && selectedChoice === 2 && <StoreRegistrationFull openPopup={() => setIsPopupOpen(true)} closeFormAndGoBack={closeFormAndComeBack} />}
+					{showForm && selectedChoice === 1 && (
+						<Elements stripe={stripePromise}>
+							<ServiceRegistration openPopup={() => setIsPopupOpen(true)} closeFormAndGoBack={closeFormAndComeBack} />
+						</Elements>
+					)}
+					{showForm && selectedChoice === 2 &&  <Elements stripe={stripePromise}><StoreRegistrationFull openPopup={() => setIsPopupOpen(true)} closeFormAndGoBack={closeFormAndComeBack} /> </Elements>}
 				</Container>
 
 				<RegisterFinishPopup isOpen={isPopupOpen} closePopup={() => setIsPopupOpen(false)}/>

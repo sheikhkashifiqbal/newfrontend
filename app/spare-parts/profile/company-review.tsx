@@ -40,7 +40,7 @@ export default function CompanyReviews({ branchId }: { branchId?: number }) {
     if (!branchId) return;
     (async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/rate-experiences/branch-summary`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/spareparts-rating`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ branchId: branchId })
