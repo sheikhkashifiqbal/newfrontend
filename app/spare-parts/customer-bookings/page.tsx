@@ -3,8 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import NavTabs from "@/components/nav-tabs";
 import SparePartsTable from "@/components/spare-parts/requests-table";
 import UserReviewExperiencePopup from "@/components/dashboard/user/my-bookings/completed-tab/user-review-experience-popup";
-
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 // UI tab labels used throughout the page
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+)
 export type TabStatus = "Accepted offers" | "Accepted requests" | "Pending";
 
 // Server response shape (item-level)
