@@ -21,10 +21,6 @@ const API_BRANCHES  = `${BASE_URL}/api/branches`;
 const API_SERVICES  = `${BASE_URL}/api/service-entities`;
 const API_BRANCH_BRAND_SERVICES = `${BASE_URL}/api/branch-brand-services`;
 
-// Stripe endpoints (Spring Boot)
-const API_STRIPE_VERIFY_CARD = `${BASE_URL}/api/stripe/verify-card`;
-const API_STRIPE_COMPANY_SUBS = `${BASE_URL}/api/stripe-company-subs`;
-
 interface IServiceRegistration {
   closeFormAndGoBack: () => void
   openPopup: () => void
@@ -94,6 +90,7 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     managerSurname: z.string({required_error: 'manager surname is required'}).min(3, "manager surname must be at least 3 characters"),
     address: z.string({required_error: 'address is required'}).min(3, "address must be at least 3 characters"),
     city: z.string({ required_error: 'city is required'}).min(1, "city is required"),
+    city_id: z.string({ required_error: 'city_id is required' }).min(1, "city_id is required"),
     location: z.string({required_error: 'location is required'}).min(3, "location must be at least 3 characters"),
     workDays: z.array(z.string({required_error: "Select work days"}), {required_error: "Select work days"})
       .min(1, {message: "Select at least 1 work day"}).max(7),
@@ -142,10 +139,6 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     managerMobileNumber: z.string({required_error: 'mobile number is required'}).min(3, "mobile number must be at least 3 characters"),
     email: z.string({required_error: 'email is required'}).email('provide a valid email address'),
     website: optionalUrl,
-    // Stripe (Step-3)
-    addDebitCardLater: z.boolean().optional(),
-    stripePaymentMethodId: z.string().optional(),
-    cardholderName: z.string().optional(),
     password: z.string({required_error: 'password is required'}).min(8, 'password must be at least 8 characters'),
     repeatPassword: z.string({required_error: 'repeat password is required'}),
     tinPhoto: fileSchema,
@@ -169,11 +162,6 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     },
     mode: "onChange"
   });
-
-  async function toastError(message: string) {
-    if (typeof window !== "undefined") window.alert(message);
-    console.error(message);
-  }
 
   // helpers
   function ts() {
@@ -262,61 +250,6 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
       return; // ⛔ stop submit (no company/branch POST)
     }
 
-
-    // ---- STRIPE: VERIFY CARD FIRST (before /api/upload, /api/companies, /api/branches, etc.) ----
-    // If user selected "Add debit card later", skip verification and skip saving /api/stripe-company-subs.
-    const addDebitCardLater = !!(values as any).addDebitCardLater;
-    const stripePaymentMethodId = (values as any).stripePaymentMethodId as string | undefined;
-    const cardholderName =
-      (values as any).cardholderName as string | undefined
-        ?? `${values.managerName} ${values.managerSurname}`;
-
-    let stripeVerifiedPayload: any = null;
-
-    if (!addDebitCardLater) {
-      if (!stripePaymentMethodId) {
-        await toastError("Please enter card details.");
-        return;
-      }
-
-      const verifyRes = await fetch(API_STRIPE_VERIFY_CARD, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentMethodId: stripePaymentMethodId,
-          cardholderName,
-          email: values.email,
-        }),
-      });
-
-      if (!verifyRes.ok) {
-        let msg = "Card is not validated successfully. Please enter valid card details and try again.";
-        try {
-          const txt = await verifyRes.text();
-          if (txt) msg = `${msg}
-${txt}`;
-        } catch {
-          // ignore
-        }
-        await toastError(msg);
-        return; // ⛔ stop: do not call upload/companies/branches/... 
-      }
-
-      stripeVerifiedPayload = await verifyRes.json().catch(() => ({}));
-
-      // Support both shapes:
-      // A) { verified:true, stripeCustomerId,... }
-      // B) { stripeCustomerId,... }
-      if (stripeVerifiedPayload?.verified === false) {
-        await toastError(
-          stripeVerifiedPayload?.message
-            ? `Card is not validated successfully. ${stripeVerifiedPayload.message}`
-            : "Card is not validated successfully."
-        );
-        return;
-      }
-    }
-
     // ---- CONTINUE normal flow: upload & POST ----
     const tin = values.tinPhoto as File;
     const tinStamped = stampedNameFromFile(tin);
@@ -365,6 +298,7 @@ ${txt}`;
         branchManagerSurname: b.managerSurname,
         branchAddress: b.address,
         city: b.city,
+        city_id: (b as any).city_id,
         location: b.location,
         workDays: (b.workDays || []) as string[],
         from: (b.workHours?.[0] ?? "") as string,
@@ -413,27 +347,6 @@ ${txt}`;
             })
           )
         );
-      }
-    }
-
-    // ---- FINAL STEP: save stripe_company_subs ONLY if card was verified ----
-    if (stripeVerifiedPayload) {
-      const stripeCompanySubsPayload = {
-        companyId,
-        stripeCustomerId: stripeVerifiedPayload.stripeCustomerId ?? stripeVerifiedPayload.stripe_customer_id,
-        stripeSubscriptionId: stripeVerifiedPayload.stripeSubscriptionId ?? stripeVerifiedPayload.stripe_subscription_id,
-        paymentMethodId: stripeVerifiedPayload.paymentMethodId ?? stripeVerifiedPayload.payment_method_id,
-        status: stripeVerifiedPayload.status ?? stripeVerifiedPayload.subscription_status ?? "active",
-      };
-
-      const subsRes = await fetch(API_STRIPE_COMPANY_SUBS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stripeCompanySubsPayload),
-      });
-
-      if (!subsRes.ok) {
-        throw new Error(`stripe-company-subs failed: ${subsRes.status} ${await subsRes.text()}`);
       }
     }
 

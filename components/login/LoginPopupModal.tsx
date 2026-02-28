@@ -28,7 +28,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const LS_KEYS = {
   authResponse: "auth_response",
-  authRole: "auth_role",
+  userType: "user_type",
   rememberMe: "remember_me",
   rememberEmail: "remember_email",
 } as const;
@@ -161,7 +161,7 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
       const data = await res.json();
 
       localStorage.setItem(LS_KEYS.authResponse, JSON.stringify(data));
-      localStorage.setItem(LS_KEYS.authRole, loginType);
+      localStorage.setItem(LS_KEYS.userType, data.user_type);
 
       if (rememberMe) {
         localStorage.setItem(LS_KEYS.rememberMe, "true");
