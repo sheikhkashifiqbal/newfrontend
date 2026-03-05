@@ -3,14 +3,16 @@ import AccountDetails from "@/components/booking/AccountDetails";
 import MyBranches from "@/components/booking/MyBranches";
 import MyPlans from "@/components/booking/MyPlans";
 import MyServices from "@/components/booking/MyServices";
+import MySpareParts from "@/components/booking/MySpareParts";
 import WorkSchedule from "@/components/booking/WorkSchedule";
 import NavTabs from "@/components/nav-tabs";
 import SecurityDetails from "@/components/profile/security-details";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type TabStatus =
   | "Work schedule"
   | "My services"
+  | "My Spare parts"
   | "Account details"
   | "Security details"
   | "My Branches"
@@ -23,6 +25,7 @@ const ProfileInfoPage = () => {
     { branch_id: number; branch_name: string }[]
   >([]);
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
+  const [userType, setUserType] = useState<string>("");
 
   // Load auth + branch once page loads
   useEffect(() => {
@@ -57,6 +60,12 @@ const ProfileInfoPage = () => {
 
       setSelectedBranch(Number(currentBranchId));
       localStorage.setItem("branch_id", currentBranchId);
+
+      // ✅ Read user_type from localStorage and normalize common typos
+      const rawUserType = (localStorage.getItem("user_type") || "").trim().toLowerCase();
+      const normalizedUserType =
+        rawUserType === "sparparts_store" ? "spareparts_store" : rawUserType;
+      setUserType(normalizedUserType);
     } catch (err) {
       console.error("Error reading auth_response:", err);
       window.location.href = "/";
@@ -71,13 +80,57 @@ const ProfileInfoPage = () => {
     window.location.reload(); // Full reload as required
   };
 
-  if (selectedBranch === null) return null; // wait before rendering
+
+   const isSparepartsStore: boolean =
+    userType === "spareparts_store" ||
+    userType === "sparparts_store";
+  const isServicesStore = userType === "services_store" || !userType;
+
+
+  const filteredTabItems = useMemo(() => {
+    if (isSparepartsStore) {
+      return tabItems.filter((t) => t.label !== "My bookings");
+    }
+    return tabItems;
+  }, [userType]);
+
+  const profileTabs: TabStatus[] = useMemo(() => {
+    const base: TabStatus[] = [
+      "Work schedule",
+      "Account details",
+      "Security details",
+      "My Branches",
+      "My plans",
+    ];
+    // Show My services only for services_store
+    if (userType === "services_store") {
+      base.splice(1, 0, "My services");
+    }
+// Show My Spare parts only for spareparts_store
+    if (isSparepartsStore) {
+      base.splice(1, 0, "My Spare parts");
+    }
+    return base;
+  }, [userType]);
+
+  // If current active tab becomes hidden after switching user_type, reset gracefully
+  useEffect(() => {
+    if (!profileTabs.includes(activeTab)) {
+      setActiveTab(profileTabs[0]);
+    }
+  }, [profileTabs, activeTab]);
+
+  const isLoading = selectedBranch === null;
+
+  if (isLoading) {
+    return <div className="bg-[#F8F9FA] min-h-screen" />;
+  }
 
   return (
     <div className="bg-[#F8F9FA] min-h-screen">
       {/* Main Top Navigation Tabs */}
       <main className="max-w-[1120px] mx-auto px-4 py-8">
-        <NavTabs tabItems={tabItems} defaultActiveTab="Profile info" />
+        <NavTabs tabItems={filteredTabItems} defaultActiveTab="Profile info" />
       </main>
 
       {/* Title Section */}
@@ -117,16 +170,7 @@ const ProfileInfoPage = () => {
       {/* Inner Profile Section Tabs */}
       <section className="border-b border-gray-200 mb-8">
         <div className="flex gap-3 lg:justify-between lg:gap-12 max-w-[1120px] mx-auto px-4 flex-wrap">
-          {(
-            [
-              "Work schedule",
-              "My services",
-              "Account details",
-              "Security details",
-              "My Branches",
-              "My plans",
-            ] as TabStatus[]
-          ).map((tab) => {
+          {(profileTabs as TabStatus[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <button
@@ -166,6 +210,7 @@ const ProfileInfoPage = () => {
       <section className="max-w-[1120px] mx-auto px-4">
         {activeTab === "Work schedule" && <WorkSchedule />}
         {activeTab === "My services" && <MyServices />}
+        {activeTab === "My Spare parts" && <MySpareParts />}
         {activeTab === "Account details" && <AccountDetails />}
         {activeTab === "Security details" && <SecurityDetails />}
         {activeTab === "My Branches" && <MyBranches />}

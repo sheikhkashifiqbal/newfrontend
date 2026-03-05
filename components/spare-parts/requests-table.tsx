@@ -46,6 +46,9 @@ const normalizeCurrency = (value: any): string => {
 // ✅ Rate sparepart experience API (as per requirement)
 const RATE_API_URL = `${BASE_URL}/api/rate-sparepart-experiences`;
 
+// ✅ Payment status update API
+const PAYMENT_STATUS_API_URL = `${BASE_URL}/api/spare-parts/request-details/payment-status/by-request`;
+
 /* -------------------- Tiny Toast (no dependency) -------------------- */
 type ToastType = "success" | "error";
 const useToast = () => {
@@ -573,8 +576,23 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
       }
 
       // 3) Payment success -> call existing accept API
-      await acceptOrDecline(payRequestId, "accepted_offer");
-      showToast("Payment successful. Request accepted!", "success");
+      await fetch(`${BASE_URL}/api/spareparts-requests/${payRequestId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestStatus: "accepted_offer" }),
+      });
+
+      // 4) After accept API -> call payment status API
+      await fetch(PAYMENT_STATUS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sparepartsrequest_id: payRequestId,
+          payment_status: "paid"
+        }),
+      });
+
+      showToast("Payment successful. Request accepted and payment status updated!", "success");
       closePaymentModal();
     } catch (e: any) {
       console.error(e);
@@ -1061,7 +1079,7 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                     className="mt-1 w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#212529] outline-none focus:ring-1 focus:ring-[#3F72AF]"
                     value={payCardholderName}
                     onChange={(e) => setPayCardholderName(e.target.value)}
-                    placeholder="e.g. Kashif Iqbal"
+                    placeholder="e.g. Full Name"
                   />
                 </div>
 
