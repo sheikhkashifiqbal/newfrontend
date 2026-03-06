@@ -64,7 +64,7 @@ const statusMap: Record<string, TabStatus> = {
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const API_URL = `${BASE_URL}/api/spare-parts/offers/store-branch`;
 
-const tabItems = [
+const baseTabItems = [
   {
     label: "My bookings",
     icon: (
@@ -120,8 +120,21 @@ export default function SparePartsRequestPage() {
   const [sparePartRequests, setSparePartRequests] = useState<SparePartRequestUI[]>([]);
   const [branchId, setBranchId] = useState<number | null>(null);
 
+  // NEW: localStorage user_type based top nav control
+  const [userType, setUserType] = useState<string>("");
+
   // NEW: hold branch list from auth_response for dropdown
   const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
+
+  // ✅ Read user_type from localStorage
+  useEffect(() => {
+    try {
+      const storedUserType = localStorage.getItem("user_type") || "";
+      setUserType(storedUserType);
+    } catch {
+      setUserType("");
+    }
+  }, []);
 
   // ✅ UPDATED: get branch_id from localStorage 'branch_id' first, then fallback to auth_response
   useEffect(() => {
@@ -197,6 +210,24 @@ export default function SparePartsRequestPage() {
       window.location.href = "/";
     }
   }, []);
+
+  // ✅ NEW: dynamically control top tabs using user_type
+  const tabItems = useMemo(() => {
+    if (userType === "spareparts_store") {
+      return baseTabItems.filter((tab) => tab.label !== "My bookings");
+    }
+
+    if (userType === "services_store") {
+      return baseTabItems.filter((tab) => tab.label !== "Spare part request");
+    }
+
+    return baseTabItems;
+  }, [userType]);
+
+  const defaultTopTab = useMemo(() => {
+    if (userType === "services_store") return "My bookings";
+    return "Spare part request";
+  }, [userType]);
 
   // ⬇ Fetch using branch_id instead of user_id
   useEffect(() => {
@@ -324,7 +355,7 @@ export default function SparePartsRequestPage() {
       <section className="max-w-[1120px] mx-auto px-4 py-8">
         <NavTabs
           tabItems={tabItems}
-          defaultActiveTab="Spare part request"
+          defaultActiveTab={defaultTopTab}
           onChange={handleTopTabsChange}
         />
       </section>

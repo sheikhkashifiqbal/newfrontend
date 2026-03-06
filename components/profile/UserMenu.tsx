@@ -39,9 +39,25 @@ const UserMenu: React.FC = () => {
     }
   }, []);
 
-  // ✅ Profile Click Handler — NEW REQUIREMENT
+  // ✅ Profile Click Handler — UPDATED WITH user_type REQUIREMENT
   const handleProfileClick = () => {
     try {
+      const userType = localStorage.getItem("user_type");
+
+      // New requirement:
+      // if user_type is spareparts_store -> redirect to spare-parts/customer-bookings
+      if (userType === "spareparts_store") {
+        window.location.href = "/spare-parts/branch-bookings";
+        return;
+      }
+
+      // if user_type is services_store -> redirect to services/branch-bookings
+      if (userType === "services_store") {
+        window.location.href = "/services/branch-bookings";
+        return;
+      }
+
+      // Existing fallback logic preserved
       const authData = localStorage.getItem("auth_response");
       if (authData) {
         const parsed = JSON.parse(authData);
@@ -113,7 +129,6 @@ const UserMenu: React.FC = () => {
               My Bookings
             </li>
 
-           
             <li
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
               onClick={handleLogout}

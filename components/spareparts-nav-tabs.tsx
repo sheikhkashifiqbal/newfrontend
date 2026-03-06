@@ -1,5 +1,5 @@
 // components/NavTabs.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type TabItem = {
     label: string;
@@ -14,6 +14,10 @@ type NavTabsProps = {
 
 const NavTabs: React.FC<NavTabsProps> = ({ tabItems, defaultActiveTab, onChange }) => {
     const [activeTab, setActiveTab] = useState(defaultActiveTab || tabItems[0]?.label);
+
+    useEffect(() => {
+        setActiveTab(defaultActiveTab || tabItems[0]?.label);
+    }, [defaultActiveTab, tabItems]);
 
     const handleTabClick = (label: string) => {
         setActiveTab(label);
