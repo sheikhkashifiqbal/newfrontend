@@ -165,6 +165,7 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
       localStorage.setItem(LS_KEYS.authRole, loginType);
       // Store the actual user type: "user", "service", or "store"
       localStorage.setItem(LS_KEYS.userType, values.accountType);
+      localStorage.setItem(LS_KEYS.userType, data.user_type);
 
       if (rememberMe) {
         localStorage.setItem(LS_KEYS.rememberMe, "true");

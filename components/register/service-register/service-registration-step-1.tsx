@@ -82,7 +82,7 @@ export default function ServiceRegistrationStep1({
         const data = await res.json();
         const mapped = Array.isArray(data)
           ? data.map((c: any) => ({
-              id: String(c?.city ?? c?.id ?? c),
+              id: String(c?.id ?? c?.id ?? c),
               name: String(c?.city ?? c?.name ?? c),
             }))
           : [];
@@ -281,20 +281,25 @@ export default function ServiceRegistrationStep1({
               {/* City selector (after Address, before Location) */}
               <div className={divGridClassname}>
                 <CustomFormFieldSelector
-                  name={`branches.${index}.city`}
+                  name={`branches.${index}.city_id`}
                   label={"City *"}
                   control={form.control}
                   Children={(onChange, hasError, value) => (
                     <select
                       className={`h-14 w-full border rounded p-2 ${hasError ? 'border-vibrant-red' : 'border-soft-gray'}`}
                       value={value ?? ""}
-                      onChange={(e) => onChange(e.target.value)}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        onChange(selectedId);
+                        const selectedName = (e.target.selectedOptions && e.target.selectedOptions[0]) ? (e.target.selectedOptions[0].textContent || "").trim() : "";
+                        form.setValue(`branches.${index}.city`, selectedName, { shouldValidate: true, shouldDirty: true });
+                      }}
                     >
                       <option value="" disabled>
                         {loadingCities ? "Loading cities..." : (citiesError ? "Failed to load cities" : "Select city")}
                       </option>
                       {cities.map((c) => (
-                        <option key={String(c.id)} value={c.name}>
+                        <option key={String(c.id)} value={String(c.id)}>
                           {c.name}
                         </option>
                       ))}

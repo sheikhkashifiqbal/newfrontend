@@ -1,4 +1,13 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 // ⚠️ Update the import path to where your page lives in your app
 import type {
   SparePartRequestUI,
@@ -16,9 +25,29 @@ interface SparePartsTableProps {
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CLASS_OPTIONS = ["A-class", "B-class", "C-class"] as const;
 const API_URL = `${BASE_URL}/api/spare-parts/offers/by-user`;
+// ✅ Stripe: backend endpoint to create PaymentIntent and return { clientSecret }
+const STRIPE_CREATE_PAYMENT_INTENT_URL = `${BASE_URL}/api/stripe/create-payment-intent`;
+
+// ✅ Stripe Elements provider: this file uses useStripe()/useElements().
+// Wrapping the inner component here prevents:
+// "Could not find Elements context; You need to wrap... in an <Elements> provider."
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
+);
+
+// ✅ Currency helpers
+type SparePartItemWithCurrency = ApiSparePartItem & { currency?: string };
+const normalizeCurrency = (value: any): string => {
+  const v = String(value ?? "").trim();
+  if (!v) return "USD";
+  return v.toUpperCase();
+};
 
 // ✅ Rate sparepart experience API (as per requirement)
 const RATE_API_URL = `${BASE_URL}/api/rate-sparepart-experiences`;
+
+// ✅ Payment status update API
+const PAYMENT_STATUS_API_URL = `${BASE_URL}/api/spare-parts/request-details/payment-status/by-request`;
 
 /* -------------------- Tiny Toast (no dependency) -------------------- */
 type ToastType = "success" | "error";
@@ -51,14 +80,14 @@ const useToast = () => {
 };
 /* ------------------------------------------------------------------- */
 
-const SparePartsTable: React.FC<SparePartsTableProps> = ({
+const SparePartsTableInner: React.FC<SparePartsTableProps> = ({
   services = [],
   activeTab = "Accepted offers",
   onStatusChange,
   onReviewClick,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalItems, setModalItems] = useState<ApiSparePartItem[]>([]);
+  const [modalItems, setModalItems] = useState<SparePartItemWithCurrency[]>([]);
   const [modalCarPart, setModalCarPart] = useState<string>("");
   const [modalRequestId, setModalRequestId] = useState<number | null>(null);
   const [modalVin, setModalVin] = useState<string>("");
@@ -72,6 +101,18 @@ const SparePartsTable: React.FC<SparePartsTableProps> = ({
   const [reviewComment, setReviewComment] = useState<string>("");
   const [ratingError, setRatingError] = useState<string>("");
   const [descriptionError, setDescriptionError] = useState<string>("");
+
+  // ✅ Pay & Accept (Stripe) modal state (Accepted requests tab)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [payRequestId, setPayRequestId] = useState<number | null>(null);
+  const [payTotalAmount, setPayTotalAmount] = useState<number>(0);
+  const [payCurrency, setPayCurrency] = useState<string>("USD");
+  const [payCardholderName, setPayCardholderName] = useState<string>("");
+  const [paying, setPaying] = useState<boolean>(false);
+  const [payError, setPayError] = useState<string>("");
+
+  const stripe = useStripe();
+  const elements = useElements();
 
   // ✅ map: per-row reviewed status (only updates respective row)
   const [reviewedMap, setReviewedMap] = useState<Record<number, boolean>>({});
@@ -201,12 +242,13 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
         setModalVin(row.viN || "");
         setModalManagerMobile(row.manager_mobile || "");
 
-        const details: ApiSparePartItem[] = (row.spare_part || []).map((d: any) => ({
+                const details: SparePartItemWithCurrency[] = (row.spare_part || []).map((d: any) => ({
           id: d.id,
           sparepartsrequest_id: d.sparepartsrequest_id ?? row.sparepartsrequest_id,
           spare_part: d.spare_part,
           class_type: d.class_type,
           qty: d.qty,
+          currency: normalizeCurrency(d.currency),
           price: d.price,
         }));
         setModalItems(details);
@@ -230,7 +272,7 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
 
     // immediate visual refresh from props
     setModalCarPart(carPart || "");
-    setModalItems([...(items || [])]);
+    setModalItems((items || []).map((it: any) => ({ ...it, currency: normalizeCurrency(it?.currency) })));
     setModalVin(vin || "");
     setModalManagerMobile(managerMobile || "");
 
@@ -446,6 +488,121 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
     }
   };
 
+  // ✅ Open Stripe payment modal for "Pay & Accept"
+  const openPaymentModal = (row: SparePartRequestUI) => {
+    const requestId = (row as any)?.sparepartsrequest_id ?? null;
+    const items: any[] = Array.isArray((row as any)?.spareParts) ? (row as any).spareParts : [];
+    const total = items.reduce((sum, it) => sum + (Number(it?.price) || 0), 0);
+    const cur = normalizeCurrency(items?.[0]?.currency);
+    setPayRequestId(requestId);
+    setPayTotalAmount(total);
+    setPayCurrency(cur);
+    setPayCardholderName("");
+    setPayError("");
+    setPaymentModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setPaymentModalOpen(false);
+    setPayRequestId(null);
+    setPayTotalAmount(0);
+    setPayCurrency("USD");
+    setPayCardholderName("");
+    setPayError("");
+    setPaying(false);
+  };
+
+  const handlePayAndAccept = async () => {
+    if (!payRequestId) {
+      setPayError("Missing request id.");
+      return;
+    }
+    if (!stripe || !elements) {
+      setPayError("Stripe is not ready on this page. Wrap this page with <Elements> and try again.");
+      return;
+    }
+    if (!payCardholderName.trim()) {
+      setPayError("Full name is required.");
+      return;
+    }
+    const cardNumberEl = elements.getElement(CardNumberElement);
+    if (!cardNumberEl) {
+      setPayError("Card input not available.");
+      return;
+    }
+
+    try {
+      setPaying(true);
+      setPayError("");
+
+      const amountInCents = Math.round((Number(payTotalAmount) || 0) * 100);
+      if (!amountInCents || amountInCents <= 0) {
+        setPayError("Amount must be greater than 0.");
+        setPaying(false);
+        return;
+      }
+
+      // 1) Create PaymentIntent (backend - Spring Boot)
+      const piRes = await fetch(STRIPE_CREATE_PAYMENT_INTENT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountInCents,
+          currency: String(payCurrency || "USD").toLowerCase(),
+          sparepartsrequest_id: payRequestId,
+          description: `Spare parts payment for request ${payRequestId}`,
+        }),
+      });
+      if (!piRes.ok) {
+        const t = await piRes.text().catch(() => "");
+        throw new Error(t || `Failed to create payment intent (${piRes.status})`);
+      }
+      const piJson = await piRes.json().catch(() => ({}));
+      const clientSecret = (piJson as any)?.clientSecret || (piJson as any)?.client_secret;
+      if (!clientSecret) throw new Error("clientSecret not returned by backend.");
+
+      // 2) Confirm card payment
+      const confirm = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardNumberEl,
+          billing_details: { name: payCardholderName.trim() },
+        },
+      });
+      if (confirm.error) {
+        throw new Error(confirm.error.message || "Payment failed.");
+      }
+      if (confirm.paymentIntent?.status !== "succeeded") {
+        throw new Error(`Payment not successful. Status: ${confirm.paymentIntent?.status}`);
+      }
+
+      // 3) Payment success -> call existing accept API
+      await fetch(`${BASE_URL}/api/spareparts-requests/${payRequestId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestStatus: "accepted_offer" }),
+      });
+
+      // 4) After accept API -> call payment status API
+      await fetch(PAYMENT_STATUS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sparepartsrequest_id: payRequestId,
+          payment_status: "paid"
+        }),
+      });
+
+      showToast("Payment successful. Request accepted and payment status updated!", "success");
+      closePaymentModal();
+    } catch (e: any) {
+      console.error(e);
+      setPayError(e?.message || "Payment failed.");
+      showToast("Payment failed", "error");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const addNewRow = () => {
     if (!editMode) return;
     setModalItems((prev) => [
@@ -495,7 +652,8 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
     return {
       showAction,
       showReview,
-      sparePartsButtonLabel: activeTab === "Pending" ? "View/Edit" : "View",
+      sparePartsButtonLabel:
+        activeTab === "Pending" || activeTab === "Accepted requests" ? "View/Edit" : "View",
       canEditSpareParts: activeTab === "Pending",
       showAcceptDecline: activeTab === "Accepted requests",
     };
@@ -566,9 +724,9 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
 
                             <button
                               className="py-1.5 px-3 bg-[#E7F8ED] border rounded-[8px] text-green-700 font-semibold text-xs"
-                              onClick={() => acceptOrDecline(r.sparepartsrequest_id, "accepted_offer")}
+                              onClick={() => openPaymentModal(r)}
                             >
-                              Accept
+                              Pay &amp; Accept
                             </button>
 
                             <button
@@ -676,9 +834,10 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                 <>
                   {/* Table headers */}
                   <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
-                    <span className="col-span-5">Part name</span>
+                    <span className="col-span-4">Part name</span>
                     <span className="col-span-2 pl-3 text-left">Qty.</span>
-                    <span className="col-span-3 pl-3 text-left">Price</span>
+                    <span className="col-span-2 pl-3 text-left">Currency</span>
+                    <span className="col-span-2 pl-3 text-left">Price</span>
                     <span className="col-span-2 text-center">Delete</span>
                   </div>
 
@@ -690,7 +849,7 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                       {modalItems?.map((it, idx) => (
                         <div key={`${it.id ?? it.spare_part}-${idx}`} className="grid grid-cols-12 gap-3">
                           {/* Part name */}
-                          <div className="col-span-5">
+                          <div className="col-span-4">
                             <input
                               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm focus:ring-[#3F72AF]"
                               value={it.spare_part}
@@ -723,8 +882,18 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                             />
                           </div>
 
+                          {/* Currency (read-only, from API) */}
+                          <div className="col-span-2">
+                            <input
+                              type="text"
+                              disabled
+                              className="w-full bg-gray-100 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm cursor-not-allowed"
+                              value={normalizeCurrency((it as any).currency)}
+                            />
+                          </div>
+
                           {/* Price */}
-                          <div className="col-span-3">
+                          <div className="col-span-2">
                             <input
                               type="number"
                               min={0}
@@ -792,9 +961,10 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                   {/* Table headers */}
                   <div className="grid grid-cols-12 text-[14px] text-gray-600 font-semibold mb-2 px-1">
                     <span className="col-span-4">Part name</span>
-                    <span className="col-span-3 pl-3">Class</span>
+                    <span className="col-span-2 pl-3">Class</span>
                     <span className="col-span-2 pl-3">Qty</span>
-                    <span className="col-span-3 pl-3">Price</span>
+                    <span className="col-span-2 pl-3">Currency</span>
+                    <span className="col-span-2 pl-3">Price</span>
                   </div>
 
                   {/* Table rows */}
@@ -815,7 +985,7 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                           </div>
 
                           {/* Class */}
-                          <div className="col-span-3">
+                          <div className="col-span-2">
                             <input
                               type="text"
                               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm"
@@ -835,8 +1005,18 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
                             />
                           </div>
 
+                          {/* Currency (read-only, from API) */}
+                          <div className="col-span-2">
+                            <input
+                              type="text"
+                              disabled
+                              className="w-full bg-gray-100 border border-gray-200 rounded-xl p-4 text-gray-800 text-sm cursor-not-allowed"
+                              value={normalizeCurrency((it as any).currency)}
+                            />
+                          </div>
+
                           {/* Price */}
-                          <div className="col-span-3">
+                          <div className="col-span-2">
                             <input
                               type="number"
                               min={0}
@@ -869,6 +1049,87 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
           </div>
         </div>
       )}
+
+      {/* Pay & Accept Modal (Stripe) */}
+      {paymentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={closePaymentModal} />
+
+          <div className="relative bg-gray-50 rounded-2xl shadow-xl w-[95%] max-w-[560px] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-[#212529]">Pay &amp; Accept</h3>
+              <button onClick={closePaymentModal} className="text-[#6C757D]">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M18 6L6 18M6 6L18 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-[#212529]">Full name</label>
+                  <input
+                    className="mt-1 w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#212529] outline-none focus:ring-1 focus:ring-[#3F72AF]"
+                    value={payCardholderName}
+                    onChange={(e) => setPayCardholderName(e.target.value)}
+                    placeholder="e.g. Full Name"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-[#212529]">Card number</label>
+                  <div className="mt-1 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <CardNumberElement />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-[#212529]">Expiry</label>
+                  <div className="mt-1 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <CardExpiryElement />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-[#212529]">CVC</label>
+                  <div className="mt-1 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <CardCvcElement />
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-[#212529]">Amount</label>
+                  <div className="mt-1 w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#212529]">
+                    {payTotalAmount.toFixed(2)} {String(payCurrency || "USD").toUpperCase()}
+                  </div>
+                </div>
+              </div>
+
+              {payError ? <div className="text-sm text-red-600 font-medium">{payError}</div> : null}
+
+              <button
+                className="w-full bg-[#3F72AF] hover:bg-[#2B5B8C] text-white text-[15px] font-semibold py-3 rounded-xl shadow disabled:opacity-60"
+                onClick={handlePayAndAccept}
+                disabled={paying}
+              >
+                {paying ? "Processing..." : "Pay now"}
+              </button>
+
+              <p className="text-xs text-[#6C757D]">
+                Test mode: use 4242 4242 4242 4242, any future expiry, any CVC.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Review Modal */}
       {reviewModalOpen && reviewRow && (
@@ -994,7 +1255,14 @@ const getBranchBrandSparepartIdFromRow = (row: any): number | null => {
   );
 };
 
-export default SparePartsTable;
+// ✅ Public component that guarantees <Elements> context for Stripe hooks used inside.
+export default function SparePartsTable(props: SparePartsTableProps) {
+  return (
+    <Elements stripe={stripePromise}>
+      <SparePartsTableInner {...props} />
+    </Elements>
+  );
+}
 
 /* kept demo data block */
 const demoModalItems: ApiSparePartItem[] = [

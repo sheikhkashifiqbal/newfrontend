@@ -11,6 +11,8 @@ type TabItem = {
 };
 
 type NavTabsProps = {
+  // tabItems are passed from pages; component may also filter based on localStorage user_type
+
   tabItems: TabItem[];
   defaultActiveTab?: string;
   onChange?: (tab: string) => void;
@@ -41,6 +43,21 @@ const NavTabs: React.FC<NavTabsProps> = ({
     // During SSR / build, fall back to props
     return defaultActiveTab || tabItems[0]?.label || "";
   });
+  const [userType, setUserType] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const raw = (window.localStorage.getItem("user_type") || "").trim().toLowerCase();
+      return raw === "sparparts_store" ? "spareparts_store" : raw;
+    }
+    return "";
+  });
+
+  const filteredTabItems = React.useMemo(() => {
+    if (userType === "spareparts_store") {
+      return tabItems.filter((t) => t.label !== "My bookings");
+    }
+    return tabItems;
+  }, [tabItems, userType]);
+
 
   // ✅ Persist active tab to localStorage whenever it changes (browser only)
   useEffect(() => {
@@ -72,23 +89,23 @@ const NavTabs: React.FC<NavTabsProps> = ({
   return (
     <div className="flex flex-col-reverse md:flex-row md:items-center gap-3 md:justify-between">
       <div className="flex items-center gap-3">
-        {tabItems.map((item, idx) => {
-          const isActive = activeTab === item.label || id === idx + 1;
+        {filteredTabItems.map((item, idx) => {
+          const isActive = id === idx + 1;
+
           return (
             <button
               key={item.label}
-              className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${
-                isActive ? "bg-blue-50 !text-[#3F72AF]" : ""
-              }`}
+              className={`flex items-center gap-2 rounded-lg p-[14px] hover:bg-blue-50 ${isActive ? "bg-blue-50 !text-[#3F72AF]" : ""
+                }`}
               onClick={() => handleTabClick(item, idx)}
             >
               {React.isValidElement(item.icon)
                 ? React.cloneElement(
-                    item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
-                    {
-                      stroke: isActive ? "#3F72AF" : "#495057",
-                    }
-                  )
+                  item.icon as React.ReactElement<React.SVGProps<SVGSVGElement>>,
+                  {
+                    stroke: isActive ? "#3F72AF" : "#495057",
+                  }
+                )
                 : item.icon}
 
               {item.label}

@@ -94,6 +94,7 @@ function ServiceRegistrationFull({closeFormAndGoBack, openPopup}: IServiceRegist
     managerSurname: z.string({required_error: 'manager surname is required'}).min(3, "manager surname must be at least 3 characters"),
     address: z.string({required_error: 'address is required'}).min(3, "address must be at least 3 characters"),
     city: z.string({ required_error: 'city is required'}).min(1, "city is required"),
+    city_id: z.string({ required_error: 'city_id is required' }).min(1, "city_id is required"),
     location: z.string({required_error: 'location is required'}).min(3, "location must be at least 3 characters"),
     workDays: z.array(z.string({required_error: "Select work days"}), {required_error: "Select work days"})
       .min(1, {message: "Select at least 1 work day"}).max(7),
@@ -365,6 +366,7 @@ ${txt}`;
         branchManagerSurname: b.managerSurname,
         branchAddress: b.address,
         city: b.city,
+        city_id: (b as any).city_id,
         location: b.location,
         workDays: (b.workDays || []) as string[],
         from: (b.workHours?.[0] ?? "") as string,
