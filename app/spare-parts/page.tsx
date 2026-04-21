@@ -1,27 +1,16 @@
-'use client'
-import SparePartsSearchSelectors from "@/components/spare-parts/spare-parts-search-selectors";
-import Container from "@/components/Container";
-import StoresCards from "@/components/spare-parts/stores-cards";
-import SparePartsSearchResults from "@/components/spare-parts/spare-parts-search-results";
-import {useState} from "react";
+import { Metadata } from "next";
+import SparePartsClient from "./SparePartsClient";
 
-export default function SparePartsPage() {
-	const [showResults, setShowResults] = useState(false);
+export const metadata: Metadata = {
+  title:
+    "Mechanical & Car Repair Services in Baku | Auto Service & Vehicle Maintenance",
+  description:
+    "Looking for reliable mechanical services in Baku? We offer expert car repair, auto service, and complete vehicle maintenance in Baku to keep your car running smoothly. Book your service today!",
+  other: {
+    "google-site-verification": "iACxYXX2j0rTzino0ftnhhHgfudsBSIR743gyw9uOEg",
+  },
+};
 
-	function handleSearch() {
-		console.log("Make True");
-		setShowResults(true);
-	}
-    console.log("Show Results::", showResults);
-	return (
-			<div className={'min-h-screen bg-light-gray'}>
-				<SparePartsSearchSelectors onSearchClick={handleSearch}/>
-				<section className={'w-full bg-light-gray py-10'}>
-					<Container>
-						{!showResults && <StoresCards />}
-						{showResults && <SparePartsSearchResults />}
-					</Container>
-				</section>
-			</div>
-	)
+export default function Page() {
+  return <SparePartsClient />;
 }
