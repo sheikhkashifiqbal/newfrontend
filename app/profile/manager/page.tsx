@@ -81,7 +81,7 @@ const ProfileInfoPage = () => {
   };
 
 
-   const isSparepartsStore: boolean =
+  const isSparepartsStore: boolean =
     userType === "spareparts_store" ||
     userType === "sparparts_store";
   const isServicesStore = userType === "services_store" || !userType;
@@ -106,7 +106,7 @@ const ProfileInfoPage = () => {
     if (userType === "services_store") {
       base.splice(1, 0, "My services");
     }
-// Show My Spare parts only for spareparts_store
+    // Show My Spare parts only for spareparts_store
     if (isSparepartsStore) {
       base.splice(1, 0, "My Spare parts");
     }
@@ -170,16 +170,24 @@ const ProfileInfoPage = () => {
       {/* Inner Profile Section Tabs */}
       <section className="border-b border-gray-200 mb-8">
         <div className="flex gap-3 lg:justify-between lg:gap-12 max-w-[1120px] mx-auto px-4 flex-wrap">
-          {(profileTabs as TabStatus[]).map((tab) => {
+          {(
+            [
+              "Work schedule",
+              "My services",
+              "Account details",
+              "Security details",
+              "My Branches",
+            ] as TabStatus[]
+          ).map((tab) => {
             const isActive = activeTab === tab;
+
             return (
               <button
                 key={tab}
-                className={`px-0 py-4 font-medium text-sm flex gap-1 sm:gap-3 items-center ${
-                  isActive
+                className={`px-0 py-4 font-medium text-sm flex gap-1 sm:gap-3 items-center ${isActive
                     ? "text-gray-700 border-b-2 border-gray-600"
                     : "text-gray-300 hover:text-gray-700"
-                }`}
+                  }`}
                 onClick={() => setActiveTab(tab)}
               >
                 <img
@@ -187,14 +195,14 @@ const ProfileInfoPage = () => {
                     tab === "Work schedule"
                       ? "/icons/calendar-check.svg"
                       : tab === "My services"
-                      ? "/icons/tool-02.svg"
-                      : tab === "Account details"
-                      ? "/icons/user-edit.svg"
-                      : tab === "Security details"
-                      ? "/icons/shield-zap.svg"
-                      : tab === "My Branches"
-                      ? "/icons/building-02.svg"
-                      : "/icons/file-plus-02.svg"
+                        ? "/icons/tool-02.svg"
+                        : tab === "Account details"
+                          ? "/icons/user-edit.svg"
+                          : tab === "Security details"
+                            ? "/icons/shield-zap.svg"
+                            : tab === "My Branches"
+                              ? "/icons/building-02.svg"
+                              : "/icons/file-plus-02.svg"
                   }
                   width={24}
                   alt={`${tab} icon`}

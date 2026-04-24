@@ -114,9 +114,10 @@ const BookingTable: React.FC<BookingTableProps> = ({
   }
 
   return (
-    <div className="w-full max-w-[1120px] mx-auto px-4 pb-20">
-      <div className="rounded-2xl border border-[#E9ECEF] overflow-hidden">
-        <table className="w-full table-auto divide-y divide-gray-200">
+    <div className="rounded-2xl border border-[#E9ECEF] max-w-[1120px] mx-auto px-4 overflow-hidden">
+  <div className="overflow-x-auto md:overflow-visible">
+    <table className="min-w-[900px] md:min-w-full table-auto divide-y divide-gray-200">
+
           {tableHead}
           <tbody className="text-sm text-[#495057] divide-y divide-gray-200">
             {bookings.map((b, idx) => {

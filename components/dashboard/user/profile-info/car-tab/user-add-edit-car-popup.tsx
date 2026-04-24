@@ -44,7 +44,10 @@ function UserAddEditCarPopup(
 	const userAddNewCarFormSchema = z.object({
 		brand: z.string({required_error: "brand is required"}),
 		model: z.string({required_error: "model is required"}),
-		vin: z.string({required_error: "VIN is required"}).min(5, {message: "VIN should be at least 5 characters"}),
+		vin: z.string({required_error: "VIN is required"})
+			.min(17, {message: "VIN must be exactly 17 characters"})
+			.max(17, {message: "VIN must be exactly 17 characters"})
+			.regex(/^[A-HJ-NPR-Z0-9]{17}$/i, {message: "VIN must contain only alphanumeric characters (excluding I, O, Q)"}),
 		plateNumber: z.string({required_error: "plate number is required"}).min(5, {message: "plate number should be at least 5 characters"}),
 	})
 
