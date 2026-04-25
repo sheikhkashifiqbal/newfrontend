@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     "Get expert engine repair in Baku along with suspension services, brake repair, battery replacement, tire services, AC service, oil change, and car diagnostics. Reliable auto service in Baku for all your vehicle needs.",
   other: {
-    "google-site-verification": "iACxYXX2j0rTzino0ftnhhHgfudsBSIR743gyw9uOEg",
+    "google-site-verification": "mnBd-9z4vLVgrLQ_jJGf1SlbHCJgRvEHVrVyzqdla0E",
   },
 };
 
