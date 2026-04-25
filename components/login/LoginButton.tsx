@@ -9,7 +9,7 @@ export default function LoginButton() {
 	return (
 			<>
 				<Button onClick={() => setOpenPopup(true)} className={'bg-inherit border-0 py-2 px-6 text-steel-blue text-base font-medium shadow-none'}>
-					Giriş
+					Login
 				</Button>
 				<LoginPopupModal isOpen={openPopup} setIsOpen={setOpenPopup}/>
 			</>

@@ -55,7 +55,7 @@ export function HeaderButtons({ divClassname }: { divClassname?: string }) {
         className="flex justify-center items-center bg-steel-blue/10 border border-steel-blue/20 rounded-[32px] py-2 px-6 hover:bg-steel-blue/25"
       >
         <Link className="text-steel-blue font-semibold text-base" href="/register">
-          Qeydiyyat
+          Register
         </Link>
       </Button>
     </div>
