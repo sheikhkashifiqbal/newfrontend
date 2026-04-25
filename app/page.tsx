@@ -1,5 +1,6 @@
 import Image from "next/image";
-import ServicesClient from "@/services/ServicesClient";
+import { Metadata } from "next";
+import ServicesClient from "./services/ServicesClient";
 
 export const metadata: Metadata = {
   title:
