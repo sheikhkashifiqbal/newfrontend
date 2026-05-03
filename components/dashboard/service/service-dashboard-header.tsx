@@ -65,30 +65,41 @@ const tabItems = [
 
 export default function ServiceDashboardHeader() {
   const [userType, setUserType] = useState<string>("");
+  const [authRole, setAuthRole] = useState<string>("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedUserType = localStorage.getItem("user_type") || "";
       setUserType(storedUserType);
+
+      const storedAuthRole = localStorage.getItem("auth_role") || "";
+      setAuthRole(storedAuthRole);
     }
   }, []);
 
   const filteredTabItems = useMemo(() => {
+    let items = tabItems;
+
     if (userType === "spareparts_store") {
-      return tabItems.filter(
+      items = items.filter(
         (item) => item.label !== "My bookings"
       );
     }
 
     if (userType === "services_store") {
-      return tabItems.filter(
+      items = items.filter(
         (item) => item.label !== "Spare part request"
       );
     }
 
-    // Preserve existing behavior if user_type is missing or different
-    return tabItems;
-  }, [userType]);
+    if (authRole === "branch_manager") {
+      items = items.filter(
+        (item) => item.label !== "Spare part request"
+      );
+    }
+
+    return items;
+  }, [userType, authRole]);
 
   const activeTabLabel = useMemo(() => {
     if (userType === "spareparts_store") {
