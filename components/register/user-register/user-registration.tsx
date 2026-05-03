@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, memo } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -81,6 +82,8 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   //const { toast } = useToast(); // ⬅️ toast hook
 
   const [carBrands, setCarBrands] = useState<{ brandId: number; brandName: string }[]>([]);
@@ -151,6 +154,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
   // On Submit
   async function onSubmit(values: z.infer<typeof userRegistrationFormSchema>) {
     try {
+      setIsLoading(true);
       // ---- PRE-SUBMIT DUPLICATE CHECK (BLOCK ALL POSTS IF DUPLICATE) ----
       const dup = await isDuplicateEmail(values.email);
       if (dup) {
@@ -196,13 +200,18 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
 
       // ✅ Success toast
 		setSuccessMsg("User is registered successfully.");
-		setTimeout(() => setSuccessMsg(null), 3000);
+		setTimeout(() => {
+          setSuccessMsg(null);
+          router.push("/");
+        }, 3000);
       // You can also call openPopup() or closeFormAndGoBack() here if needed
       // openPopup?.();
     } catch (error) {
       console.error("Registration error:", error);
       // Optional: show a toast here too if you want
       // toast({ title: "Registration failed", description: "Please try again." });
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -407,8 +416,9 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
         <CustomBlueBtn
           onClick={form.handleSubmit(onSubmit)}
           className={'rounded-[12px] justify-center flex items-center gap-x-4 py-3 px-6'}
+          disabled={isLoading}
           show={"children"}>
-          Register
+          {isLoading ? "Registering..." : "Register"}
         </CustomBlueBtn>
       </div>
 	  	
