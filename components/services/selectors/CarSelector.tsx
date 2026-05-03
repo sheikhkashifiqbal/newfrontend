@@ -11,17 +11,17 @@ interface SelectorProps {
 }
 
 const CarSelector: React.FC<SelectorProps> = ({ value, onChange, placeholder, triggerClassname, options }) => {
- 
-    return (
+
+  return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className={triggerClassname}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        
+
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
-            
+
             {option.label}
           </SelectItem>
         ))}

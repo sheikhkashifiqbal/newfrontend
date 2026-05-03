@@ -15,8 +15,8 @@ import TrashIcon from "@/assets/icons/register/TrashIcon.svg"
 import { cn } from "@/lib/utils";
 import ArrowLeft from "@/assets/icons/register/arrow-narrow-left.svg";
 import CustomBlueBtn from "@/components/app-custom/CustomBlueBtn";
-import { CarSelector } from "@/components/services/selectors/CarSelector";
-import { CarModelSelector } from "@/components/services/selectors/CarModelSelector";
+import CustomSelect, { CustomSelectItem } from "@/components/app-custom/custom-select";
+import { SelectGroup } from "@/components/ui/select";
 
 
 interface IUserRegistration {
@@ -331,13 +331,17 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
                       control={form.control}
                       name={`cars.${index}.carBrand`}
                       Children={(onChange, hasError, value) => (
-                        <CarSelector
-                          triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')}
-                          value={value}
-                          placeholder={'Select car brand'}
-                          onChange={onChange}
-                          options={carBrands.map(b => ({ label: b.brandName, value: String(b.brandId) }))}
-                        />
+                        <CustomSelect value={value} onChange={onChange} triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')} placeholder={'Select car brand'}>
+                          <div className={'p-5 flex flex-col gap-y-3'}>
+                            <SelectGroup>
+                              {carBrands.map(b => (
+                                <CustomSelectItem key={b.brandId} value={String(b.brandId)}>
+                                  {b.brandName}
+                                </CustomSelectItem>
+                              ))}
+                            </SelectGroup>
+                          </div>
+                        </CustomSelect>
                       )}
                     />
 
@@ -349,13 +353,17 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
                         const brandId = parseInt(form.getValues(`cars.${index}.carBrand`));
                         const models = carModelsMap[brandId] || [];
                         return (
-                          <CarModelSelector
-                            triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')}
-                            value={value}
-                            placeholder={'Select car model'}
-                            onChange={onChange}
-                            options={models.map(m => ({ label: m.modelName, value: m.modelName }))}
-                          />
+                          <CustomSelect value={value} onChange={onChange} triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')} placeholder={'Select car model'}>
+                            <div className={'p-5 flex flex-col gap-y-3'}>
+                              <SelectGroup>
+                                {models.map(m => (
+                                  <CustomSelectItem key={m.modelName} value={m.modelName}>
+                                    {m.modelName}
+                                  </CustomSelectItem>
+                                ))}
+                              </SelectGroup>
+                            </div>
+                          </CustomSelect>
                         );
                       }}
                     />
