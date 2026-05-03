@@ -13,6 +13,7 @@ interface ICustomInput {
 	onChange?: (value: string) => void
 	inputType?: HTMLInputTypeAttribute
 	isItalicPlaceholder?: boolean
+	autoComplete?: string
 }
 
 export default function CustomInput(
@@ -23,6 +24,7 @@ export default function CustomInput(
 				onChange,
 				inputType = 'text',
 				isItalicPlaceholder = false,
+				autoComplete,
 		}: ICustomInput
 ) {
 	const [isPasswordInput,setIsPasswordInput] = useState(false);
@@ -43,6 +45,7 @@ export default function CustomInput(
 							onChange && onChange(event.target.value)
 						}}
 						placeholder={placeholder}
+						autoComplete={autoComplete}
 						className={cn('h-auto text-charcoal text-base py-3 px-4 bg-white border border-soft-gray placeholder:text-sm font-medium placeholder:text-misty-gray rounded-[12px] focus:border-steel-blue/20 focus:shadow-[0px_0px_16px_0px_#3F72AF1A]',className, isItalicPlaceholder && 'placeholder:italic', isPasswordInput && 'pr-10')}
 				/>
 				{isPasswordInput && type === "password" && (

@@ -56,24 +56,28 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
   const form = useForm<z.infer<typeof userRegistrationFormSchema>>({
     resolver: zodResolver(userRegistrationFormSchema),
     defaultValues: {
-      name: undefined,
-      surname: undefined,
+      name: "",
+      surname: "",
       birthday: undefined,
-      gender: undefined,
-      email: undefined,
-      password: undefined,
-      repeatPassword: undefined,
+      gender: "",
+      email: "",
+      password: "",
+      repeatPassword: "",
       cars: [
         {
-          carBrand: undefined,
-          carModel: undefined,
-          vinNumber: undefined,
-          plateNumber: undefined
+          carBrand: "",
+          carModel: "",
+          vinNumber: "",
+          plateNumber: ""
         }
       ]
     },
     mode: "onChange"
   })
+
+  useEffect(() => {
+    form.reset();
+  }, [form]);
 
   const { fields: carsLive, append, remove } = useFieldArray({
     control: form.control,
@@ -290,6 +294,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               placeholder={'Type your e-mail address'}
               label={'E-mail address *'}
               inputType={"email"}
+              autoComplete={"off"}
               // ⬇️ Live duplicate check on blur (shows message under field)
               asyncValidate={validateEmailLive}
             />
@@ -303,6 +308,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               placeholder={'Type your password'}
               label={'Password *'}
               inputType={'password'}
+              autoComplete={"new-password"}
             />
 
             <CustomFormField
@@ -312,6 +318,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               placeholder={'Retype your password'}
               label={'Repeat Password *'}
               inputType={'password'}
+              autoComplete={"new-password"}
             />
           </div>
 
