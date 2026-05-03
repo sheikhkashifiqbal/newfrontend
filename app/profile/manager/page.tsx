@@ -26,6 +26,7 @@ const ProfileInfoPage = () => {
   >([]);
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
   const [userType, setUserType] = useState<string>("");
+  const [authRole, setAuthRole] = useState<string>("");
 
   // Load auth + branch once page loads
   useEffect(() => {
@@ -66,6 +67,9 @@ const ProfileInfoPage = () => {
       const normalizedUserType =
         rawUserType === "sparparts_store" ? "spareparts_store" : rawUserType;
       setUserType(normalizedUserType);
+
+      const rawAuthRole = (localStorage.getItem("auth_role") || "").trim();
+      setAuthRole(rawAuthRole);
     } catch (err) {
       console.error("Error reading auth_response:", err);
       window.location.href = "/";
@@ -88,11 +92,15 @@ const ProfileInfoPage = () => {
 
 
   const filteredTabItems = useMemo(() => {
+    let items = tabItems;
     if (isSparepartsStore) {
-      return tabItems.filter((t) => t.label !== "My bookings");
+      items = items.filter((t) => t.label !== "My bookings");
     }
-    return tabItems;
-  }, [userType]);
+    if (authRole === "branch_manager") {
+      items = items.filter((t) => t.label !== "Spare part request");
+    }
+    return items;
+  }, [userType, authRole, isSparepartsStore]);
 
   const profileTabs: TabStatus[] = useMemo(() => {
     const base: TabStatus[] = [
