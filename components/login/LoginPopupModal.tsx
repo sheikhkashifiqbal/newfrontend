@@ -143,8 +143,12 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
   async function onSubmit(values: z.infer<typeof mainScreenFormSchema>) {
     setIsLoading(true);
     try {
-      // NOTE: login "type" remains 'branch_manager' for service/store (existing behavior)
-      const loginType = values.accountType === "user" ? "user" : "branch_manager";
+      // NOTE: login "type" remains 'branch_manager' for service, but is 'store' for store
+      const loginType = values.accountType === "user" 
+        ? "user" 
+        : values.accountType === "store" 
+          ? "store" 
+          : "branch_manager";
 
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
