@@ -105,7 +105,7 @@ function mapToVerifyType(accountType: "user" | "service" | "store"): "user" | "m
 // ──────────────────────────────────────────────
 // MAIN LOGIN SCREEN (unchanged login flow)
 // ──────────────────────────────────────────────
-function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
+function MainScreen({ setPage, closeModal }: { setPage: (page: 1 | 2 | 3 | 4) => void; closeModal: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
@@ -233,7 +233,7 @@ function MainScreen({ setPage }: { setPage: (page: 1 | 2 | 3 | 4) => void }) {
 
         <div className="px-6 flex items-center justify-center gap-2">
           <h4 className="text-base font-medium text-charcoal">Don't have an account?</h4>
-          <Link className="text-base font-semibold text-royal-blue" href="/register">
+          <Link className="text-base font-semibold text-royal-blue" href="/register" onClick={()=>{closeModal()}}>
             Sign up
           </Link>
         </div>
@@ -538,7 +538,7 @@ function LoginPopupModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (o
           </DialogPrimitive.Close>
         </DialogHeader>
 
-        {page === 1 && <MainScreen setPage={setPage} />}
+        {page === 1 && <MainScreen setPage={setPage} closeModal={closeModal} />}
         {page === 2 && <ForgotPasswordScreen setPage={setPage} setVerifyState={setVerifyState} />}
         {page === 3 && <OTPScreen setPage={setPage} verifyState={verifyState} />}
         {page === 4 && <ResetPasswordScreen closeModal={closeModal} verifyState={verifyState} />}
