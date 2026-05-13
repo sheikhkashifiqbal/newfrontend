@@ -606,7 +606,17 @@ const AddCarDetails: React.FC<{
     const next: typeof errors = {};
     if (!form.brandId) next.brandId = "Brand is required";
     if (!form.carModel?.trim()) next.carModel = "Car model is required";
-    if (!form.vinNumber?.trim()) next.vinNumber = "VIN number is required";
+    
+    // VIN validation
+    const vinTrimmed = form.vinNumber?.trim() || "";
+    if (!vinTrimmed) {
+      next.vinNumber = "VIN number is required";
+    } else if (vinTrimmed.length !== 17) {
+      next.vinNumber = "VIN must be exactly 17 characters";
+    } else if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vinTrimmed)) {
+      next.vinNumber = "VIN must contain only alphanumeric characters (excluding I, O, Q)";
+    }
+    
     if (!form.plateNumber?.trim()) next.plateNumber = "Plate number is required";
     setErrors(next);
     return Object.keys(next).length === 0;

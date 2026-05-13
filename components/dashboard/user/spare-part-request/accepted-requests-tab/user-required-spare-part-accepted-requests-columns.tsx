@@ -1,6 +1,5 @@
 'use client'
 
-
 import {ColumnDef} from "@tanstack/react-table";
 import {Button} from "@/components/ui/button";
 
@@ -45,7 +44,7 @@ export const UserRequiredSparePartAcceptedRequestsColumns = (onView: (row: UserS
 
 			return (
 					<Button onClick={() => onView(origin)} className={'bg-[#F8FBFF] border h-8 px-4 rounded-[8px] border-[#DCE8F6] text-steel-blue text-xs font-semibold'}>
-						Accept / Decline
+						Accept / Decline1
 					</Button>
 			)
 		}

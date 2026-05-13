@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import DashboardContainer from "@/components/dashboard/DashboardContainer";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import NavTabs from "@/components/nav-tabs";
+import { useRouter } from "next/navigation";
+
 import React, { useEffect, useMemo, useState } from "react";
 
 interface IServiceDashboardHeader {
