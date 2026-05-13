@@ -12,6 +12,7 @@ interface ICustomBlueBtn {
 	children?: ReactNode
 	show?: "text" | "children"
 	type?: "submit" | "reset" | "button" | undefined
+	disabled?: boolean
 }
 
 export default function CustomBlueBtn(
@@ -21,11 +22,12 @@ export default function CustomBlueBtn(
 				onClick,
 				children = 'custom children',
 				show = "text",
-				type = undefined
+				type = undefined,
+				disabled = false
 		}: ICustomBlueBtn
 ) {
 	return (
-			<Button type={type} onClick={onClick && onClick} className={cn('max-h-fit bg-steel-blue rounded-[8px] py-3 px-8 text-base font-medium text-white', className)}>
+			<Button disabled={disabled} type={type} onClick={onClick && onClick} className={cn('max-h-fit bg-steel-blue rounded-[8px] py-3 px-8 text-base font-medium text-white', className)}>
 				{show === "text" ? text : children}
 			</Button>
 	)

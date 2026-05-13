@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./client-layout";
+import NextTopLoader from 'nextjs-toploader';
 
 const interFont = Inter({
   variable: "--font-inter",
@@ -18,11 +19,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>   
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`antialiased ${interFont.variable ?? ""}`}
-        suppressHydrationWarning                  
+        suppressHydrationWarning
       >
+        <NextTopLoader />
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

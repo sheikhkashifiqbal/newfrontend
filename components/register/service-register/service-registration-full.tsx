@@ -453,7 +453,7 @@ ${txt}`;
           {step === 2 && <ServiceRegistrationStep2 form={form} services={services} brands={brands} loadingLists={loadingLists} />}
           	{step === 3 && <ServiceRegistrationStep3 form={form} /> }
           <div className="pt-6">
-            <button type="submit" className="reg-company hidden">Register Company & Branches</button>
+            <button type="submit" className="reg-company hidden">Register Company & Branches </button>
           </div>
         </form>
       </Form>

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, memo } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,8 +16,8 @@ import TrashIcon from "@/assets/icons/register/TrashIcon.svg"
 import { cn } from "@/lib/utils";
 import ArrowLeft from "@/assets/icons/register/arrow-narrow-left.svg";
 import CustomBlueBtn from "@/components/app-custom/CustomBlueBtn";
-import { CarSelector } from "@/components/services/selectors/CarSelector";
-import { CarModelSelector } from "@/components/services/selectors/CarModelSelector";
+import CustomSelect, { CustomSelectItem } from "@/components/app-custom/custom-select";
+import { SelectGroup } from "@/components/ui/select";
 
 
 interface IUserRegistration {
@@ -55,24 +56,28 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
   const form = useForm<z.infer<typeof userRegistrationFormSchema>>({
     resolver: zodResolver(userRegistrationFormSchema),
     defaultValues: {
-      name: undefined,
-      surname: undefined,
+      name: "",
+      surname: "",
       birthday: undefined,
-      gender: undefined,
-      email: undefined,
-      password: undefined,
-      repeatPassword: undefined,
+      gender: "",
+      email: "",
+      password: "",
+      repeatPassword: "",
       cars: [
         {
-          carBrand: undefined,
-          carModel: undefined,
-          vinNumber: undefined,
-          plateNumber: undefined
+          carBrand: "",
+          carModel: "",
+          vinNumber: "",
+          plateNumber: ""
         }
       ]
     },
     mode: "onChange"
   })
+
+  useEffect(() => {
+    form.reset();
+  }, [form]);
 
   const { fields: carsLive, append, remove } = useFieldArray({
     control: form.control,
@@ -81,6 +86,8 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   //const { toast } = useToast(); // ⬅️ toast hook
 
   const [carBrands, setCarBrands] = useState<{ brandId: number; brandName: string }[]>([]);
@@ -151,6 +158,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
   // On Submit
   async function onSubmit(values: z.infer<typeof userRegistrationFormSchema>) {
     try {
+      setIsLoading(true);
       // ---- PRE-SUBMIT DUPLICATE CHECK (BLOCK ALL POSTS IF DUPLICATE) ----
       const dup = await isDuplicateEmail(values.email);
       if (dup) {
@@ -196,13 +204,18 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
 
       // ✅ Success toast
 		setSuccessMsg("User is registered successfully.");
-		setTimeout(() => setSuccessMsg(null), 3000);
+		setTimeout(() => {
+          setSuccessMsg(null);
+          router.push("/");
+        }, 3000);
       // You can also call openPopup() or closeFormAndGoBack() here if needed
       // openPopup?.();
     } catch (error) {
       console.error("Registration error:", error);
       // Optional: show a toast here too if you want
       // toast({ title: "Registration failed", description: "Please try again." });
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -281,6 +294,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               placeholder={'Type your e-mail address'}
               label={'E-mail address *'}
               inputType={"email"}
+              autoComplete={"off"}
               // ⬇️ Live duplicate check on blur (shows message under field)
               asyncValidate={validateEmailLive}
             />
@@ -294,6 +308,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               placeholder={'Type your password'}
               label={'Password *'}
               inputType={'password'}
+              autoComplete={"new-password"}
             />
 
             <CustomFormField
@@ -303,6 +318,7 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
               placeholder={'Retype your password'}
               label={'Repeat Password *'}
               inputType={'password'}
+              autoComplete={"new-password"}
             />
           </div>
 
@@ -331,13 +347,17 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
                       control={form.control}
                       name={`cars.${index}.carBrand`}
                       Children={(onChange, hasError, value) => (
-                        <CarSelector
-                          triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')}
-                          value={value}
-                          placeholder={'Select car brand'}
-                          onChange={onChange}
-                          options={carBrands.map(b => ({ label: b.brandName, value: String(b.brandId) }))}
-                        />
+                        <CustomSelect value={value} onChange={onChange} triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')} placeholder={'Select car brand'}>
+                          <div className={'p-5 flex flex-col gap-y-3'}>
+                            <SelectGroup>
+                              {carBrands.map(b => (
+                                <CustomSelectItem key={b.brandId} value={String(b.brandId)}>
+                                  {b.brandName}
+                                </CustomSelectItem>
+                              ))}
+                            </SelectGroup>
+                          </div>
+                        </CustomSelect>
                       )}
                     />
 
@@ -349,13 +369,17 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
                         const brandId = parseInt(form.getValues(`cars.${index}.carBrand`));
                         const models = carModelsMap[brandId] || [];
                         return (
-                          <CarModelSelector
-                            triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')}
-                            value={value}
-                            placeholder={'Select car model'}
-                            onChange={onChange}
-                            options={models.map(m => ({ label: m.modelName, value: m.modelName }))}
-                          />
+                          <CustomSelect value={value} onChange={onChange} triggerClassname={cn(grayTriggerClassname, hasError && '!border-vibrant-red')} placeholder={'Select car model'}>
+                            <div className={'p-5 flex flex-col gap-y-3'}>
+                              <SelectGroup>
+                                {models.map(m => (
+                                  <CustomSelectItem key={m.modelName} value={m.modelName}>
+                                    {m.modelName}
+                                  </CustomSelectItem>
+                                ))}
+                              </SelectGroup>
+                            </div>
+                          </CustomSelect>
                         );
                       }}
                     />
@@ -399,8 +423,9 @@ function UserRegistration({ closeFormAndGoBack, openPopup }: IUserRegistration) 
         <CustomBlueBtn
           onClick={form.handleSubmit(onSubmit)}
           className={'rounded-[12px] justify-center flex items-center gap-x-4 py-3 px-6'}
+          disabled={isLoading}
           show={"children"}>
-          Register
+          {isLoading ? "Registering..." : "Register"}
         </CustomBlueBtn>
       </div>
 	  	

@@ -21,6 +21,7 @@ export interface ICustomFormField {
   isItalicPlaceholder?: boolean
   className?: string
   containerClassname?: string
+  autoComplete?: string
   /** If provided, runs on blur. Return a string to show as an error; return null/undefined to clear. */
   asyncValidate?: (value: any) => Promise<string | null | undefined>
 }
@@ -39,6 +40,7 @@ function CustomFormField({
   isItalicPlaceholder = false,
   className,
   containerClassname,
+  autoComplete,
   asyncValidate
 }: ICustomFormField) {
   const { setError, clearErrors } = useFormContext();
@@ -92,6 +94,7 @@ function CustomFormField({
                 isItalicPlaceholder={isItalicPlaceholder}
                 inputType={inputType}
                 placeholder={placeholder}
+                autoComplete={autoComplete}
                 {...field}                        
                 value={field.value ?? ""}
                 onChange={(value: string) => field.onChange(inputType === "number" ? Number(value) : value)}
