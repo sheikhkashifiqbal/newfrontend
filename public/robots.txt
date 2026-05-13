@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.myscope.vip
+
+# Sitemaps
+Sitemap: https://www.myscope.vip/sitemap.xml
